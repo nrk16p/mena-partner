@@ -34,6 +34,9 @@ export default function PromotionsPage() {
   const activeRows = rows.filter((r) => r.contractCode)
   const totalBudget = activeRows.reduce((s, r) => s + r.repairBudget, 0)
   const totalUsed   = activeRows.reduce((s, r) => s + r.repairUsed, 0)
+  const pm1Pending  = activeRows.filter((r) => !r.pm1UsedThisYear).length
+  const pm2Pending  = activeRows.filter((r) => !r.pm2UsedThisYear).length
+  const budgetAlert = activeRows.filter((r) => r.repairBudget > 0 && r.repairUsed / r.repairBudget >= 0.9).length
 
   return (
     <div>
@@ -45,15 +48,27 @@ export default function PromotionsPage() {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-4">
         {[
-          { label: "วงเงินซ่อมรวม (โปร 2)",  value: formatMoney(totalBudget),                color: "" },
-          { label: "ใช้ไปแล้วรวม",             value: formatMoney(totalUsed),                 color: "text-red-500" },
-          { label: "คงเหลือรวม",               value: formatMoney(totalBudget - totalUsed),    color: "text-emerald-600" },
+          { label: "วงเงินซ่อมรวม (โปร 2)",  value: formatMoney(totalBudget),             color: "" },
+          { label: "ใช้ไปแล้วรวม",             value: formatMoney(totalUsed),               color: "text-red-500" },
+          { label: "คงเหลือรวม",               value: formatMoney(totalBudget - totalUsed), color: "text-emerald-600" },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
             <p className="text-xs text-zinc-400 mb-1">{label}</p>
             <p className={`text-xl font-bold ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {[
+          { label: `PM1 ยังไม่ได้ทำ`,          value: `${pm1Pending} คัน`,  color: pm1Pending > 0 ? "text-amber-600" : "text-emerald-600" },
+          { label: `PM2 ยังไม่ได้ทำ`,          value: `${pm2Pending} คัน`,  color: pm2Pending > 0 ? "text-amber-600" : "text-emerald-600" },
+          { label: "วงเงินซ่อม ≥90%",          value: `${budgetAlert} คัน`, color: budgetAlert > 0 ? "text-red-600" : "text-emerald-600" },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
+            <p className="text-xs text-zinc-400 mb-1">{label}</p>
+            <p className={`text-lg font-bold ${color}`}>{value}</p>
           </div>
         ))}
       </div>

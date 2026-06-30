@@ -98,6 +98,38 @@ export default function TripsPage() {
         )}
       </div>
 
+      {/* Plant summary */}
+      {!q && !plant && items.length > 0 && (() => {
+        const plantMap: Record<string, { count: number; total: number }> = {}
+        for (const t of items) {
+          const p = t.plant || "ไม่ระบุ"
+          if (!plantMap[p]) plantMap[p] = { count: 0, total: 0 }
+          plantMap[p].count += 1
+          plantMap[p].total += t.tripFee ?? 0
+        }
+        const plants = Object.entries(plantMap).sort((a, b) => b[1].total - a[1].total)
+        if (plants.length < 2) return null
+        return (
+          <div className="mb-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-800">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">แพล้นท์</span>
+            </div>
+            <div className="flex flex-wrap">
+              {plants.map(([p, stats]) => (
+                <button
+                  key={p}
+                  onClick={() => setPlant(p)}
+                  className="px-4 py-2.5 text-left border-r border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                >
+                  <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{p}</div>
+                  <div className="text-xs text-zinc-400">{stats.count} เที่ยว · {formatMoney(stats.total)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="flex items-center gap-3 mb-4">
         <select
           value={month}
@@ -121,6 +153,11 @@ export default function TripsPage() {
           onChange={(e) => setPlant(e.target.value)}
           className="max-w-36"
         />
+        {plant && (
+          <button onClick={() => setPlant("")} className="text-xs text-zinc-400 hover:text-zinc-600">
+            ✕ ล้าง
+          </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">

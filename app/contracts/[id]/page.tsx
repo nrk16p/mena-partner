@@ -99,19 +99,42 @@ export default function ContractDetailPage() {
 
       {/* Installment summary card */}
       {form.totalPrice > 0 && (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6 grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-zinc-400 mb-1">ราคาขาย</p>
-            <p className="text-lg font-bold">{formatMoney(form.totalPrice)}</p>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">ราคาขาย</p>
+              <p className="text-lg font-bold">{formatMoney(form.totalPrice)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">งวดละ / จำนวนงวด</p>
+              <p className="text-lg font-bold">{formatMoney(form.monthlyInstallment)} <span className="text-sm font-normal text-zinc-400">× {form.totalInstallments} งวด</span></p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">รวมที่ต้องชำระ</p>
+              <p className="text-lg font-bold text-emerald-600">{paid ? formatMoney(paid) : "-"}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-zinc-400 mb-1">งวดละ / จำนวนงวด</p>
-            <p className="text-lg font-bold">{formatMoney(form.monthlyInstallment)} <span className="text-sm font-normal text-zinc-400">× {form.totalInstallments} งวด</span></p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-400 mb-1">รวมที่ต้องชำระ</p>
-            <p className="text-lg font-bold text-emerald-600">{paid ? formatMoney(paid) : "-"}</p>
-          </div>
+          {/* Estimated remaining balance */}
+          {form.startDate && form.monthlyInstallment > 0 && form.totalInstallments > 0 && (() => {
+            const start = new Date(form.startDate)
+            const now = new Date()
+            const monthsPassed = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()))
+            const monthsPaid = Math.min(monthsPassed, form.totalInstallments)
+            const remaining = form.totalInstallments - monthsPaid
+            const remainingAmt = remaining * form.monthlyInstallment
+            const pct = Math.round((monthsPaid / form.totalInstallments) * 100)
+            return (
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+                  <span>ผ่อนไปแล้ว {monthsPaid}/{form.totalInstallments} งวด ({pct}%)</span>
+                  <span>คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-300">{remaining} งวด · {formatMoney(remainingAmt)} บาท</span></span>
+                </div>
+                <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
