@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Printer, ChevronRight } from "lucide-react"
+import { Search, Printer, ChevronRight, Zap } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { formatMonth, formatMoney } from "@/lib/utils"
@@ -58,6 +58,26 @@ export default function PayrollPage() {
   const totalNetPay = entries.reduce((s, e) => s + (e.netPay ?? 0), 0)
   const entryCodeSet = new Set(entries.map((e) => e.contractCode))
   const nextPending = drivers.find((d) => !entryCodeSet.has(d.contractCode))
+  const pendingCount = drivers.filter((d) => !entryCodeSet.has(d.contractCode)).length
+
+  async function handleBatchCreate() {
+    if (!month) return
+    const pending = drivers.filter((d) => !entryCodeSet.has(d.contractCode)).length
+    if (!confirm(`สร้างเงินเดือนอัตโนมัติให้ ${pending} คนที่ยังไม่บันทึก?\n\nระบบจะดึงค่าขนส่งจากรายเที่ยว, คำนวณค่าดำเนินการ 8%, และเติมค่างวด+ประกันจากสัญญาอัตโนมัติ`)) return
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/payroll/batch-create?month=${month}`, { method: "POST" })
+      const d = await r.json()
+      if (r.ok) {
+        alert(`สร้างสำเร็จ ${d.created} รายการ${d.errors > 0 ? ` (${d.errors} ผิดพลาด)` : ""}`)
+        // Reload entries
+        const entries = await fetch(`/api/payroll?month=${month}`).then((r) => r.ok ? r.json() : [])
+        setEntries(Array.isArray(entries) ? entries : [])
+      } else {
+        alert(d.error ?? "เกิดข้อผิดพลาด")
+      }
+    } finally { setLoading(false) }
+  }
 
   return (
     <div>
@@ -70,6 +90,19 @@ export default function PayrollPage() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {pendingCount > 0 && month && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={loading}
+              onClick={handleBatchCreate}
+              className="flex items-center gap-1 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+              title={`สร้างเงินเดือนอัตโนมัติให้ ${pendingCount} คนที่ยังไม่บันทึก`}
+            >
+              <Zap className="w-3 h-3" />
+              สร้างอัตโนมัติ ({pendingCount})
+            </Button>
+          )}
           {nextPending && month && (
             <Button
               size="sm"
