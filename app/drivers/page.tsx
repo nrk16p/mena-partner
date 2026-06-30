@@ -16,6 +16,7 @@ export default function DriversPage() {
   const [items, setItems]     = useState<Driver[]>([])
   const [q, setQ]             = useState("")
   const [statusFilter, setStatusFilter] = useState("active")
+  const [plantFilter, setPlantFilter]   = useState("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,10 +34,13 @@ export default function DriversPage() {
     return () => clearTimeout(t)
   }, [q, statusFilter])
 
+  const plants = Array.from(new Set(items.map((d) => d.plant).filter(Boolean))).sort()
+  const visible = items.filter((d) => !plantFilter || d.plant === plantFilter)
+
   function handleExportCSV() {
-    if (items.length === 0) return
+    if (visible.length === 0) return
     const headers = ["รหัส","ชื่อผู้ขับขี่","ทะเบียน","เบอร์รถ","แพล้นท์","เบอร์โทร","สถานะ"]
-    const rows = items.map((d) => [
+    const rows = visible.map((d) => [
       d.contractCode, d.driverName, d.licensePlate, d.truckNumber, d.plant, d.phone, d.status,
     ].join(","))
     const csv = [headers.join(","), ...rows].join("\n")
@@ -56,7 +60,7 @@ export default function DriversPage() {
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">พนักงานขับรถ</h1>
           <p className="text-sm text-zinc-400 mt-0.5">{items.length} คน</p>
         </div>
-        {items.length > 0 && (
+        {visible.length > 0 && (
           <button
             type="button"
             onClick={handleExportCSV}
@@ -67,6 +71,34 @@ export default function DriversPage() {
           </button>
         )}
       </div>
+
+      {plants.length > 1 && (
+        <div className="flex items-center gap-1 mb-3 flex-wrap">
+          <button
+            onClick={() => setPlantFilter("")}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              !plantFilter
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}
+          >
+            ทั้งหมด ({items.length})
+          </button>
+          {plants.map((p) => (
+            <button
+              key={p}
+              onClick={() => setPlantFilter(p)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                plantFilter === p
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {p} ({items.filter((d) => d.plant === p).length})
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-4 mb-4">
         <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
@@ -111,9 +143,9 @@ export default function DriversPage() {
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
-            ) : items.length === 0 ? (
+            ) : visible.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
-            ) : items.map((d) => (
+            ) : visible.map((d) => (
               <tr key={d._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                 <td className="px-4 py-3">
                   <Link href={`/drivers/${d._id}`} className="text-emerald-600 hover:underline font-medium">
