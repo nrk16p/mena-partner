@@ -4,7 +4,7 @@ import clientPromise from "@/lib/mongo"
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
 type Alert = {
-  type: "negative_pay" | "insurance_expired" | "insurance_expiring" | "repair_budget_critical"
+  type: "negative_pay" | "insurance_expired" | "insurance_expiring" | "repair_budget_critical" | "trip_fee_mismatch"
   severity: "critical" | "warning" | "info"
   contractCode: string
   driverName: string
@@ -99,6 +99,47 @@ export async function GET() {
         message: `โปร 2 วงเงินซ่อมใกล้เต็ม (${Math.round(pct * 100)}%)`,
         value: `คงเหลือ ${((cfg.repairBudget as number) - used).toLocaleString("th-TH", { maximumFractionDigits: 0 })} บาท`,
       })
+    }
+  }
+
+  // 4. Trip fee mismatch in latest month (transportFee differs from trip totals by > 500)
+  if (latestMonth) {
+    const [yearStr, monthStr] = latestMonth.split("-")
+    const year  = parseInt(yearStr)
+    const mon   = parseInt(monthStr)
+    const start = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+    const ny    = mon === 12 ? year + 1 : year
+    const nm    = mon === 12 ? 1 : mon + 1
+    const end   = `${ny}-${String(nm).padStart(2, "0")}-01`
+
+    const payrollEntries = await db.collection("payroll_entries")
+      .find({ month: latestMonth, transportFee: { $gt: 0 } })
+      .toArray()
+
+    if (payrollEntries.length > 0) {
+      const entryCodeList = payrollEntries.map((e) => e.contractCode as string)
+      const tripAgg = await db.collection("trips").aggregate([
+        { $match: { contractCode: { $in: entryCodeList }, date: { $gte: start, $lt: end } } },
+        { $group: { _id: "$contractCode", total: { $sum: "$tripFee" } } },
+      ]).toArray()
+      const tripFeeMap = Object.fromEntries(tripAgg.map((t) => [t._id as string, t.total as number]))
+
+      for (const e of payrollEntries) {
+        const code       = e.contractCode as string
+        const declared   = e.transportFee as number
+        const tripTotal  = tripFeeMap[code] ?? 0
+        if (tripTotal > 0 && Math.abs(declared - tripTotal) > 500) {
+          const diff = declared - tripTotal
+          alerts.push({
+            type: "trip_fee_mismatch",
+            severity: "warning",
+            contractCode: code,
+            driverName: driverNameMap[code] ?? code,
+            message: `ค่าขนส่งต่างจากเที่ยว ${diff > 0 ? "+" : ""}${diff.toLocaleString("th-TH", { maximumFractionDigits: 0 })} บาท`,
+            value: `กรอก ${declared.toLocaleString("th-TH")} / เที่ยว ${tripTotal.toLocaleString("th-TH")}`,
+          })
+        }
+      }
     }
   }
 

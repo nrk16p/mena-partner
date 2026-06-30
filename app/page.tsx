@@ -6,7 +6,7 @@ import { FileText, Users, ClipboardList, Truck, BarChart3, ShieldCheck, Trending
 import { formatMoney, formatMonth } from "@/lib/utils"
 
 type Alert = {
-  type: string
+  type: "negative_pay" | "insurance_expired" | "insurance_expiring" | "repair_budget_critical" | "trip_fee_mismatch" | string
   severity: "critical" | "warning" | "info"
   contractCode: string
   driverName: string
@@ -213,7 +213,11 @@ export default function DashboardPage() {
                   {a.value && <span className="ml-1 font-semibold">{a.value}</span>}
                 </div>
                 <Link
-                  href={`/contracts?q=${a.contractCode}`}
+                  href={
+                    a.type === "trip_fee_mismatch"
+                      ? `/payroll/${month}/${a.contractCode}`
+                      : `/contracts?q=${a.contractCode}`
+                  }
                   className="text-xs text-emerald-600 hover:underline shrink-0"
                 >
                   ดู →
