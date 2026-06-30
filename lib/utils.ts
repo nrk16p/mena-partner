@@ -33,6 +33,14 @@ export function prevMonth(yyyyMM: string): string {
   return `${py}-${String(pm).padStart(2, "0")}`
 }
 
+/** Return the next YYYY-MM */
+export function nextMonth(yyyyMM: string): string {
+  const [y, m] = yyyyMM.split("-").map(Number)
+  const ny = m === 12 ? y + 1 : y
+  const nm = m === 12 ? 1 : m + 1
+  return `${ny}-${String(nm).padStart(2, "0")}`
+}
+
 export function computePayroll(
   fields: PayrollIncomeFields & PayrollDeductionFields
 ): PayrollComputed {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search } from "lucide-react"
+import { Search, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { PromoSummaryRow } from "@/types"
 import { formatMoney } from "@/lib/utils"
@@ -31,6 +31,26 @@ export default function PromotionsPage() {
       .some((v) => (v ?? "").toLowerCase().includes(q.toLowerCase()))
   )
 
+  function handleExportCSV() {
+    if (filtered.length === 0) return
+    const headers = ["รหัส","ทะเบียน","เบอร์รถ","ชื่อคนขับ","วงเงินซ่อม","ใช้ไป","คงเหลือ","งบ PM/ปี","PM คงเหลือ","PM1","PM2"]
+    const csvRows = filtered.map((r) => [
+      r.contractCode, r.licensePlate, r.truckNumber, r.driverName,
+      r.repairBudget, r.repairUsed, r.repairRemaining,
+      r.annualPmCap, r.pmRemainingThisYear,
+      r.pm1UsedThisYear ? "ใช้แล้ว" : "ยังไม่ได้",
+      r.pm2UsedThisYear ? "ใช้แล้ว" : "ยังไม่ได้",
+    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
+    const csv = [headers.join(","), ...csvRows].join("\n")
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `promotions.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const activeRows = rows.filter((r) => r.contractCode)
   const totalBudget = activeRows.reduce((s, r) => s + r.repairBudget, 0)
   const totalUsed   = activeRows.reduce((s, r) => s + r.repairUsed, 0)
@@ -45,6 +65,16 @@ export default function PromotionsPage() {
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">โปรโมชั่น ซ่อม+PM</h1>
           <p className="text-sm text-zinc-400 mt-0.5">{rows.length} รถในระบบ</p>
         </div>
+        {filtered.length > 0 && (
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+          >
+            <Download className="w-3.5 h-3.5" />
+            CSV
+          </button>
+        )}
       </div>
 
       {/* Summary stats */}

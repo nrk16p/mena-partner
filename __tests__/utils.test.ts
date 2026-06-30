@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatMoney, formatMonth, formatDate, prevMonth, computePayroll } from "@/lib/utils"
+import { formatMoney, formatMonth, formatDate, prevMonth, nextMonth, computePayroll } from "@/lib/utils"
 
 describe("formatMoney", () => {
   it("formats positive number with Thai locale", () => {
@@ -211,6 +211,27 @@ describe("computePayroll", () => {
   })
 })
 
+describe("nextMonth", () => {
+  it("returns next month", () => {
+    expect(nextMonth("2026-05")).toBe("2026-06")
+  })
+  it("wraps from December to January of next year", () => {
+    expect(nextMonth("2025-12")).toBe("2026-01")
+  })
+  it("returns next month with zero-padding", () => {
+    expect(nextMonth("2026-08")).toBe("2026-09")
+  })
+  it("handles November → December same year", () => {
+    expect(nextMonth("2026-11")).toBe("2026-12")
+  })
+  it("handles January → February same year", () => {
+    expect(nextMonth("2026-01")).toBe("2026-02")
+  })
+  it("handles year 2000 December wrap", () => {
+    expect(nextMonth("2000-12")).toBe("2001-01")
+  })
+})
+
 describe("mgmtFee8pct auto-calculation (contract)", () => {
   it("8% of transportFee equals expected amount", () => {
     const transportFee = 100000
@@ -230,30 +251,16 @@ describe("mgmtFee8pct auto-calculation (contract)", () => {
   })
 })
 
-function nextMonthYear(year: number, mon: number): { ny: number; nm: number; str: string } {
-  const ny = mon === 12 ? year + 1 : year
-  const nm = mon === 12 ? 1 : mon + 1
-  return { ny, nm, str: `${ny}-${String(nm).padStart(2, "0")}-01` }
-}
-
-describe("nextMonth boundary (batch-create date logic)", () => {
-  it("December wraps to January of next year", () => {
-    const { ny, nm, str } = nextMonthYear(2025, 12)
-    expect(ny).toBe(2026)
-    expect(nm).toBe(1)
-    expect(str).toBe("2026-01-01")
+describe("batch-create date boundary (nextMonth + '-01')", () => {
+  it("December wraps to 2026-01-01 end date", () => {
+    expect(`${nextMonth("2025-12")}-01`).toBe("2026-01-01")
   })
 
-  it("Non-December month increments within same year", () => {
-    const { ny, nm, str } = nextMonthYear(2026, 6)
-    expect(ny).toBe(2026)
-    expect(nm).toBe(7)
-    expect(str).toBe("2026-07-01")
+  it("June produces 2026-07-01 end date", () => {
+    expect(`${nextMonth("2026-06")}-01`).toBe("2026-07-01")
   })
 
-  it("November increments to December same year", () => {
-    const { ny, nm } = nextMonthYear(2026, 11)
-    expect(ny).toBe(2026)
-    expect(nm).toBe(12)
+  it("November produces 2026-12-01 end date", () => {
+    expect(`${nextMonth("2026-11")}-01`).toBe("2026-12-01")
   })
 })

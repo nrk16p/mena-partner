@@ -102,5 +102,5 @@ export async function GET(req: NextRequest) {
     count:           m.count as number,
   }))
 
-  return NextResponse.json({ year, summary, rows, monthBreakdown, driverMap })
+  return NextResponse.json({ year, summary, rows, monthBreakdown })
 }

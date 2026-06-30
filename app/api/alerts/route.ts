@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { nextMonth } from "@/lib/utils"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -105,12 +106,8 @@ export async function GET() {
   // 4. Trip fee mismatch in latest month (transportFee differs from trip totals by > 500)
   if (latestMonth) {
     const [yearStr, monthStr] = latestMonth.split("-")
-    const year  = parseInt(yearStr)
-    const mon   = parseInt(monthStr)
     const start = `${yearStr}-${monthStr.padStart(2, "0")}-01`
-    const ny    = mon === 12 ? year + 1 : year
-    const nm    = mon === 12 ? 1 : mon + 1
-    const end   = `${ny}-${String(nm).padStart(2, "0")}-01`
+    const end   = `${nextMonth(latestMonth)}-01`
 
     const payrollEntries = await db.collection("payroll_entries")
       .find({ month: latestMonth, transportFee: { $gt: 0 } })

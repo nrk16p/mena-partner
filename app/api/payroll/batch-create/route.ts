@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { nextMonth } from "@/lib/utils"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -28,12 +29,8 @@ export async function POST(req: NextRequest) {
   }
 
   const [yearStr, monthStr] = month.split("-")
-  const year  = parseInt(yearStr)
-  const mon   = parseInt(monthStr)
   const start = `${yearStr}-${monthStr.padStart(2, "0")}-01`
-  const ny    = mon === 12 ? year + 1 : year
-  const nm    = mon === 12 ? 1 : mon + 1
-  const end   = `${ny}-${String(nm).padStart(2, "0")}-01`
+  const end   = `${nextMonth(month)}-01`
 
   const client = await clientPromise
   const db     = client.db(DB)

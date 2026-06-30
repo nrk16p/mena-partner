@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { LogOut, AlertCircle } from "lucide-react"
+import { LogOut, AlertCircle, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function Navbar() {
   const { data: session }     = useSession()
   const [criticalCount, setCriticalCount] = useState(0)
+  const [isDark, setIsDark]   = useState(false)
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"))
+  }, [])
 
   useEffect(() => {
     fetch("/api/alerts")
@@ -18,6 +23,13 @@ export function Navbar() {
       })
       .catch(() => {})
   }, [])
+
+  function toggleTheme() {
+    const next = !isDark
+    setIsDark(next)
+    document.documentElement.classList.toggle("dark", next)
+    try { localStorage.setItem("theme", next ? "dark" : "light") } catch (_) {}
+  }
 
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
@@ -32,6 +44,9 @@ export function Navbar() {
         {session?.user && (
           <span className="text-xs text-zinc-500">{session.user.name ?? session.user.email}</span>
         )}
+        <Button variant="ghost" size="sm" onClick={toggleTheme} title={isDark ? "สลับโหมดสว่าง" : "สลับโหมดมืด"}>
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </Button>
         <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
           <LogOut className="w-4 h-4" />
         </Button>
