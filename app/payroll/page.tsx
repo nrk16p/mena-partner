@@ -24,15 +24,20 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch("/api/drivers?status=active").then((r) => r.json()).then(setDrivers)
+    fetch("/api/drivers?status=active")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setDrivers(Array.isArray(d) ? d : []))
+      .catch(() => setDrivers([]))
   }, [])
 
   useEffect(() => {
     if (!month) return
     setLoading(true)
     fetch(`/api/payroll?month=${month}`)
-      .then((r) => r.json())
-      .then((d) => { setEntries(d); setLoading(false) })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => { setEntries(Array.isArray(d) ? d : []) })
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false))
   }, [month])
 
   const entryMap = Object.fromEntries(entries.map((e) => [e.contractCode, e]))

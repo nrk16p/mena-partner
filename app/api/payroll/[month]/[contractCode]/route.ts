@@ -19,7 +19,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { month, contractCode } = await params
   const body   = await req.json()
-  const computed = computePayroll(body)
+  const { _id, createdAt, ...update } = body
+  void _id; void createdAt
+  const computed = computePayroll(update)
   const now    = new Date().toISOString()
 
   const client = await clientPromise
@@ -27,7 +29,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const result = await col.findOneAndUpdate(
     { month, contractCode },
-    { $set: { ...body, ...computed, updatedAt: now } },
+    { $set: { ...update, ...computed, updatedAt: now } },
     { returnDocument: "after", upsert: true }
   )
   return NextResponse.json(result)
