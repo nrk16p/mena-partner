@@ -1,0 +1,40 @@
+import { NextRequest, NextResponse } from "next/server"
+import clientPromise from "@/lib/mongo"
+import { computePayroll } from "@/lib/utils"
+import type { PayrollEntry } from "@/types"
+
+const DB   = process.env.MONGO_DB ?? "mena_partner"
+const COLL = "payroll_entries"
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = req.nextUrl
+  const month = searchParams.get("month")?.trim() ?? ""
+  if (!month) return NextResponse.json({ error: "month required" }, { status: 400 })
+
+  const client = await clientPromise
+  const col    = client.db(DB).collection(COLL)
+  const items  = await col.find({ month }).sort({ contractCode: 1 }).toArray()
+  return NextResponse.json(items)
+}
+
+export async function POST(req: NextRequest) {
+  const body: PayrollEntry = await req.json()
+  if (!body.contractCode || !body.month) {
+    return NextResponse.json({ error: "contractCode and month required" }, { status: 400 })
+  }
+
+  const client = await clientPromise
+  const col    = client.db(DB).collection(COLL)
+
+  const existing = await col.findOne({ contractCode: body.contractCode, month: body.month })
+  if (existing) return NextResponse.json({ error: "Entry already exists for this driver/month" }, { status: 409 })
+
+  const computed = computePayroll(body)
+  const now      = new Date().toISOString()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { _id, ...bodyWithoutId } = body
+  const doc      = { ...bodyWithoutId, ...computed, createdAt: now, updatedAt: now }
+
+  const result = await col.insertOne(doc)
+  return NextResponse.json({ _id: result.insertedId, ...doc }, { status: 201 })
+}
