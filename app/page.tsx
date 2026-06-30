@@ -38,6 +38,14 @@ type TrendPoint = {
   count: number
 }
 
+type PlantStat = {
+  plant: string
+  totalDrivers: number
+  driversWithEntry: number
+  grandNetPay: number
+  grandIncome: number
+}
+
 const QUICK = [
   { href: "/contracts",  label: "สัญญาเช่าซื้อ", icon: FileText,    color: "bg-blue-50 text-blue-600" },
   { href: "/drivers",    label: "พนักงานขับรถ",  icon: Users,        color: "bg-emerald-50 text-emerald-600" },
@@ -48,15 +56,16 @@ const QUICK = [
 ]
 
 export default function DashboardPage() {
-  const [month, setMonth]             = useState<string | null>(null)
-  const [months, setMonths]           = useState<string[]>([])
-  const [summary, setSummary]         = useState<Summary | null>(null)
-  const [topRows, setTopRows]         = useState<TopRow[]>([])
-  const [alerts, setAlerts]           = useState<Alert[]>([])
-  const [trend, setTrend]             = useState<TrendPoint[]>([])
-  const [driverCount, setDriverCount] = useState(0)
-  const [totalTrips, setTotalTrips]   = useState(0)
-  const [loading, setLoading]         = useState(true)
+  const [month, setMonth]               = useState<string | null>(null)
+  const [months, setMonths]             = useState<string[]>([])
+  const [summary, setSummary]           = useState<Summary | null>(null)
+  const [topRows, setTopRows]           = useState<TopRow[]>([])
+  const [alerts, setAlerts]             = useState<Alert[]>([])
+  const [trend, setTrend]               = useState<TrendPoint[]>([])
+  const [plantBreakdown, setPlantBreakdown] = useState<PlantStat[]>([])
+  const [driverCount, setDriverCount]   = useState(0)
+  const [totalTrips, setTotalTrips]     = useState(0)
+  const [loading, setLoading]           = useState(true)
 
   // 1. Fetch available months and pick the latest
   useEffect(() => {
@@ -93,6 +102,7 @@ export default function DashboardPage() {
         setTotalTrips(d.rows.reduce((s: number, r: TopRow) => s + (r.tripCount ?? 0), 0))
         const sorted = [...(d.rows as TopRow[])].sort((a, b) => b.netPay - a.netPay)
         setTopRows(sorted.slice(0, 10))
+        if (Array.isArray(d.plantBreakdown)) setPlantBreakdown(d.plantBreakdown)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -227,6 +237,30 @@ export default function DashboardPage() {
             {alerts.length > 8 && (
               <p className="text-xs text-zinc-400 pl-4">...และอีก {alerts.length - 8} รายการ</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Plant breakdown */}
+      {plantBreakdown.length > 1 && (
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-500 mb-3 uppercase tracking-wide">แยกตามแพล้นท์</h2>
+          <div className={`grid gap-4 ${plantBreakdown.length <= 3 ? `grid-cols-${plantBreakdown.length}` : "grid-cols-2 sm:grid-cols-4"}`}>
+            {plantBreakdown.map((p) => (
+              <div key={p.plant} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">{p.plant}</p>
+                <p className="text-lg font-bold text-zinc-700 dark:text-zinc-200">{formatMoney(p.grandNetPay)}</p>
+                <p className="text-[10px] text-zinc-400 mt-1">
+                  {p.driversWithEntry} / {p.totalDrivers} คัน บันทึกแล้ว
+                </p>
+                <div className="mt-2 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400 rounded-full"
+                    style={{ width: `${p.totalDrivers > 0 ? (p.driversWithEntry / p.totalDrivers) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

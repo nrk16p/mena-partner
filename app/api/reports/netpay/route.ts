@@ -58,5 +58,17 @@ export async function GET(req: NextRequest) {
     grandDeductions:  rows.reduce((s, r) => s + r.totalDeductions, 0),
   }
 
-  return NextResponse.json({ month, summary, rows })
+  // Per-plant breakdown
+  const plantMap: Record<string, { totalDrivers: number; driversWithEntry: number; grandNetPay: number; grandIncome: number }> = {}
+  for (const r of rows) {
+    const p = (r.plant as string | undefined) ?? "ไม่ระบุ"
+    if (!plantMap[p]) plantMap[p] = { totalDrivers: 0, driversWithEntry: 0, grandNetPay: 0, grandIncome: 0 }
+    plantMap[p].totalDrivers++
+    if (r.hasEntry) { plantMap[p].driversWithEntry++; plantMap[p].grandNetPay += r.netPay; plantMap[p].grandIncome += r.totalIncome }
+  }
+  const plantBreakdown = Object.entries(plantMap)
+    .map(([plant, stats]) => ({ plant, ...stats }))
+    .sort((a, b) => a.plant.localeCompare(b.plant))
+
+  return NextResponse.json({ month, summary, rows, plantBreakdown })
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Printer, Copy, Trash2 } from "lucide-react"
@@ -96,6 +96,31 @@ export default function PayrollEntryPage() {
   }, [month, contractCode])
 
   const computed = computePayroll(form as Parameters<typeof computePayroll>[0])
+
+  // Ctrl+S keyboard shortcut to save
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault()
+      doSave().then((ok) => { if (ok) router.push("/payroll") })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [handleKeyDown])
+
+  function applyTripData() {
+    if (tripFeeTotal === null) return
+    setForm((p) => {
+      const next = {
+        ...p,
+        transportFee: tripFeeTotal,
+        mgmtFee8pct: Math.round(tripFeeTotal * 0.08 * 100) / 100,
+      }
+      return next
+    })
+  }
 
   function numField(key: keyof typeof form) {
     return {
@@ -229,11 +254,22 @@ export default function PayrollEntryPage() {
                 {formatMoney(form.transportFee)} บาท
               </p>
             </div>
-            {Math.abs(form.transportFee - tripFeeTotal) > 100 && (
-              <div className="ml-auto text-xs text-amber-600 font-medium">
-                ต่างกัน {formatMoney(Math.abs(form.transportFee - tripFeeTotal))} บาท
-              </div>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {Math.abs(form.transportFee - tripFeeTotal) > 100 && (
+                <span className="text-xs text-amber-600 font-medium">
+                  ต่างกัน {formatMoney(Math.abs(form.transportFee - tripFeeTotal))} บาท
+                </span>
+              )}
+              {form.transportFee !== tripFeeTotal && (
+                <button
+                  type="button"
+                  onClick={applyTripData}
+                  className="text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-50"
+                >
+                  ใช้ข้อมูลจากเที่ยว
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -301,10 +337,11 @@ export default function PayrollEntryPage() {
           <span className="text-2xl font-bold text-emerald-400">{formatMoney(computed.netPay)} บาท</span>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
           <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
             {saving ? "กำลังบันทึก..." : "บันทึก"}
           </Button>
+          <span className="text-[10px] text-zinc-400 hidden sm:inline">Ctrl+S เพื่อบันทึก</span>
           {isNew && (
             <Button
               type="button"
