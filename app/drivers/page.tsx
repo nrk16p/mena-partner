@@ -6,43 +6,67 @@ import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import type { Driver } from "@/types"
 
+const DRIVER_STATUS_TABS = [
+  { key: "",         label: "ทั้งหมด" },
+  { key: "active",   label: "ใช้งาน" },
+  { key: "inactive", label: "ไม่ใช้งาน" },
+]
+
 export default function DriversPage() {
   const [items, setItems]     = useState<Driver[]>([])
   const [q, setQ]             = useState("")
+  const [statusFilter, setStatusFilter] = useState("active")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/drivers?q=${encodeURIComponent(q)}`)
+        const params = new URLSearchParams({ q })
+        if (statusFilter) params.set("status", statusFilter)
+        const res = await fetch(`/api/drivers?${params.toString()}`)
         if (res.ok) setItems(await res.json())
       } finally {
         setLoading(false)
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [q])
-
-  const activeCount = items.filter((d) => d.status === "active").length
+  }, [q, statusFilter])
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">พนักงานขับรถ</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">{items.length} คน · ใช้งาน {activeCount} คน</p>
+          <p className="text-sm text-zinc-400 mt-0.5">{items.length} คน</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
-        <Search className="w-4 h-4 text-zinc-400" />
-        <Input
-          placeholder="ค้นหา รหัส / ชื่อ / ทะเบียน / แพล้นท์"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+          {DRIVER_STATUS_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setStatusFilter(tab.key)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                statusFilter === tab.key
+                  ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 flex-1">
+          <Search className="w-4 h-4 text-zinc-400" />
+          <Input
+            placeholder="ค้นหา รหัส / ชื่อ / ทะเบียน / แพล้นท์"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
