@@ -1,9 +1,5 @@
-export const ADMIN_EMAILS = new Set([
-  "bunphak.p@menatransport.co.th",
-  "kittaboon.l@menatransport.co.th",
-  // add more admin emails here
-])
-
+// All authenticated @menatransport.co.th users are admin for this module
 export function isAdmin(email: string | null | undefined): boolean {
-  return ADMIN_EMAILS.has(email ?? "")
+  const domain = (email ?? "").split("@")[1]?.toLowerCase()
+  return domain === "menatransport.co.th"
 }

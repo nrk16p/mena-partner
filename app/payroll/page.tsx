@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Search } from "lucide-react"
+import { Search, Printer } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatMonth, formatMoney } from "@/lib/utils"
 import type { Driver, PayrollEntry } from "@/types"
@@ -59,13 +59,24 @@ export default function PayrollPage() {
             {recorded > 0 && <> · สุทธิรวม <span className="text-zinc-600 font-medium">{formatMoney(totalNetPay)}</span></>}
           </p>
         </div>
-        <select
-          value={month ?? ""}
-          onChange={(e) => setMonth(e.target.value)}
-          className="ml-auto rounded-lg border border-zinc-200 px-3 py-2 text-sm bg-white dark:bg-zinc-900 dark:border-zinc-700"
-        >
-          {months.map((m) => <option key={m} value={m}>{formatMonth(m)}</option>)}
-        </select>
+        <div className="ml-auto flex items-center gap-2">
+          {month && recorded > 0 && (
+            <Link
+              href={`/payroll/${month}/print-all`}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              พิมพ์ทั้งหมด
+            </Link>
+          )}
+          <select
+            value={month ?? ""}
+            onChange={(e) => setMonth(e.target.value)}
+            className="rounded-lg border border-zinc-200 px-3 py-2 text-sm bg-white dark:bg-zinc-900 dark:border-zinc-700"
+          >
+            {months.map((m) => <option key={m} value={m}>{formatMonth(m)}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mb-4">
@@ -121,12 +132,23 @@ export default function PayrollPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/payroll/${month}/${d.contractCode}`}
-                      className="text-xs text-emerald-600 hover:underline"
-                    >
-                      {entry ? "แก้ไข →" : "กรอก →"}
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      {entry && (
+                        <Link
+                          href={`/payroll/${month}/${d.contractCode}/print`}
+                          className="text-zinc-400 hover:text-zinc-600"
+                          title="พิมพ์ใบแจ้งเงินเดือน"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                      <Link
+                        href={`/payroll/${month}/${d.contractCode}`}
+                        className="text-xs text-emerald-600 hover:underline"
+                      >
+                        {entry ? "แก้ไข →" : "กรอก →"}
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               )

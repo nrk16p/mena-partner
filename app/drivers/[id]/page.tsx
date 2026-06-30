@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { FileText, ShieldCheck, Truck } from "lucide-react"
 import type { Driver, PayrollEntry } from "@/types"
 import { formatMoney, formatMonth } from "@/lib/utils"
 
@@ -11,11 +12,23 @@ type DriverWithHistory = Driver & { payrollHistory: PayrollEntry[] }
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [data, setData] = useState<DriverWithHistory | null>(null)
+  const [contractId, setContractId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/drivers/${id}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d) setData(d) })
+      .then((d) => {
+        if (d) {
+          setData(d)
+          // Load contract ID for deep link
+          fetch(`/api/contracts?q=${encodeURIComponent(d.contractCode)}`)
+            .then((r) => r.ok ? r.json() : [])
+            .then((cs: Array<{ _id: string; contractCode: string }>) => {
+              const c = cs.find((c) => c.contractCode === d.contractCode)
+              if (c) setContractId(c._id)
+            })
+        }
+      })
   }, [id])
 
   if (!data) return <div className="text-zinc-400 text-sm">กำลังโหลด...</div>
@@ -39,6 +52,30 @@ export default function DriverDetailPage() {
             <p className="text-sm font-medium">{value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Quick links */}
+      <div className="flex gap-3">
+        {contractId && (
+          <Link
+            href={`/contracts/${contractId}`}
+            className="flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-800 border border-zinc-200 rounded-lg px-3 py-2"
+          >
+            <FileText className="w-3.5 h-3.5" /> ดูสัญญา
+          </Link>
+        )}
+        <Link
+          href={`/trips?q=${data.contractCode}`}
+          className="flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-800 border border-zinc-200 rounded-lg px-3 py-2"
+        >
+          <Truck className="w-3.5 h-3.5" /> ดูรายเที่ยว
+        </Link>
+        <Link
+          href={`/promotions/${data.contractCode}`}
+          className="flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-800 border border-zinc-200 rounded-lg px-3 py-2"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" /> ดูโปรโมชั่น
+        </Link>
       </div>
 
       <div>

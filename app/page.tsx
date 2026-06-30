@@ -30,6 +30,14 @@ type TopRow = {
   netPay: number
 }
 
+type TrendPoint = {
+  month: string
+  totalNetPay: number
+  totalIncome: number
+  totalDeductions: number
+  count: number
+}
+
 const QUICK = [
   { href: "/contracts",  label: "สัญญาเช่าซื้อ", icon: FileText,    color: "bg-blue-50 text-blue-600" },
   { href: "/drivers",    label: "พนักงานขับรถ",  icon: Users,        color: "bg-emerald-50 text-emerald-600" },
@@ -45,6 +53,7 @@ export default function DashboardPage() {
   const [summary, setSummary]         = useState<Summary | null>(null)
   const [topRows, setTopRows]         = useState<TopRow[]>([])
   const [alerts, setAlerts]           = useState<Alert[]>([])
+  const [trend, setTrend]             = useState<TrendPoint[]>([])
   const [driverCount, setDriverCount] = useState(0)
   const [totalTrips, setTotalTrips]   = useState(0)
   const [loading, setLoading]         = useState(true)
@@ -65,6 +74,10 @@ export default function DashboardPage() {
     fetch("/api/alerts")
       .then((r) => r.ok ? r.json() : [])
       .then((a: Alert[]) => setAlerts(Array.isArray(a) ? a : []))
+      .catch(() => {})
+    fetch("/api/reports/trend")
+      .then((r) => r.ok ? r.json() : [])
+      .then((t: TrendPoint[]) => setTrend(Array.isArray(t) ? t : []))
       .catch(() => {})
   }, [])
 
@@ -202,6 +215,56 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Monthly trend */}
+      {trend.length > 1 && (
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-500 mb-3 uppercase tracking-wide">แนวโน้มรายเดือน</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
+            {(() => {
+              const maxNet = Math.max(...trend.map((t) => Math.abs(t.totalNetPay)))
+              return (
+                <div className="flex items-end gap-3 h-24">
+                  {trend.slice(-12).map((t) => {
+                    const heightPct = maxNet > 0 ? Math.abs(t.totalNetPay) / maxNet : 0
+                    const isSelected = t.month === month
+                    const isNeg = t.totalNetPay < 0
+                    return (
+                      <button
+                        key={t.month}
+                        onClick={() => setMonth(t.month)}
+                        className="flex flex-col items-center gap-1 flex-1 group"
+                        title={`${formatMonth(t.month)}: ${formatMoney(t.totalNetPay)} บาท`}
+                      >
+                        <div className="w-full flex items-end justify-center" style={{ height: "80px" }}>
+                          <div
+                            className={`w-full rounded-t transition-all ${
+                              isSelected
+                                ? "bg-emerald-500"
+                                : isNeg
+                                ? "bg-red-400 group-hover:bg-red-500"
+                                : "bg-emerald-200 group-hover:bg-emerald-400"
+                            }`}
+                            style={{ height: `${Math.max(4, heightPct * 80)}px` }}
+                          />
+                        </div>
+                        <span className={`text-[9px] leading-tight text-center ${isSelected ? "text-emerald-600 font-bold" : "text-zinc-400"}`}>
+                          {formatMonth(t.month).split(" ")[0]}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+            <div className="mt-2 flex justify-between text-xs text-zinc-400">
+              <span>{trend.length > 12 ? formatMonth(trend[trend.length - 12].month) : formatMonth(trend[0].month)}</span>
+              <span className="text-zinc-500">คลิกแท่งเพื่อเปลี่ยนเดือน</span>
+              <span>{formatMonth(trend[trend.length - 1].month)}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top 10 by net pay */}
       {topRows.length > 0 && (

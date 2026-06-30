@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { PlusCircle, Search } from "lucide-react"
+import { PlusCircle, Search, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { formatMoney } from "@/lib/utils"
 import type { Contract } from "@/types"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -74,9 +75,9 @@ export default function ContractsPage() {
               <th className="px-4 py-3 text-left">ชื่อผู้เช่าซื้อ</th>
               <th className="px-4 py-3 text-left">ชื่อผู้ขับขี่</th>
               <th className="px-4 py-3 text-left">ทะเบียน</th>
-              <th className="px-4 py-3 text-left">เบอร์รถ</th>
               <th className="px-4 py-3 text-left">แพล้นท์</th>
-              <th className="px-4 py-3 text-left">เบอร์โทร</th>
+              <th className="px-4 py-3 text-right">ค่างวด/เดือน</th>
+              <th className="px-4 py-3 text-center">ประกัน</th>
               <th className="px-4 py-3 text-left">สถานะ</th>
             </tr>
           </thead>
@@ -85,7 +86,12 @@ export default function ContractsPage() {
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
-            ) : items.map((c) => (
+            ) : items.map((c) => {
+              const today = new Date().toISOString().slice(0, 10)
+              const in60  = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10)
+              const insExpired  = c.taxExpiryDate && c.taxExpiryDate < today
+              const insExpiring = !insExpired && c.taxExpiryDate && c.taxExpiryDate <= in60
+              return (
               <tr key={c._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                 <td className="px-4 py-3">
                   <Link href={`/contracts/${c._id}`} className="text-emerald-600 hover:underline font-medium">
@@ -95,16 +101,36 @@ export default function ContractsPage() {
                 <td className="px-4 py-3">{c.buyerName}</td>
                 <td className="px-4 py-3 text-zinc-500">{c.driverName}</td>
                 <td className="px-4 py-3 font-mono text-xs">{c.licensePlate}</td>
-                <td className="px-4 py-3 text-zinc-500">{c.truckNumber}</td>
                 <td className="px-4 py-3 text-zinc-500">{c.plant}</td>
-                <td className="px-4 py-3 text-zinc-400 font-mono text-xs">{c.phone}</td>
+                <td className="px-4 py-3 text-right text-xs">
+                  {c.monthlyInstallment
+                    ? <><span className="font-medium">{formatMoney(c.monthlyInstallment)}</span><span className="text-zinc-400 ml-1">×{c.totalInstallments}</span></>
+                    : <span className="text-zinc-300">-</span>
+                  }
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {insExpired ? (
+                    <span className="flex items-center justify-center gap-0.5 text-red-500 text-xs" title={`หมดอายุ ${c.taxExpiryDate}`}>
+                      <AlertTriangle className="w-3 h-3" /> หมดแล้ว
+                    </span>
+                  ) : insExpiring ? (
+                    <span className="flex items-center justify-center gap-0.5 text-amber-500 text-xs" title={`หมด ${c.taxExpiryDate}`}>
+                      <AlertTriangle className="w-3 h-3" /> ใกล้หมด
+                    </span>
+                  ) : c.taxExpiryDate ? (
+                    <span className="text-xs text-zinc-400">{c.taxExpiryDate.slice(0, 7)}</span>
+                  ) : (
+                    <span className="text-zinc-200 text-xs">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[c.status]}`}>
                     {STATUS_LABEL[c.status]}
                   </span>
                 </td>
               </tr>
-            ))}
+            )})}
+
           </tbody>
         </table>
       </div>

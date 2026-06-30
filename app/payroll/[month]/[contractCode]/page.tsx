@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -43,23 +45,39 @@ export default function PayrollEntryPage() {
   const [form, setForm]     = useState<NumericFields & { workingDays: number; tripCount: number }>({
     workingDays: 0, tripCount: 0, ...ZERO_ENTRY,
   })
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState("")
-  const [isNew, setIsNew]   = useState(true)
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState("")
+  const [isNew, setIsNew]     = useState(true)
+  const [prevEntry, setPrevEntry] = useState<PayrollEntry | null>(null)
 
   useEffect(() => {
     fetch(`/api/payroll/${month}/${contractCode}`)
-      .then((r) => { if (r.ok) return r.json(); return null })
-      .then((d) => {
-        if (d) { setForm(d); setIsNew(false) }
-      })
-    // Load trip count hint
-    fetch(`/api/trips?contractCode=${contractCode}&month=${month}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((trips: unknown[] | null) => {
-        if (trips && isNew) setForm((p) => ({ ...p, tripCount: trips.length }))
+      .then((d) => {
+        if (d) {
+          setForm(d)
+          setIsNew(false)
+        } else {
+          fetch(`/api/trips?contractCode=${contractCode}&month=${month}`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((trips: unknown[] | null) => {
+              if (Array.isArray(trips) && trips.length > 0) {
+                setForm((p) => ({ ...p, tripCount: trips.length }))
+              }
+            })
+        }
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Load previous month for comparison
+    const [yearStr, monthStr] = month.split("-")
+    const y = parseInt(yearStr)
+    const m = parseInt(monthStr)
+    const prevY = m === 1 ? y - 1 : y
+    const prevM = m === 1 ? 12 : m - 1
+    const prevMonth = `${prevY}-${String(prevM).padStart(2, "0")}`
+    fetch(`/api/payroll/${prevMonth}/${contractCode}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setPrevEntry(d) })
   }, [month, contractCode])
 
   const computed = computePayroll(form as Parameters<typeof computePayroll>[0])
@@ -94,12 +112,43 @@ export default function PayrollEntryPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
-          {isNew ? "กรอกเงินเดือน" : "แก้ไขเงินเดือน"}
-        </h1>
-        <p className="text-sm text-zinc-400 mt-0.5">{contractCode} · {formatMonth(month)}</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
+            {isNew ? "กรอกเงินเดือน" : "แก้ไขเงินเดือน"}
+          </h1>
+          <p className="text-sm text-zinc-400 mt-0.5">{contractCode} · {formatMonth(month)}</p>
+        </div>
+        {!isNew && (
+          <Link
+            href={`/payroll/${month}/${contractCode}/print`}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            ใบแจ้งเงินเดือน
+          </Link>
+        )}
       </div>
+
+      {/* Previous month quick compare */}
+      {prevEntry && (
+        <div className="mb-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700 px-5 py-3">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">เดือนก่อนหน้า ({formatMonth(prevEntry.month)})</p>
+          <div className="grid grid-cols-4 gap-4 text-sm">
+            {[
+              { label: "รายรับ",   value: formatMoney(prevEntry.totalIncome),     color: "text-emerald-600" },
+              { label: "รายหัก",   value: formatMoney(prevEntry.totalDeductions), color: "text-red-500" },
+              { label: "สุทธิ",    value: formatMoney(prevEntry.netPay),          color: prevEntry.netPay < 0 ? "text-red-600" : "text-zinc-800 dark:text-zinc-100" },
+              { label: "เที่ยว",   value: `${prevEntry.tripCount} เที่ยว`,       color: "" },
+            ].map(({ label, value, color }) => (
+              <div key={label}>
+                <p className="text-xs text-zinc-400 mb-0.5">{label}</p>
+                <p className={`font-semibold text-xs ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && <div className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</div>}
 

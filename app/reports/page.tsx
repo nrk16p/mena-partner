@@ -105,18 +105,51 @@ export default function ReportsPage() {
       </div>
 
       {data && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {[
-            { label: "รวมรายรับ", value: formatMoney(data.summary.grandIncome),     color: "text-emerald-600" },
-            { label: "รวมรายหัก", value: formatMoney(data.summary.grandDeductions), color: "text-red-500" },
-            { label: "รวมสุทธิ",  value: formatMoney(data.summary.grandNetPay),     color: "text-zinc-800 dark:text-zinc-100" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
-              <p className="text-xs text-zinc-400 mb-1">{label}</p>
-              <p className={`text-xl font-bold ${color}`}>{value}</p>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            {[
+              { label: "รถร่วมทั้งหมด", value: `${data.summary.totalDrivers} คัน`,                            color: "" },
+              { label: "รวมรายรับ",     value: formatMoney(data.summary.grandIncome),                         color: "text-emerald-600" },
+              { label: "รวมรายหัก",     value: formatMoney(data.summary.grandDeductions),                     color: "text-red-500" },
+              { label: "รวมสุทธิ",      value: formatMoney(data.summary.grandNetPay),                         color: "text-zinc-800 dark:text-zinc-100" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <p className="text-xs text-zinc-400 mb-1">{label}</p>
+                <p className={`text-xl font-bold ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+          {/* Plant summary */}
+          {(() => {
+            const plantMap: Record<string, { count: number; netPay: number; trips: number }> = {}
+            for (const r of data.rows.filter((r) => r.hasEntry)) {
+              const p = r.plant || "ไม่ระบุ"
+              if (!plantMap[p]) plantMap[p] = { count: 0, netPay: 0, trips: 0 }
+              plantMap[p].count += 1
+              plantMap[p].netPay += r.netPay
+              plantMap[p].trips += r.tripCount
+            }
+            const plants = Object.entries(plantMap).sort((a, b) => b[1].netPay - a[1].netPay)
+            if (plants.length === 0) return null
+            return (
+              <div className="mb-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                <div className="px-5 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">สรุปตามแพล้นท์</span>
+                </div>
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {plants.map(([plant, stats]) => (
+                    <div key={plant} className="px-5 py-2.5 flex items-center text-sm gap-4">
+                      <span className="font-medium w-32 shrink-0">{plant}</span>
+                      <span className="text-zinc-500 text-xs w-16">{stats.count} คัน</span>
+                      <span className="text-zinc-500 text-xs w-20">{stats.trips} เที่ยว</span>
+                      <span className="text-emerald-600 font-semibold ml-auto">{formatMoney(stats.netPay)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+        </>
       )}
 
       <div className="flex items-center gap-2 mb-4">
