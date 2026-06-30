@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Search, Printer } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, Printer, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { formatMonth, formatMoney } from "@/lib/utils"
 import type { Driver, PayrollEntry } from "@/types"
 
 export default function PayrollPage() {
+  const router = useRouter()
   const [months, setMonths]     = useState<string[]>([])
   const [month, setMonth]       = useState<string | null>(null)
   const [drivers, setDrivers]   = useState<Driver[]>([])
@@ -48,6 +51,8 @@ export default function PayrollPage() {
 
   const recorded = entries.length
   const totalNetPay = entries.reduce((s, e) => s + (e.netPay ?? 0), 0)
+  const entryCodeSet = new Set(entries.map((e) => e.contractCode))
+  const nextPending = drivers.find((d) => !entryCodeSet.has(d.contractCode))
 
   return (
     <div>
@@ -60,6 +65,17 @@ export default function PayrollPage() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {nextPending && month && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`/payroll/${month}/${nextPending.contractCode}`)}
+              className="flex items-center gap-1 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            >
+              กรอกถัดไป ({nextPending.contractCode})
+              <ChevronRight className="w-3 h-3" />
+            </Button>
+          )}
           {month && recorded > 0 && (
             <Link
               href={`/payroll/${month}/print-all`}
