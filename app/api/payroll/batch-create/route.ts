@@ -28,8 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "month required (YYYY-MM)" }, { status: 400 })
   }
 
-  const [yearStr, monthStr] = month.split("-")
-  const start = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+  const start = `${month}-01`
   const end   = `${nextMonth(month)}-01`
 
   const client = await clientPromise
