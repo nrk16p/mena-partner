@@ -138,6 +138,7 @@ export default function PayrollPage() {
               <th className="px-4 py-3 text-left">รหัส</th>
               <th className="px-4 py-3 text-left">ชื่อผู้ขับขี่</th>
               <th className="px-4 py-3 text-left">แพล้นท์</th>
+              <th className="px-4 py-3 text-right">เที่ยว</th>
               <th className="px-4 py-3 text-right">รายรับ</th>
               <th className="px-4 py-3 text-right">รายหัก</th>
               <th className="px-4 py-3 text-right">สุทธิ</th>
@@ -147,9 +148,9 @@ export default function PayrollPage() {
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : filtered.map((d) => {
               const entry = entryMap[d.contractCode]
               return (
@@ -157,6 +158,9 @@ export default function PayrollPage() {
                   <td className="px-4 py-3 font-medium">{d.contractCode}</td>
                   <td className="px-4 py-3">{d.driverName}</td>
                   <td className="px-4 py-3 text-zinc-500">{d.plant}</td>
+                  <td className="px-4 py-3 text-right text-zinc-500 text-xs">
+                    {entry ? entry.tripCount : "-"}
+                  </td>
                   <td className="px-4 py-3 text-right text-emerald-600">
                     {entry ? formatMoney(entry.totalIncome) : "-"}
                   </td>
