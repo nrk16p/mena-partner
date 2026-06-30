@@ -119,12 +119,21 @@ export async function POST(req: NextRequest) {
 
   let created = 0
   let errors  = 0
-  for (const doc of docs) {
+
+  if (docs.length > 0) {
     try {
-      await db.collection("payroll_entries").insertOne(doc)
-      created++
-    } catch {
-      errors++
+      const result = await db.collection("payroll_entries").insertMany(docs, { ordered: false })
+      created = result.insertedCount
+      errors  = docs.length - result.insertedCount
+    } catch (e: unknown) {
+      // BulkWriteError: partial success possible when ordered=false
+      if (e && typeof e === "object" && "result" in e) {
+        const bwe = e as { result: { insertedCount: number } }
+        created = bwe.result.insertedCount
+        errors  = docs.length - created
+      } else {
+        errors = docs.length
+      }
     }
   }
 
