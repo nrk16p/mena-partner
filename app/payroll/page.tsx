@@ -200,6 +200,25 @@ export default function PayrollPage() {
               )
             })}
           </tbody>
+          {/* Totals row */}
+          {!loading && filtered.length > 0 && entries.length > 0 && (() => {
+            const visibleEntries = filtered.map((d) => entryMap[d.contractCode]).filter(Boolean)
+            if (visibleEntries.length === 0) return null
+            const sumIncome     = visibleEntries.reduce((s, e) => s + (e.totalIncome ?? 0), 0)
+            const sumDeductions = visibleEntries.reduce((s, e) => s + (e.totalDeductions ?? 0), 0)
+            const sumNet        = visibleEntries.reduce((s, e) => s + (e.netPay ?? 0), 0)
+            return (
+              <tfoot>
+                <tr className="bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold border-t-2 border-zinc-200 dark:border-zinc-700">
+                  <td className="px-4 py-3" colSpan={4}>รวม {visibleEntries.length} คน</td>
+                  <td className="px-4 py-3 text-right text-emerald-600">{formatMoney(sumIncome)}</td>
+                  <td className="px-4 py-3 text-right text-red-500">{formatMoney(sumDeductions)}</td>
+                  <td className="px-4 py-3 text-right">{formatMoney(sumNet)}</td>
+                  <td className="px-4 py-3" colSpan={2} />
+                </tr>
+              </tfoot>
+            )
+          })()}
         </table>
       </div>
     </div>

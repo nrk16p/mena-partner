@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Search, Download, Printer } from "lucide-react"
+import { Search, Download, Printer, CalendarDays } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
 
@@ -142,6 +142,13 @@ export default function ReportsPage() {
               พิมพ์ใบแจ้งเงินเดือน
             </Link>
           )}
+          <Link
+            href="/reports/annual"
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            รายงานประจำปี
+          </Link>
           <button
             onClick={exportCsv}
             disabled={!data}
