@@ -30,8 +30,8 @@ export default function EditTripPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((d: Trip | null) => {
         if (d) {
-          const { _id: _, createdAt: __, ...rest } = d
-          void _; void __
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { _id, createdAt, ...rest } = d
           setForm(rest as TripForm)
         }
       })

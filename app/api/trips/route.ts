@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { nextMonth } from "@/lib/utils"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "trips"
@@ -19,12 +20,8 @@ export async function GET(req: NextRequest) {
   if (plant)        filter.plant = { $regex: plant, $options: "i" }
   if (month) {
     const [yearStr, monthStr] = month.split("-")
-    const year = parseInt(yearStr)
-    const mon  = parseInt(monthStr)
     const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
-    const nextYear = mon === 12 ? year + 1 : year
-    const nextMon  = mon === 12 ? 1 : mon + 1
-    const endStr   = `${nextYear}-${String(nextMon).padStart(2, "0")}-01`
+    const endStr   = `${nextMonth(month)}-01`
     filter.date = { $gte: startStr, $lt: endStr }
   }
 
@@ -54,12 +51,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   const [yearStr, monthStr] = month.split("-")
-  const year = parseInt(yearStr)
-  const mon  = parseInt(monthStr)
   const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
-  const nextYear = mon === 12 ? year + 1 : year
-  const nextMon  = mon === 12 ? 1 : mon + 1
-  const endStr   = `${nextYear}-${String(nextMon).padStart(2, "0")}-01`
+  const endStr   = `${nextMonth(month)}-01`
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = { date: { $gte: startStr, $lt: endStr } }

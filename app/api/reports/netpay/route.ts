@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { nextMonth } from "@/lib/utils"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -13,12 +14,8 @@ export async function GET(req: NextRequest) {
   const entries = await db.collection("payroll_entries").find({ month }).toArray()
   const drivers = await db.collection("drivers").find({ status: "active" }).sort({ contractCode: 1 }).toArray()
   const [yearStr, monthStr] = month.split("-")
-  const year = parseInt(yearStr)
-  const mon  = parseInt(monthStr)
   const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
-  const nextYear = mon === 12 ? year + 1 : year
-  const nextMon  = mon === 12 ? 1 : mon + 1
-  const endStr   = `${nextYear}-${String(nextMon).padStart(2, "0")}-01`
+  const endStr   = `${nextMonth(month)}-01`
 
   const tripAgg = await db.collection("trips").aggregate([
     {
