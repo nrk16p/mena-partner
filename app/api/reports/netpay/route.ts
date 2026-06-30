@@ -13,8 +13,7 @@ export async function GET(req: NextRequest) {
   const db      = client.db(DB)
   const entries = await db.collection("payroll_entries").find({ month }).toArray()
   const drivers = await db.collection("drivers").find({ status: "active" }).sort({ contractCode: 1 }).toArray()
-  const [yearStr, monthStr] = month.split("-")
-  const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+  const startStr = `${month}-01`
   const endStr   = `${nextMonth(month)}-01`
 
   const tripAgg = await db.collection("trips").aggregate([
