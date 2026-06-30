@@ -6,6 +6,14 @@ import { Search, Download, Printer } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
 
+type TrendPoint = {
+  month: string
+  totalNetPay: number
+  totalIncome: number
+  totalDeductions: number
+  count: number
+}
+
 type Row = {
   contractCode: string
   driverName: string
@@ -37,6 +45,7 @@ export default function ReportsPage() {
   const [months, setMonths]   = useState<string[]>([])
   const [month, setMonth]     = useState<string | null>(null)
   const [data, setData]       = useState<Report | null>(null)
+  const [trend, setTrend]     = useState<TrendPoint[]>([])
   const [q, setQ]             = useState("")
   const [loading, setLoading] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>("contractCode")
@@ -46,6 +55,10 @@ export default function ReportsPage() {
     fetch("/api/payroll/months")
       .then((r) => r.ok ? r.json() : [])
       .then((ms: string[]) => { setMonths(ms); if (ms.length > 0) setMonth(ms[0]) })
+      .catch(() => {})
+    fetch("/api/reports/trend")
+      .then((r) => r.ok ? r.json() : [])
+      .then((t: TrendPoint[]) => setTrend(Array.isArray(t) ? t : []))
       .catch(() => {})
   }, [])
 
@@ -74,6 +87,16 @@ export default function ReportsPage() {
           return sortDir === "asc" ? cmp : -cmp
         })
     : []
+
+  const prevTrend = month && trend.length > 1
+    ? trend.slice(0, -1).findLast((t) => t.month < month)
+    : null
+
+  function momPct(current: number, prev: number | undefined): string | null {
+    if (!prev || prev === 0) return null
+    const pct = ((current - prev) / Math.abs(prev)) * 100
+    return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => d === "asc" ? "desc" : "asc")
@@ -141,14 +164,38 @@ export default function ReportsPage() {
         <>
           <div className="grid grid-cols-4 gap-4 mb-4">
             {[
-              { label: "รถร่วมทั้งหมด", value: `${data.summary.totalDrivers} คัน`,                            color: "" },
-              { label: "รวมรายรับ",     value: formatMoney(data.summary.grandIncome),                         color: "text-emerald-600" },
-              { label: "รวมรายหัก",     value: formatMoney(data.summary.grandDeductions),                     color: "text-red-500" },
-              { label: "รวมสุทธิ",      value: formatMoney(data.summary.grandNetPay),                         color: "text-zinc-800 dark:text-zinc-100" },
-            ].map(({ label, value, color }) => (
+              {
+                label: "รถร่วมทั้งหมด",
+                value: `${data.summary.totalDrivers} คัน`,
+                color: "", mom: null,
+              },
+              {
+                label: "รวมรายรับ",
+                value: formatMoney(data.summary.grandIncome),
+                color: "text-emerald-600",
+                mom: momPct(data.summary.grandIncome, prevTrend?.totalIncome),
+              },
+              {
+                label: "รวมรายหัก",
+                value: formatMoney(data.summary.grandDeductions),
+                color: "text-red-500",
+                mom: momPct(data.summary.grandDeductions, prevTrend?.totalDeductions),
+              },
+              {
+                label: "รวมสุทธิ",
+                value: formatMoney(data.summary.grandNetPay),
+                color: "text-zinc-800 dark:text-zinc-100",
+                mom: momPct(data.summary.grandNetPay, prevTrend?.totalNetPay),
+              },
+            ].map(({ label, value, color, mom }) => (
               <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4">
                 <p className="text-xs text-zinc-400 mb-1">{label}</p>
                 <p className={`text-xl font-bold ${color}`}>{value}</p>
+                {mom && (
+                  <p className={`text-[10px] mt-0.5 ${mom.startsWith("+") ? "text-emerald-500" : "text-red-400"}`}>
+                    {mom} vs เดือนก่อน
+                  </p>
+                )}
               </div>
             ))}
           </div>

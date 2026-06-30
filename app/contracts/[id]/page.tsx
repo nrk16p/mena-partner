@@ -138,30 +138,101 @@ export default function ContractDetailPage() {
         </div>
       )}
 
-      {/* Insurance info card (read-only) */}
-      {form.insurer && (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">ข้อมูลประกันภัย / ภาษี</h2>
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-zinc-400 mb-1">บริษัทประกัน</p>
-              <p className="text-sm font-medium">{form.insurer}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400 mb-1">วันต่อล่าสุด</p>
-              <p className="text-sm font-medium">{formatDate(form.taxRenewalDate)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400 mb-1">วันหมดอายุ</p>
-              <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "text-red-600" : ""}`}>
-                {formatDate(form.taxExpiryDate)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400 mb-1">ค่างวดต่อเดือน</p>
-              <p className="text-sm font-medium">{form.monthlyInsuranceFee ? formatMoney(form.monthlyInsuranceFee) : "-"}</p>
-            </div>
+      {/* Insurance info card — editable for admins */}
+      {(form.insurer || isAdmin) && (
+        <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${
+          form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10)
+            ? "border-red-300 dark:border-red-800"
+            : "border-zinc-200 dark:border-zinc-800"
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ข้อมูลประกันภัย / ภาษี</h2>
+            {form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) && (
+              <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">หมดอายุแล้ว</span>
+            )}
           </div>
+          {isAdmin ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs">บริษัทประกัน</Label>
+                <Input
+                  value={String(form.insurer ?? "")}
+                  onChange={(e) => setForm((p) => p ? { ...p, insurer: e.target.value } : p)}
+                  placeholder="ชื่อบริษัทประกัน"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">ค่าประกัน/ภาษี ต่อเดือน (บาท)</Label>
+                <Input
+                  type="number" min="0"
+                  value={String(form.monthlyInsuranceFee ?? 0)}
+                  onChange={(e) => setForm((p) => p ? { ...p, monthlyInsuranceFee: Number(e.target.value) } : p)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">วันต่อล่าสุด</Label>
+                <Input
+                  type="date"
+                  value={String(form.taxRenewalDate ?? "")}
+                  onChange={(e) => setForm((p) => p ? { ...p, taxRenewalDate: e.target.value } : p)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">วันหมดอายุ</Label>
+                <Input
+                  type="date"
+                  value={String(form.taxExpiryDate ?? "")}
+                  onChange={(e) => setForm((p) => p ? { ...p, taxExpiryDate: e.target.value } : p)}
+                  className={form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "border-red-400 text-red-600" : ""}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">เบี้ยประกันภัย (บาท)</Label>
+                <Input
+                  type="number" min="0"
+                  value={String(form.insuranceAmount ?? 0)}
+                  onChange={(e) => setForm((p) => p ? { ...p, insuranceAmount: Number(e.target.value) } : p)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">เบี้ย พรบ (บาท)</Label>
+                <Input
+                  type="number" min="0"
+                  value={String(form.prbAmount ?? 0)}
+                  onChange={(e) => setForm((p) => p ? { ...p, prbAmount: Number(e.target.value) } : p)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">ค่าภาษีทะเบียน (บาท)</Label>
+                <Input
+                  type="number" min="0"
+                  value={String(form.taxAmount ?? 0)}
+                  onChange={(e) => setForm((p) => p ? { ...p, taxAmount: Number(e.target.value) } : p)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-zinc-400 mb-1">บริษัทประกัน</p>
+                <p className="text-sm font-medium">{form.insurer || "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-400 mb-1">วันต่อล่าสุด</p>
+                <p className="text-sm font-medium">{formatDate(form.taxRenewalDate)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-400 mb-1">วันหมดอายุ</p>
+                <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "text-red-600" : ""}`}>
+                  {formatDate(form.taxExpiryDate)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-400 mb-1">ค่างวดต่อเดือน</p>
+                <p className="text-sm font-medium">{form.monthlyInsuranceFee ? formatMoney(form.monthlyInsuranceFee) : "-"}</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

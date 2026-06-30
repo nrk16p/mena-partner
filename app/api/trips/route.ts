@@ -43,3 +43,30 @@ export async function POST(req: NextRequest) {
   const result = await col.insertOne(doc)
   return NextResponse.json({ _id: result.insertedId, ...doc }, { status: 201 })
 }
+
+export async function DELETE(req: NextRequest) {
+  const { searchParams } = req.nextUrl
+  const contractCode = searchParams.get("contractCode")?.trim() ?? ""
+  const month        = searchParams.get("month")?.trim() ?? ""
+
+  if (!month) {
+    return NextResponse.json({ error: "month is required" }, { status: 400 })
+  }
+
+  const [yearStr, monthStr] = month.split("-")
+  const year = parseInt(yearStr)
+  const mon  = parseInt(monthStr)
+  const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+  const nextYear = mon === 12 ? year + 1 : year
+  const nextMon  = mon === 12 ? 1 : mon + 1
+  const endStr   = `${nextYear}-${String(nextMon).padStart(2, "0")}-01`
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, any> = { date: { $gte: startStr, $lt: endStr } }
+  if (contractCode) filter.contractCode = contractCode
+
+  const client = await clientPromise
+  const col    = client.db(DB).collection(COLL)
+  const result = await col.deleteMany(filter)
+  return NextResponse.json({ deleted: result.deletedCount })
+}

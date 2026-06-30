@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { PlusCircle, Search, Upload } from "lucide-react"
+import { PlusCircle, Search, Upload, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
@@ -75,6 +75,25 @@ export default function TripsPage() {
     }
   }
 
+  async function handleBulkDelete() {
+    const label = q ? `${items.length} เที่ยวของ ${q} เดือน ${month}` : `${items.length} เที่ยวเดือน ${month}`
+    if (!confirm(`ลบ${label}ทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้`)) return
+    try {
+      const params = new URLSearchParams({ month })
+      if (q) params.set("contractCode", q)
+      const r = await fetch(`/api/trips?${params.toString()}`, { method: "DELETE" })
+      if (r.ok) {
+        const d = await r.json()
+        setItems([])
+        alert(`ลบแล้ว ${d.deleted} รายการ`)
+      } else {
+        alert("ลบไม่สำเร็จ กรุณาลองใหม่")
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาด กรุณาลองใหม่")
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -91,6 +110,16 @@ export default function TripsPage() {
         </div>
         {session?.user?.role === "admin" && (
           <div className="flex gap-2">
+            {items.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-2"
+                title={`ลบ ${items.length} รายการที่แสดงอยู่`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                ลบทั้งหมด ({items.length})
+              </button>
+            )}
             <Link
               href="/trips/import"
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
