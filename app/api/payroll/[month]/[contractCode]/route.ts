@@ -19,8 +19,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { month, contractCode } = await params
   const body   = await req.json()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { _id, createdAt, ...update } = body
-  void _id; void createdAt
   const computed = computePayroll(update)
   const now    = new Date().toISOString()
 

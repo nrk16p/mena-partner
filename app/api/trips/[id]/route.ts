@@ -19,8 +19,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { id } = await params
   const body   = await req.json()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { _id, createdAt, ...update } = body
-  void _id; void createdAt
   const client = await clientPromise
   const col    = client.db(DB).collection(COLL)
   const result = await col.findOneAndUpdate(

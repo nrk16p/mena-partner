@@ -47,6 +47,9 @@ export default function ContractsPage() {
     return () => clearTimeout(t)
   }, [q, statusFilter])
 
+  const today = new Date().toISOString().slice(0, 10)
+  const in60  = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10)
+
   const activeCount = items.filter((c) => c.status === "active").length
 
   function handleExportCSV() {
@@ -150,8 +153,6 @@ export default function ContractsPage() {
             ) : items.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : items.map((c) => {
-              const today = new Date().toISOString().slice(0, 10)
-              const in60  = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10)
               const insExpired  = c.taxExpiryDate && c.taxExpiryDate < today
               const insExpiring = !insExpired && c.taxExpiryDate && c.taxExpiryDate <= in60
               return (
