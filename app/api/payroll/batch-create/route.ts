@@ -54,12 +54,22 @@ export async function POST(req: NextRequest) {
 
   const pendingCodes = pending.map((d) => d.contractCode as string)
 
-  // 4. Trip aggregation for the month
+  // 4. Trip aggregation for the month — include unique date count for workingDays
   const tripAgg = await db.collection("trips").aggregate([
     { $match: { contractCode: { $in: pendingCodes }, date: { $gte: start, $lt: end } } },
-    { $group: { _id: "$contractCode", total: { $sum: "$tripFee" }, count: { $sum: 1 } } },
+    {
+      $group: {
+        _id: "$contractCode",
+        total: { $sum: "$tripFee" },
+        count: { $sum: 1 },
+        uniqueDates: { $addToSet: "$date" },
+      },
+    },
   ]).toArray()
-  const tripMap = Object.fromEntries(tripAgg.map((t) => [t._id as string, { total: t.total as number, count: t.count as number }]))
+  const tripMap = Object.fromEntries(tripAgg.map((t) => [
+    t._id as string,
+    { total: t.total as number, count: t.count as number, workingDays: (t.uniqueDates as string[]).length },
+  ]))
 
   // 5. Contract lookup for installment + insurance
   const contracts = await db.collection("contracts")
@@ -83,7 +93,7 @@ export async function POST(req: NextRequest) {
     return {
       contractCode: code,
       month,
-      workingDays:  0,
+      workingDays:  trips?.workingDays ?? 0,
       tripCount:    trips?.count ?? 0,
       transportFee,
       ot:                     0,

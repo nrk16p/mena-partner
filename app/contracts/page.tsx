@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { PlusCircle, Search, AlertTriangle } from "lucide-react"
+import { PlusCircle, Search, AlertTriangle, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatMoney } from "@/lib/utils"
@@ -49,6 +49,30 @@ export default function ContractsPage() {
 
   const activeCount = items.filter((c) => c.status === "active").length
 
+  function handleExportCSV() {
+    if (items.length === 0) return
+    const headers = [
+      "รหัส","ชื่อผู้เช่าซื้อ","ชื่อผู้ขับขี่","ทะเบียน","เบอร์รถ","แพล้นท์",
+      "วันที่ทำสัญญา","วันที่เริ่ม","ราคารถ","เงินดาวน์","ค่างวด/เดือน","จำนวนงวด",
+      "ผู้รับประกัน","วันต่อภาษี","วันหมดอายุ","ค่าประกัน/เดือน","สถานะ",
+    ]
+    const rows = items.map((c) => [
+      c.contractCode, c.buyerName, c.driverName, c.licensePlate, c.truckNumber, c.plant,
+      c.contractDate?.slice(0,10) ?? "", c.startDate?.slice(0,10) ?? "",
+      c.totalPrice, c.downPayment, c.monthlyInstallment, c.totalInstallments,
+      c.insurer ?? "", c.taxRenewalDate ?? "", c.taxExpiryDate ?? "", c.monthlyInsuranceFee ?? 0,
+      c.status,
+    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
+    const csv = [headers.join(","), ...rows].join("\n")
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `contracts-${statusFilter || "all"}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -58,13 +82,25 @@ export default function ContractsPage() {
             {items.length} สัญญา{statusFilter === "active" ? ` · ใช้งาน ${activeCount} คัน` : ""}
           </p>
         </div>
-        {session?.user?.role === "admin" && (
-          <Link href="/contracts/new">
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              <PlusCircle className="w-4 h-4 mr-2" /> เพิ่มสัญญา
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+            >
+              <Download className="w-3.5 h-3.5" />
+              CSV
+            </button>
+          )}
+          {session?.user?.role === "admin" && (
+            <Link href="/contracts/new">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <PlusCircle className="w-4 h-4 mr-2" /> เพิ่มสัญญา
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-4 mb-4">
