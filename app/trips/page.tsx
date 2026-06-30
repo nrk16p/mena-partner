@@ -25,22 +25,45 @@ export default function TripsPage() {
   const options             = monthOptions()
   const [month, setMonth]   = useState(options[0].value)
   const [q, setQ]           = useState("")
+  const [plant, setPlant]   = useState("")
   const [items, setItems]   = useState<Trip[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
     const params = new URLSearchParams({ month })
     if (q) params.set("contractCode", q)
-    fetch(`/api/trips?${params}`)
-      .then((r) => r.json())
-      .then((d) => { setItems(d); setLoading(false) })
-  }, [month, q])
+    if (plant) params.set("plant", plant)
+    const load = async () => {
+      setLoading(true)
+      try {
+        const r = await fetch(`/api/trips?${params.toString()}`)
+        if (r.ok) {
+          const d = await r.json()
+          setItems(d)
+        } else {
+          setItems([])
+        }
+      } catch {
+        setItems([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [month, q, plant])
 
   async function handleDelete(id: string) {
-    if (!confirm("ลบรายเที่ยวนี้?")) return
-    await fetch(`/api/trips/${id}`, { method: "DELETE" })
-    setItems((p) => p.filter((t) => t._id !== id))
+    if (!confirm("ลบเที่ยวนี้?")) return
+    try {
+      const r = await fetch(`/api/trips/${id}`, { method: "DELETE" })
+      if (r.ok) {
+        setItems((p) => p.filter((t) => t._id !== id))
+      } else {
+        alert("ลบไม่สำเร็จ กรุณาลองใหม่")
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาด กรุณาลองใหม่")
+    }
   }
 
   return (
@@ -76,6 +99,12 @@ export default function TripsPage() {
             className="max-w-48"
           />
         </div>
+        <Input
+          placeholder="แพล้นท์"
+          value={plant}
+          onChange={(e) => setPlant(e.target.value)}
+          className="max-w-36"
+        />
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">

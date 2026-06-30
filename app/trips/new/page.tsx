@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,9 +18,14 @@ const EMPTY: TripForm = {
 
 export default function NewTripPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [form, setForm]     = useState<TripForm>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
+
+  if (session?.user?.role !== "admin") {
+    return <div className="p-8 text-center text-muted-foreground">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</div>
+  }
 
   function field(key: keyof TripForm) {
     return {
@@ -33,6 +39,7 @@ export default function NewTripPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (session?.user?.role !== "admin") return
     setSaving(true)
     setError("")
     try {
