@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +17,7 @@ const EMPTY: Omit<Contract, "_id" | "createdAt" | "updatedAt"> = {
 
 export default function NewContractPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [form, setForm]   = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
@@ -32,6 +34,7 @@ export default function NewContractPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (session?.user?.role !== "admin") return
     setSaving(true)
     setError("")
     try {

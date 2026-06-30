@@ -18,7 +18,9 @@ export default function ContractDetailPage() {
   const [error, setError]  = useState("")
 
   useEffect(() => {
-    fetch(`/api/contracts/${id}`).then((r) => r.json()).then(setForm)
+    fetch(`/api/contracts/${id}`)
+      .then((r) => { if (r.ok) return r.json(); return null })
+      .then((d) => { if (d) setForm(d) })
   }, [id])
 
   function field(key: keyof Contract) {

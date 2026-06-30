@@ -26,9 +26,12 @@ export default function ContractsPage() {
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true)
-      const res = await fetch(`/api/contracts?q=${encodeURIComponent(q)}`)
-      setItems(await res.json())
-      setLoading(false)
+      try {
+        const res = await fetch(`/api/contracts?q=${encodeURIComponent(q)}`)
+        if (res.ok) setItems(await res.json())
+      } finally {
+        setLoading(false)
+      }
     }, 300)
     return () => clearTimeout(t)
   }, [q])
