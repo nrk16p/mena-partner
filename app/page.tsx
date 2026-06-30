@@ -102,6 +102,17 @@ export default function DashboardPage() {
     ? summary.grandNetPay / summary.driversWithEntry
     : null
 
+  // Find previous month's trend data for MoM comparison
+  const prevTrend = month && trend.length > 1
+    ? trend.slice(0, -1).findLast((t) => t.month < month)
+    : null
+
+  function momPct(current: number, prev: number | undefined): string | null {
+    if (!prev || prev === 0) return null
+    const pct = ((current - prev) / Math.abs(prev)) * 100
+    return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -125,11 +136,25 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "รถร่วมทั้งหมด",   value: `${driverCount} คัน`,                                       color: "", icon: Truck },
-          { label: "รวมรายรับ",        value: summary ? formatMoney(summary.grandIncome) : "-",            color: "text-emerald-600", icon: TrendingUp },
-          { label: "รวมรายหัก",        value: summary ? formatMoney(summary.grandDeductions) : "-",        color: "text-red-500", icon: TrendingDown },
-          { label: "รับสุทธิรวม",      value: summary ? formatMoney(summary.grandNetPay) : "-",            color: "text-zinc-800 dark:text-zinc-100", icon: BarChart3 },
-        ].map(({ label, value, color, icon: Icon }) => (
+          {
+            label: "รถร่วมทั้งหมด", value: `${driverCount} คัน`, color: "", icon: Truck, mom: null
+          },
+          {
+            label: "รวมรายรับ", value: summary ? formatMoney(summary.grandIncome) : "-",
+            color: "text-emerald-600", icon: TrendingUp,
+            mom: summary ? momPct(summary.grandIncome, prevTrend?.totalIncome) : null
+          },
+          {
+            label: "รวมรายหัก", value: summary ? formatMoney(summary.grandDeductions) : "-",
+            color: "text-red-500", icon: TrendingDown,
+            mom: summary ? momPct(summary.grandDeductions, prevTrend?.totalDeductions) : null
+          },
+          {
+            label: "รับสุทธิรวม", value: summary ? formatMoney(summary.grandNetPay) : "-",
+            color: "text-zinc-800 dark:text-zinc-100", icon: BarChart3,
+            mom: summary ? momPct(summary.grandNetPay, prevTrend?.totalNetPay) : null
+          },
+        ].map(({ label, value, color, icon: Icon, mom }) => (
           <div key={label} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-5 py-4 flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5">
               <Icon className="w-4 h-4 text-zinc-500" />
@@ -137,6 +162,11 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs text-zinc-400 mb-1">{label}</p>
               <p className={`text-xl font-bold ${color}`}>{value}</p>
+              {mom && (
+                <p className={`text-[10px] mt-0.5 ${mom.startsWith("+") ? "text-emerald-500" : "text-red-400"}`}>
+                  {mom} vs เดือนก่อน
+                </p>
+              )}
             </div>
           </div>
         ))}
