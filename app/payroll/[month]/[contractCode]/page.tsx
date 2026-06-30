@@ -111,21 +111,37 @@ export default function PayrollEntryPage() {
     }
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
+  async function doSave(): Promise<boolean> {
     setSaving(true)
     setError("")
     try {
       const payload = { ...form, contractCode, month }
-      const url     = `/api/payroll/${month}/${contractCode}`
-      const res     = await fetch(url, {
-        method:  "PUT",
+      const res = await fetch(`/api/payroll/${month}/${contractCode}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
+        body: JSON.stringify(payload),
       })
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? "เกิดข้อผิดพลาด"); return }
-      router.push("/payroll")
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? "เกิดข้อผิดพลาด"); return false }
+      return true
     } finally { setSaving(false) }
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (await doSave()) router.push("/payroll")
+  }
+
+  async function handleSaveAndNext() {
+    if (!await doSave()) return
+    // Find next unrecorded driver
+    const [entriesRes, driversRes] = await Promise.all([
+      fetch(`/api/payroll?month=${month}`).then((r) => r.ok ? r.json() : []),
+      fetch("/api/drivers?status=active").then((r) => r.ok ? r.json() : []),
+    ])
+    const recorded = new Set((entriesRes as Array<{ contractCode: string }>).map((e) => e.contractCode))
+    const next = (driversRes as Array<{ contractCode: string }>).find((d) => !recorded.has(d.contractCode))
+    if (next) router.push(`/payroll/${month}/${next.contractCode}`)
+    else router.push("/payroll")
   }
 
   return (
@@ -279,6 +295,16 @@ export default function PayrollEntryPage() {
           <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
             {saving ? "กำลังบันทึก..." : "บันทึก"}
           </Button>
+          {isNew && (
+            <Button
+              type="button"
+              disabled={saving}
+              onClick={handleSaveAndNext}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              บันทึกและถัดไป →
+            </Button>
+          )}
           <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
         </div>
       </form>
