@@ -6,7 +6,6 @@ const DB  = process.env.MONGO_DB ?? "mena_partner"
 if (!uri) throw new Error("Please add MONGO_URI to .env.local")
 
 let client: MongoClient
-let clientPromise: Promise<MongoClient>
 
 declare global {
   var _mongoClientPromise: Promise<MongoClient>
@@ -41,6 +40,6 @@ if (!global._mongoClientPromise) {
   global._mongoClientPromise = connect()
 }
 
-clientPromise = global._mongoClientPromise
+const clientPromise = global._mongoClientPromise
 
 export default clientPromise

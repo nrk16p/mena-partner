@@ -12,6 +12,7 @@ export function Navbar() {
   const [isDark, setIsDark]   = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(document.documentElement.classList.contains("dark"))
   }, [])
 
@@ -28,7 +29,7 @@ export function Navbar() {
     const next = !isDark
     setIsDark(next)
     document.documentElement.classList.toggle("dark", next)
-    try { localStorage.setItem("theme", next ? "dark" : "light") } catch (_) {}
+    try { localStorage.setItem("theme", next ? "dark" : "light") } catch {}
   }
 
   return (
