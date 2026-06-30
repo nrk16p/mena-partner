@@ -50,8 +50,10 @@ export async function GET() {
   }
 
   // 2. Insurance: expired or expiring within 60 days (single query with $or)
-  const today = new Date().toISOString().slice(0, 10)
-  const in60  = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  // Use Bangkok offset (UTC+7) so date boundaries match user-entered local dates
+  const BKK_MS = 7 * 60 * 60 * 1000
+  const today = new Date(Date.now() + BKK_MS).toISOString().slice(0, 10)
+  const in60  = new Date(Date.now() + BKK_MS + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   const insuranceContracts = await db
     .collection("contracts")
