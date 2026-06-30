@@ -115,7 +115,7 @@ export default function ReportsPage() {
       r.contractCode, r.driverName, r.truckNumber, r.plant,
       r.tripCount, r.totalTripFee, r.workingDays, r.totalIncome, r.totalDeductions, r.netPay,
     ])
-    const csv = [header, ...rows].map((row) => row.join(",")).join("\n")
+    const csv = [header, ...rows].map((row) => row.map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")).join("\n")
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")

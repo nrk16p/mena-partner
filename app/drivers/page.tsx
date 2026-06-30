@@ -42,7 +42,7 @@ export default function DriversPage() {
     const headers = ["รหัส","ชื่อผู้ขับขี่","ทะเบียน","เบอร์รถ","แพล้นท์","เบอร์โทร","สถานะ"]
     const rows = visible.map((d) => [
       d.contractCode, d.driverName, d.licensePlate, d.truckNumber, d.plant, d.phone, d.status,
-    ].join(","))
+    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
     const csv = [headers.join(","), ...rows].join("\n")
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)

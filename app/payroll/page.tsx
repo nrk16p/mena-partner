@@ -137,7 +137,7 @@ export default function PayrollPage() {
         e.downPaymentInstallment,
         e.totalDeductions,
         e.netPay,
-      ].join(",")
+      ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")
     })
 
     const csv = [headers.join(","), ...rows].join("\n")
