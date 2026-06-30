@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { PlusCircle, Search, Upload, Trash2 } from "lucide-react"
+import { PlusCircle, Search, Upload, Trash2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
@@ -75,6 +75,25 @@ export default function TripsPage() {
     }
   }
 
+  function handleExportCSV() {
+    if (items.length === 0) return
+    const headers = ["รหัสสัญญา","วันที่","เลขที่ LDT","แพล้นท์","บริการ","Route","ปลายทาง","อำเภอ","จังหวัด","โซน","ค่าเที่ยว"]
+    const rows = items.map((t) => [
+      t.contractCode, t.date?.slice(0,10) ?? "", t.ldtNumber,
+      t.plant, t.serviceType, t.routeCode,
+      t.destinationName, t.district, t.province, t.zone,
+      t.tripFee,
+    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
+    const csv = [headers.join(","), ...rows].join("\n")
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `trips-${month}${q ? "-" + q : ""}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function handleBulkDelete() {
     const label = q ? `${items.length} เที่ยวของ ${q} เดือน ${month}` : `${items.length} เที่ยวเดือน ${month}`
     if (!confirm(`ลบ${label}ทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้`)) return
@@ -118,6 +137,17 @@ export default function TripsPage() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 ลบทั้งหมด ({items.length})
+              </button>
+            )}
+            {items.length > 0 && (
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+                title={`ดาวน์โหลด ${items.length} รายการเป็น CSV`}
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV
               </button>
             )}
             <Link

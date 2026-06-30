@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Search } from "lucide-react"
+import { Search, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import type { Driver } from "@/types"
 
@@ -33,6 +33,22 @@ export default function DriversPage() {
     return () => clearTimeout(t)
   }, [q, statusFilter])
 
+  function handleExportCSV() {
+    if (items.length === 0) return
+    const headers = ["รหัส","ชื่อผู้ขับขี่","ทะเบียน","เบอร์รถ","แพล้นท์","เบอร์โทร","สถานะ"]
+    const rows = items.map((d) => [
+      d.contractCode, d.driverName, d.licensePlate, d.truckNumber, d.plant, d.phone, d.status,
+    ].join(","))
+    const csv = [headers.join(","), ...rows].join("\n")
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `drivers-${statusFilter || "all"}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -40,6 +56,16 @@ export default function DriversPage() {
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">พนักงานขับรถ</h1>
           <p className="text-sm text-zinc-400 mt-0.5">{items.length} คน</p>
         </div>
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+          >
+            <Download className="w-3.5 h-3.5" />
+            CSV
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-4 mb-4">
