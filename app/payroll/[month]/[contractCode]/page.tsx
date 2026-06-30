@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Printer, Copy } from "lucide-react"
+import { Printer, Copy, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatMoney, formatMonth, computePayroll, prevMonth as getPrevMonth } from "@/lib/utils"
+import { useSession } from "next-auth/react"
 import type { PayrollEntry, Contract } from "@/types"
 
 type NumericFields = Omit<PayrollEntry, "_id"|"contractCode"|"month"|"totalIncome"|"totalDeductions"|"netPay"|"createdAt"|"updatedAt">
@@ -42,6 +43,8 @@ const ZERO_ENTRY = Object.fromEntries(
 export default function PayrollEntryPage() {
   const { month, contractCode } = useParams<{ month: string; contractCode: string }>()
   const router = useRouter()
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "admin"
   const [form, setForm]     = useState<NumericFields & { workingDays: number; tripCount: number }>({
     workingDays: 0, tripCount: 0, ...ZERO_ENTRY,
   })
@@ -129,6 +132,13 @@ export default function PayrollEntryPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (await doSave()) router.push("/payroll")
+  }
+
+  async function handleDelete() {
+    if (!confirm(`ลบข้อมูลเงินเดือน ${contractCode} เดือน ${month}?`)) return
+    const res = await fetch(`/api/payroll/${month}/${contractCode}`, { method: "DELETE" })
+    if (res.ok) router.push("/payroll")
+    else setError("ลบไม่สำเร็จ")
   }
 
   async function handleSaveAndNext() {
@@ -306,6 +316,16 @@ export default function PayrollEntryPage() {
             </Button>
           )}
           <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
+          {!isNew && isAdmin && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleDelete}
+              className="ml-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> ลบรายการ
+            </Button>
+          )}
         </div>
       </form>
     </div>

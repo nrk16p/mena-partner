@@ -34,3 +34,12 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   )
   return NextResponse.json(result)
 }
+
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const { month, contractCode } = await params
+  const client = await clientPromise
+  const col    = client.db(DB).collection(COLL)
+  const result = await col.deleteOne({ month, contractCode })
+  if (result.deletedCount === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  return NextResponse.json({ ok: true })
+}
