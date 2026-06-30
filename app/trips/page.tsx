@@ -80,7 +80,14 @@ export default function TripsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">รายเที่ยว</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">{items.length} รายการ</p>
+          <p className="text-sm text-zinc-400 mt-0.5">
+            {items.length} รายการ{items.length >= 500 ? " (จำกัด 500 แรก — กรอง contractCode เพื่อดูทั้งหมด)" : ""}
+            {items.length > 0 && (
+              <> · ค่าเที่ยวรวม <span className="text-zinc-600 font-medium">
+                {formatMoney(items.reduce((s, t) => s + (t.tripFee ?? 0), 0))}
+              </span></>
+            )}
+          </p>
         </div>
         {session?.user?.role === "admin" && (
           <Link href="/trips/new">

@@ -115,6 +115,33 @@ export default function ContractDetailPage() {
         </div>
       )}
 
+      {/* Insurance info card (read-only) */}
+      {form.insurer && (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">ข้อมูลประกันภัย / ภาษี</h2>
+          <div className="grid grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">บริษัทประกัน</p>
+              <p className="text-sm font-medium">{form.insurer}</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">วันต่อล่าสุด</p>
+              <p className="text-sm font-medium">{form.taxRenewalDate ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">วันหมดอายุ</p>
+              <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "text-red-600" : ""}`}>
+                {form.taxExpiryDate ?? "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">ค่างวดต่อเดือน</p>
+              <p className="text-sm font-medium">{form.monthlyInsuranceFee ? formatMoney(form.monthlyInsuranceFee) : "-"}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && <div className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</div>}
 
       <form onSubmit={handleSave} className="space-y-6">

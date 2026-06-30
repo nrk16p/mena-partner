@@ -18,14 +18,17 @@ export async function GET(req: NextRequest) {
   if (contractCode) filter.contractCode = contractCode
   if (plant)        filter.plant = { $regex: plant, $options: "i" }
   if (month) {
-    const [y, m] = month.split("-").map(Number)
-    filter.date  = {
-      $gte: new Date(y, m - 1, 1).toISOString(),
-      $lt:  new Date(y, m,     1).toISOString(),
-    }
+    const [yearStr, monthStr] = month.split("-")
+    const year = parseInt(yearStr)
+    const mon  = parseInt(monthStr)
+    const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+    const nextYear = mon === 12 ? year + 1 : year
+    const nextMon  = mon === 12 ? 1 : mon + 1
+    const endStr   = `${nextYear}-${String(nextMon).padStart(2, "0")}-01`
+    filter.date = { $gte: startStr, $lt: endStr }
   }
 
-  const items = await col.find(filter).sort({ date: -1 }).limit(500).toArray()
+  const items = await col.find(filter).sort({ date: -1, contractCode: 1 }).limit(500).toArray()
   return NextResponse.json(items)
 }
 

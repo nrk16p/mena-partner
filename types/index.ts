@@ -21,6 +21,14 @@ export interface Contract {
   startDate: string             // ISO date string
   status: ContractStatus
   notes: string
+  // Insurance fields (from ภาษี ประกัน พรบ sheet)
+  insurer?: string
+  insuranceAmount?: number
+  prbAmount?: number
+  taxAmount?: number
+  monthlyInsuranceFee?: number
+  taxRenewalDate?: string       // ISO date string YYYY-MM-DD
+  taxExpiryDate?: string        // ISO date string YYYY-MM-DD
   createdAt?: string
   updatedAt?: string
 }
