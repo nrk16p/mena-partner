@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Printer } from "lucide-react"
+import { Printer, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -130,10 +130,25 @@ export default function PayrollEntryPage() {
         )}
       </div>
 
-      {/* Previous month quick compare */}
+      {/* Previous month quick compare + copy */}
       {prevEntry && (
         <div className="mb-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700 px-5 py-3">
-          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">เดือนก่อนหน้า ({formatMonth(prevEntry.month)})</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">เดือนก่อนหน้า ({formatMonth(prevEntry.month)})</p>
+            {isNew && (
+              <button
+                type="button"
+                onClick={() => {
+                  const { _id, month: _m, contractCode: _c, createdAt, updatedAt, totalIncome, totalDeductions, netPay, ...fields } = prevEntry
+                  setForm((p) => ({ ...p, ...fields, tripCount: 0, transportFee: 0, ot: 0, otherIncomeWHT: 0, otherIncomeNoWHT: 0 }))
+                }}
+                className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded px-2 py-0.5"
+                title="คัดลอกรายการหักจากเดือนก่อน"
+              >
+                <Copy className="w-3 h-3" /> คัดลอกรายการหัก
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-4 gap-4 text-sm">
             {[
               { label: "รายรับ",   value: formatMoney(prevEntry.totalIncome),     color: "text-emerald-600" },

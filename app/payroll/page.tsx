@@ -13,6 +13,7 @@ export default function PayrollPage() {
   const [drivers, setDrivers]   = useState<Driver[]>([])
   const [entries, setEntries]   = useState<PayrollEntry[]>([])
   const [q, setQ]               = useState("")
+  const [showPending, setShowPending] = useState(false)
   const [loading, setLoading]   = useState(false)
 
   useEffect(() => {
@@ -38,13 +39,12 @@ export default function PayrollPage() {
 
   const entryMap = Object.fromEntries(entries.map((e) => [e.contractCode, e]))
 
-  const filtered = q
-    ? drivers.filter((d) =>
-        d.contractCode.toLowerCase().includes(q.toLowerCase()) ||
-        d.driverName.toLowerCase().includes(q.toLowerCase()) ||
-        (d.plant ?? "").toLowerCase().includes(q.toLowerCase())
-      )
-    : drivers
+  const filtered = drivers.filter((d) => {
+    const matchQ = !q || [d.contractCode, d.driverName, d.plant ?? ""]
+      .some((v) => v.toLowerCase().includes(q.toLowerCase()))
+    const matchPending = !showPending || !entryMap[d.contractCode]
+    return matchQ && matchPending
+  })
 
   const recorded = entries.length
   const totalNetPay = entries.reduce((s, e) => s + (e.netPay ?? 0), 0)
@@ -79,7 +79,7 @@ export default function PayrollPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-3 mb-4">
         <Search className="w-4 h-4 text-zinc-400" />
         <Input
           placeholder="ค้นหา รหัส / ชื่อ / แพล้นท์"
@@ -87,6 +87,16 @@ export default function PayrollPage() {
           onChange={(e) => setQ(e.target.value)}
           className="max-w-xs"
         />
+        <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showPending}
+            onChange={(e) => setShowPending(e.target.checked)}
+            className="rounded"
+          />
+          แสดงเฉพาะที่ยังไม่บันทึก
+        </label>
+        {showPending && <span className="text-xs text-amber-600 font-medium">{filtered.length} คน</span>}
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">

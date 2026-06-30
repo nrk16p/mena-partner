@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Search, Download } from "lucide-react"
+import { Search, Download, Printer } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
 
@@ -30,12 +30,17 @@ type Summary = {
 
 type Report = { month: string; summary: Summary; rows: Row[] }
 
+type SortKey = "contractCode" | "driverName" | "plant" | "tripCount" | "workingDays" | "totalIncome" | "totalDeductions" | "netPay"
+type SortDir = "asc" | "desc"
+
 export default function ReportsPage() {
   const [months, setMonths]   = useState<string[]>([])
   const [month, setMonth]     = useState<string | null>(null)
   const [data, setData]       = useState<Report | null>(null)
   const [q, setQ]             = useState("")
   const [loading, setLoading] = useState(false)
+  const [sortKey, setSortKey] = useState<SortKey>("contractCode")
+  const [sortDir, setSortDir] = useState<SortDir>("asc")
 
   useEffect(() => {
     fetch("/api/payroll/months")
@@ -55,11 +60,30 @@ export default function ReportsPage() {
   }, [month])
 
   const filtered = data
-    ? data.rows.filter((r) =>
-        [r.contractCode, r.driverName, r.truckNumber, r.plant]
-          .some((v) => (v ?? "").toLowerCase().includes(q.toLowerCase()))
-      )
+    ? data.rows
+        .filter((r) =>
+          [r.contractCode, r.driverName, r.truckNumber, r.plant]
+            .some((v) => (v ?? "").toLowerCase().includes(q.toLowerCase()))
+        )
+        .sort((a, b) => {
+          const av = a[sortKey] ?? ""
+          const bv = b[sortKey] ?? ""
+          const cmp = typeof av === "number" && typeof bv === "number"
+            ? av - bv
+            : String(av).localeCompare(String(bv))
+          return sortDir === "asc" ? cmp : -cmp
+        })
     : []
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => d === "asc" ? "desc" : "asc")
+    else { setSortKey(key); setSortDir("asc") }
+  }
+
+  function SortArrow({ k }: { k: SortKey }) {
+    if (sortKey !== k) return <span className="text-zinc-300 ml-0.5">↕</span>
+    return <span className="text-emerald-500 ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
+  }
 
   function exportCsv() {
     if (!data) return
@@ -86,6 +110,15 @@ export default function ReportsPage() {
           {data && <p className="text-sm text-zinc-400 mt-0.5">{formatMonth(data.month)}</p>}
         </div>
         <div className="flex items-center gap-2">
+          {month && data && data.summary.driversWithEntry > 0 && (
+            <Link
+              href={`/payroll/${month}/print-all`}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              พิมพ์ใบแจ้งเงินเดือน
+            </Link>
+          )}
           <button
             onClick={exportCsv}
             disabled={!data}
@@ -169,15 +202,25 @@ export default function ReportsPage() {
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
             <tr>
-              <th className="px-4 py-3 text-left">รหัส</th>
-              <th className="px-4 py-3 text-left">ชื่อคนขับ</th>
-              <th className="px-4 py-3 text-left">เบอร์รถ</th>
-              <th className="px-4 py-3 text-left">แพล้นท์</th>
-              <th className="px-4 py-3 text-right">เที่ยว</th>
-              <th className="px-4 py-3 text-right">วัน</th>
-              <th className="px-4 py-3 text-right">รายรับรวม</th>
-              <th className="px-4 py-3 text-right">รายหักรวม</th>
-              <th className="px-4 py-3 text-right">รับสุทธิ</th>
+              {([
+                ["contractCode", "รหัส",    "text-left"],
+                ["driverName",   "ชื่อคนขับ","text-left"],
+                [null,           "เบอร์รถ",  "text-left"],
+                ["plant",        "แพล้นท์",  "text-left"],
+                ["tripCount",    "เที่ยว",   "text-right"],
+                ["workingDays",  "วัน",      "text-right"],
+                ["totalIncome",  "รายรับรวม","text-right"],
+                ["totalDeductions","รายหักรวม","text-right"],
+                ["netPay",       "รับสุทธิ", "text-right"],
+              ] as [SortKey | null, string, string][]).map(([k, label, align]) => (
+                <th
+                  key={label}
+                  className={`px-4 py-3 ${align} ${k ? "cursor-pointer select-none hover:text-zinc-700" : ""}`}
+                  onClick={k ? () => toggleSort(k) : undefined}
+                >
+                  {label}{k && <SortArrow k={k} />}
+                </th>
+              ))}
               <th className="px-4 py-3 text-center">สถานะ</th>
             </tr>
           </thead>

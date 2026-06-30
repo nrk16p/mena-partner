@@ -41,14 +41,14 @@ export default function PrintPayslipPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d) setEntry(d) })
 
-    fetch(`/api/drivers?q=${contractCode}`)
+    fetch(`/api/drivers?q=${encodeURIComponent(contractCode)}`)
       .then((r) => r.ok ? r.json() : [])
       .then((ds: Driver[]) => {
         const found = ds.find((d) => d.contractCode === contractCode)
         if (found) setDriver(found)
       })
 
-    fetch(`/api/contracts?q=${contractCode}`)
+    fetch(`/api/contracts?q=${encodeURIComponent(contractCode)}`)
       .then((r) => r.ok ? r.json() : [])
       .then((cs: Contract[]) => {
         const found = cs.find((c) => c.contractCode === contractCode)
