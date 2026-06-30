@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { PlusCircle, Search } from "lucide-react"
+import { PlusCircle, Search, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
@@ -90,11 +90,20 @@ export default function TripsPage() {
           </p>
         </div>
         {session?.user?.role === "admin" && (
-          <Link href="/trips/new">
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              <PlusCircle className="w-4 h-4 mr-2" /> เพิ่มรายเที่ยว
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/trips/import"
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              นำเข้า CSV
+            </Link>
+            <Link href="/trips/new">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <PlusCircle className="w-4 h-4 mr-2" /> เพิ่มรายเที่ยว
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 
