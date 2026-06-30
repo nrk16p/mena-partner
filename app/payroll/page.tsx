@@ -79,6 +79,22 @@ export default function PayrollPage() {
         </div>
       </div>
 
+      {/* Progress bar */}
+      {drivers.length > 0 && (
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-zinc-500 mb-1">
+            <span>บันทึกแล้ว {recorded} / {drivers.length} คน</span>
+            <span>{Math.round((recorded / drivers.length) * 100)}%</span>
+          </div>
+          <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${recorded === drivers.length ? "bg-emerald-500" : "bg-amber-400"}`}
+              style={{ width: `${(recorded / drivers.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mb-4">
         <Search className="w-4 h-4 text-zinc-400" />
         <Input

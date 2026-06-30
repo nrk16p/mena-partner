@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatMoney, formatMonth, computePayroll, prevMonth as getPrevMonth } from "@/lib/utils"
-import type { PayrollEntry } from "@/types"
+import type { PayrollEntry, Contract } from "@/types"
 
 type NumericFields = Omit<PayrollEntry, "_id"|"contractCode"|"month"|"totalIncome"|"totalDeductions"|"netPay"|"createdAt"|"updatedAt">
 
@@ -58,6 +58,20 @@ export default function PayrollEntryPage() {
         if (d) {
           setForm(d)
           setIsNew(false)
+        } else {
+          // Auto-fill installment + taxInsurance from contract for new entries
+          fetch(`/api/contracts?q=${encodeURIComponent(contractCode)}`)
+            .then((r) => r.ok ? r.json() : [])
+            .then((cs: Contract[]) => {
+              const c = cs.find((x) => x.contractCode === contractCode)
+              if (c) {
+                setForm((p) => ({
+                  ...p,
+                  installment:   c.monthlyInstallment   ?? p.installment,
+                  taxInsurance:  c.monthlyInsuranceFee   ?? p.taxInsurance,
+                }))
+              }
+            })
         }
       })
 
