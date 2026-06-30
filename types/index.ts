@@ -1,0 +1,97 @@
+export type ContractStatus = "active" | "completed" | "terminated"
+export type DriverStatus = "active" | "inactive"
+export type UserRole = "admin" | "viewer"
+
+export interface Contract {
+  _id?: string
+  contractCode: string
+  contractDate: string          // ISO date string
+  buyerName: string
+  driverName: string
+  accountNumber: string
+  phone: string
+  plant: string
+  truckNumber: string
+  licensePlate: string
+  vehicleBrand: string
+  totalPrice: number
+  downPayment: number
+  monthlyInstallment: number
+  totalInstallments: number
+  startDate: string             // ISO date string
+  status: ContractStatus
+  notes: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface Driver {
+  _id?: string
+  contractCode: string
+  buyerName: string
+  driverName: string
+  truckNumber: string
+  licensePlate: string
+  phone: string
+  plant: string
+  status: DriverStatus
+  createdAt?: string
+}
+
+export interface PayrollIncomeFields {
+  transportFee: number
+  ot: number
+  otherIncomeWHT: number
+  otherIncomeNoWHT: number
+}
+
+export interface PayrollDeductionFields {
+  fuel: number
+  gps: number
+  repairInHouse: number
+  repairOutside: number
+  mgmtFee8pct: number
+  labor: number
+  tire: number
+  tirePatch: number
+  carWash: number
+  taxInsurance: number
+  installment: number
+  repairInstallment: number
+  downPaymentInstallment: number
+}
+
+export interface PayrollEntry extends PayrollIncomeFields, PayrollDeductionFields {
+  _id?: string
+  contractCode: string
+  month: string                 // "YYYY-MM"
+  workingDays: number
+  tripCount: number
+  totalIncome: number
+  totalDeductions: number
+  netPay: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface Trip {
+  _id?: string
+  contractCode: string
+  date: string                  // ISO date string
+  ldtNumber: string
+  plant: string
+  serviceType: string
+  routeCode: string
+  destinationName: string
+  district: string
+  province: string
+  zone: string
+  tripFee: number
+  createdAt?: string
+}
+
+export interface PayrollComputed {
+  totalIncome: number
+  totalDeductions: number
+  netPay: number
+}
