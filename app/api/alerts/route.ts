@@ -105,8 +105,7 @@ export async function GET() {
 
   // 4. Trip fee mismatch in latest month (transportFee differs from trip totals by > 500)
   if (latestMonth) {
-    const [yearStr, monthStr] = latestMonth.split("-")
-    const start = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+    const start = `${latestMonth}-01`
     const end   = `${nextMonth(latestMonth)}-01`
 
     const payrollEntries = await db.collection("payroll_entries")
