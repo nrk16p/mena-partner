@@ -95,23 +95,25 @@ function FormLabel({
   )
 }
 
-function FormControl({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function FormControl({ children }: { children?: React.ReactNode }) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
-  return (
-    <div
-      id={formItemId}
-      aria-describedby={
-        !error
-          ? formDescriptionId
-          : `${formDescriptionId} ${formMessageId}`
+  const ariaDescribedBy = !error
+    ? formDescriptionId
+    : `${formDescriptionId} ${formMessageId}`
+
+  if (React.isValidElement(children)) {
+    return React.cloneElement(
+      children as React.ReactElement<React.HTMLAttributes<HTMLElement>>,
+      {
+        id: formItemId,
+        "aria-describedby": ariaDescribedBy,
+        ...(error ? { "aria-invalid": true } : {}),
       }
-      aria-invalid={!!error}
-      {...props}
-    >
-      {children}
-    </div>
-  )
+    )
+  }
+
+  return <>{children}</>
 }
 
 function FormDescription({
