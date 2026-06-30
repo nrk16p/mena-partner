@@ -83,8 +83,14 @@ export default function PayrollEntryPage() {
   function numField(key: keyof typeof form) {
     return {
       value: String(form[key] ?? 0),
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        setForm((p) => ({ ...p, [key]: Number(e.target.value) })),
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = Number(e.target.value)
+        setForm((p) => {
+          const next = { ...p, [key]: val }
+          if (key === "transportFee") next.mgmtFee8pct = Math.round(val * 0.08 * 100) / 100
+          return next
+        })
+      },
       type: "number" as const,
       min: "0",
       step: "0.01",
@@ -233,7 +239,12 @@ export default function PayrollEntryPage() {
           <div className="grid grid-cols-2 gap-4">
             {DEDUCTION_FIELDS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
-                <Label>{label}</Label>
+                <div className="flex items-center gap-1">
+                  <Label>{label}</Label>
+                  {key === "mgmtFee8pct" && (
+                    <span className="text-[10px] text-zinc-400">(8% ของค่าขนส่ง)</span>
+                  )}
+                </div>
                 <Input {...numField(key as keyof typeof form)} />
               </div>
             ))}

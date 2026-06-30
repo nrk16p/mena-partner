@@ -30,7 +30,7 @@ type Summary = {
 
 type Report = { month: string; summary: Summary; rows: Row[] }
 
-type SortKey = "contractCode" | "driverName" | "plant" | "tripCount" | "workingDays" | "totalIncome" | "totalDeductions" | "netPay"
+type SortKey = "contractCode" | "driverName" | "plant" | "tripCount" | "totalTripFee" | "workingDays" | "totalIncome" | "totalDeductions" | "netPay"
 type SortDir = "asc" | "desc"
 
 export default function ReportsPage() {
@@ -87,10 +87,10 @@ export default function ReportsPage() {
 
   function exportCsv() {
     if (!data) return
-    const header = ["รหัส","ชื่อคนขับ","เบอร์รถ","แพล้นท์","เที่ยว","วันทำงาน","รายรับ","รายหัก","รับสุทธิ"]
+    const header = ["รหัส","ชื่อคนขับ","เบอร์รถ","แพล้นท์","เที่ยว","ค่าขนส่ง(เที่ยว)","วันทำงาน","รายรับ","รายหัก","รับสุทธิ"]
     const rows = filtered.map((r) => [
       r.contractCode, r.driverName, r.truckNumber, r.plant,
-      r.tripCount, r.workingDays, r.totalIncome, r.totalDeductions, r.netPay,
+      r.tripCount, r.totalTripFee, r.workingDays, r.totalIncome, r.totalDeductions, r.netPay,
     ])
     const csv = [header, ...rows].map((row) => row.join(",")).join("\n")
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
@@ -203,15 +203,16 @@ export default function ReportsPage() {
           <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
             <tr>
               {([
-                ["contractCode", "รหัส",    "text-left"],
-                ["driverName",   "ชื่อคนขับ","text-left"],
-                [null,           "เบอร์รถ",  "text-left"],
-                ["plant",        "แพล้นท์",  "text-left"],
-                ["tripCount",    "เที่ยว",   "text-right"],
-                ["workingDays",  "วัน",      "text-right"],
-                ["totalIncome",  "รายรับรวม","text-right"],
-                ["totalDeductions","รายหักรวม","text-right"],
-                ["netPay",       "รับสุทธิ", "text-right"],
+                ["contractCode", "รหัส",         "text-left"],
+                ["driverName",   "ชื่อคนขับ",    "text-left"],
+                [null,           "เบอร์รถ",       "text-left"],
+                ["plant",        "แพล้นท์",       "text-left"],
+                ["tripCount",    "เที่ยว",        "text-right"],
+                ["totalTripFee", "ค่าขนส่ง(เที่ยว)", "text-right"],
+                ["workingDays",  "วัน",           "text-right"],
+                ["totalIncome",  "รายรับรวม",    "text-right"],
+                ["totalDeductions","รายหักรวม",  "text-right"],
+                ["netPay",       "รับสุทธิ",     "text-right"],
               ] as [SortKey | null, string, string][]).map(([k, label, align]) => (
                 <th
                   key={label}
@@ -227,11 +228,11 @@ export default function ReportsPage() {
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td>
+                <td colSpan={11} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td>
+                <td colSpan={11} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td>
               </tr>
             ) : (
               filtered.map((r) => (
@@ -245,8 +246,14 @@ export default function ReportsPage() {
                   <td className="px-4 py-3 text-zinc-500">{r.truckNumber}</td>
                   <td className="px-4 py-3 text-zinc-500">{r.plant}</td>
                   <td className="px-4 py-3 text-right">{r.tripCount}</td>
+                  <td className="px-4 py-3 text-right text-blue-600 text-xs">{r.totalTripFee > 0 ? formatMoney(r.totalTripFee) : "-"}</td>
                   <td className="px-4 py-3 text-right">{r.workingDays}</td>
-                  <td className="px-4 py-3 text-right text-emerald-600">{formatMoney(r.totalIncome)}</td>
+                  <td className="px-4 py-3 text-right text-emerald-600">
+                    <div>{formatMoney(r.totalIncome)}</div>
+                    {r.hasEntry && r.totalTripFee > 0 && Math.abs(r.totalIncome - r.totalTripFee) > 500 && (
+                      <div className="text-[10px] text-amber-500">≠ เที่ยว</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right text-red-500">{formatMoney(r.totalDeductions)}</td>
                   <td className={`px-4 py-3 text-right font-bold ${r.netPay < 0 ? "text-red-600" : ""}`}>
                     {formatMoney(r.netPay)}

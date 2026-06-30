@@ -205,6 +205,18 @@ export default function ContractDetailPage() {
           </div>
         </div>
 
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">หมายเหตุ</h2>
+          <textarea
+            value={String(form.notes ?? "")}
+            disabled={!isAdmin}
+            onChange={(e) => setForm((p) => p ? { ...p, notes: e.target.value } : p)}
+            rows={4}
+            placeholder="บันทึกหมายเหตุเพิ่มเติม..."
+            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm resize-y disabled:opacity-50 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+        </div>
+
         {isAdmin && (
           <div className="flex gap-3">
             <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
