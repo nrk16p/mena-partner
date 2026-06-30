@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Download } from "lucide-react"
-import { formatMoney, formatMonth } from "@/lib/utils"
+import { formatMoney } from "@/lib/utils"
 
 type Row = {
   contractCode: string
@@ -58,6 +58,7 @@ export default function AnnualReportPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     fetch(`/api/reports/annual?year=${year}`)
       .then((r) => r.ok ? r.json() : null)

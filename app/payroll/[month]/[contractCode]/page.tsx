@@ -211,7 +211,8 @@ export default function PayrollEntryPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const { _id, month: _m, contractCode: _c, createdAt, updatedAt, totalIncome, totalDeductions, netPay, ...fields } = prevEntry
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { _id: _i, month: _m, contractCode: _c, createdAt: _ca, updatedAt: _ua, totalIncome: _ti, totalDeductions: _td, netPay: _np, ...fields } = prevEntry
                   setForm((p) => ({ ...p, ...fields, tripCount: 0, transportFee: 0, ot: 0, otherIncomeWHT: 0, otherIncomeNoWHT: 0 }))
                 }}
                 className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded px-2 py-0.5"

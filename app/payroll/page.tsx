@@ -50,6 +50,7 @@ export default function PayrollPage() {
 
   useEffect(() => {
     if (!month) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadEntries(month)
   }, [month, loadEntries])
 

@@ -48,7 +48,8 @@ export default function ContractsPage() {
   }, [q, statusFilter])
 
   const today = new Date().toISOString().slice(0, 10)
-  const in60  = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10)
+  const _d60  = new Date(); _d60.setDate(_d60.getDate() + 60)
+  const in60  = _d60.toISOString().slice(0, 10)
 
   const activeCount = items.filter((c) => c.status === "active").length
 

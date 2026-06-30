@@ -35,7 +35,6 @@ export default function TripsPage() {
       .then((r) => r.ok ? r.json() : [])
       .then((ms: string[]) => { if (ms.length > 0) setMonth(ms[0]) })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

@@ -64,6 +64,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (!month) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     fetch(`/api/reports/netpay?month=${month}`)
       .then((r) => r.ok ? r.json() : null)

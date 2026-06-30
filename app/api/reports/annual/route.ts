@@ -37,8 +37,6 @@ export async function GET(req: NextRequest) {
   const drivers = await db.collection("drivers").find({ status: "active" }, {
     projection: { contractCode: 1, driverName: 1, plant: 1, truckNumber: 1 }
   }).sort({ contractCode: 1 }).toArray()
-  const driverMap = Object.fromEntries(drivers.map((d) => [d.contractCode as string, d]))
-
   const entryMap = Object.fromEntries(entries.map((e) => [e._id as string, e]))
 
   const rows = drivers

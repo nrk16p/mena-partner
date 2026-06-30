@@ -108,7 +108,7 @@ export default function TripImportPage() {
 
   const [csvText, setCsvText]   = useState("")
   const [parsed, setParsed]     = useState<ParsedRow[] | null>(null)
-  const [headers, setHeaders]   = useState<string[]>([])
+  const [, setHeaders]   = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult]     = useState<{ inserted: number; skipped: number } | null>(null)
   const [parseError, setParseError] = useState("")
