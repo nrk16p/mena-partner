@@ -16,6 +16,7 @@ export default function PayrollPage() {
   const [drivers, setDrivers]   = useState<Driver[]>([])
   const [entries, setEntries]   = useState<PayrollEntry[]>([])
   const [q, setQ]               = useState("")
+  const [plantFilter, setPlantFilter] = useState("")
   const [showPending, setShowPending] = useState(false)
   const [loading, setLoading]   = useState(false)
 
@@ -42,11 +43,15 @@ export default function PayrollPage() {
 
   const entryMap = Object.fromEntries(entries.map((e) => [e.contractCode, e]))
 
+  // Unique plant list from drivers
+  const plants = Array.from(new Set(drivers.map((d) => d.plant).filter(Boolean))).sort()
+
   const filtered = drivers.filter((d) => {
     const matchQ = !q || [d.contractCode, d.driverName, d.plant ?? ""]
       .some((v) => v.toLowerCase().includes(q.toLowerCase()))
     const matchPending = !showPending || !entryMap[d.contractCode]
-    return matchQ && matchPending
+    const matchPlant = !plantFilter || d.plant === plantFilter
+    return matchQ && matchPending && matchPlant
   })
 
   const recorded = entries.length
@@ -108,6 +113,42 @@ export default function PayrollPage() {
               style={{ width: `${(recorded / drivers.length) * 100}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Plant filter tabs */}
+      {plants.length > 1 && (
+        <div className="flex items-center gap-1 mb-4 flex-wrap">
+          <button
+            onClick={() => setPlantFilter("")}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              !plantFilter
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            }`}
+          >
+            ทั้งหมด
+          </button>
+          {plants.map((p) => {
+            const driversInPlant = drivers.filter((d) => d.plant === p)
+            const recordedInPlant = driversInPlant.filter((d) => entryMap[d.contractCode]).length
+            return (
+              <button
+                key={p}
+                onClick={() => setPlantFilter(p)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  plantFilter === p
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {p}
+                <span className="ml-1 text-zinc-400">
+                  ({recordedInPlant}/{driversInPlant.length})
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
 
