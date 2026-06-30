@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { Truck, ClipboardList, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -95,6 +97,26 @@ export default function ContractDetailPage() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">สัญญา {form.contractCode}</h1>
         <p className="text-sm text-zinc-400 mt-0.5">{form.buyerName} · {form.licensePlate}</p>
+        <div className="flex gap-2 mt-3">
+          <Link
+            href={`/trips?q=${encodeURIComponent(form.contractCode)}`}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-1.5"
+          >
+            <Truck className="w-3.5 h-3.5" /> รายเที่ยว
+          </Link>
+          <Link
+            href={`/payroll?q=${encodeURIComponent(form.contractCode)}`}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-1.5"
+          >
+            <ClipboardList className="w-3.5 h-3.5" /> ประวัติเงินเดือน
+          </Link>
+          <Link
+            href={`/promotions/${form.contractCode}`}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-1.5"
+          >
+            <BarChart3 className="w-3.5 h-3.5" /> โปรโมชั่น
+          </Link>
+        </div>
       </div>
 
       {/* Installment summary card */}
