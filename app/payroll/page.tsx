@@ -1,24 +1,41 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Printer, ChevronRight, Zap } from "lucide-react"
+import { Search, Printer, ChevronRight, Zap, Trash2, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { formatMonth, formatMoney } from "@/lib/utils"
+import { formatMonth, formatMoney, prevMonth as getPrevMonth } from "@/lib/utils"
 import type { Driver, PayrollEntry } from "@/types"
+import { useSession } from "next-auth/react"
 
 export default function PayrollPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "admin"
+
   const [months, setMonths]     = useState<string[]>([])
   const [month, setMonth]       = useState<string | null>(null)
   const [drivers, setDrivers]   = useState<Driver[]>([])
   const [entries, setEntries]   = useState<PayrollEntry[]>([])
+  const [prevEntries, setPrevEntries] = useState<PayrollEntry[]>([])
   const [q, setQ]               = useState("")
   const [plantFilter, setPlantFilter] = useState("")
   const [showPending, setShowPending] = useState(false)
   const [loading, setLoading]   = useState(false)
+
+  const loadEntries = useCallback(async (m: string) => {
+    setLoading(true)
+    try {
+      const [curr, prev] = await Promise.all([
+        fetch(`/api/payroll?month=${m}`).then((r) => r.ok ? r.json() : []),
+        fetch(`/api/payroll?month=${getPrevMonth(m)}`).then((r) => r.ok ? r.json() : []),
+      ])
+      setEntries(Array.isArray(curr) ? curr : [])
+      setPrevEntries(Array.isArray(prev) ? prev : [])
+    } finally { setLoading(false) }
+  }, [])
 
   useEffect(() => {
     fetch("/api/payroll/months")
@@ -33,15 +50,11 @@ export default function PayrollPage() {
 
   useEffect(() => {
     if (!month) return
-    setLoading(true)
-    fetch(`/api/payroll?month=${month}`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((d) => setEntries(Array.isArray(d) ? d : []))
-      .catch(() => setEntries([]))
-      .finally(() => setLoading(false))
-  }, [month])
+    loadEntries(month)
+  }, [month, loadEntries])
 
-  const entryMap = Object.fromEntries(entries.map((e) => [e.contractCode, e]))
+  const entryMap     = Object.fromEntries(entries.map((e) => [e.contractCode, e]))
+  const prevEntryMap = Object.fromEntries(prevEntries.map((e) => [e.contractCode, e]))
 
   // Unique plant list from drivers
   const plants = Array.from(new Set(drivers.map((d) => d.plant).filter(Boolean))).sort()
@@ -70,13 +83,71 @@ export default function PayrollPage() {
       const d = await r.json()
       if (r.ok) {
         alert(`สร้างสำเร็จ ${d.created} รายการ${d.errors > 0 ? ` (${d.errors} ผิดพลาด)` : ""}`)
-        // Reload entries
-        const entries = await fetch(`/api/payroll?month=${month}`).then((r) => r.ok ? r.json() : [])
-        setEntries(Array.isArray(entries) ? entries : [])
+        await loadEntries(month)
       } else {
         alert(d.error ?? "เกิดข้อผิดพลาด")
       }
     } finally { setLoading(false) }
+  }
+
+  async function handleBatchDelete() {
+    if (!month) return
+    if (!confirm(`ลบข้อมูลเงินเดือนทั้งหมดของเดือน ${formatMonth(month)} (${recorded} รายการ)?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) return
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/payroll?month=${month}`, { method: "DELETE" })
+      const d = await r.json()
+      if (r.ok) {
+        alert(`ลบแล้ว ${d.deleted} รายการ`)
+        await loadEntries(month)
+      }
+    } finally { setLoading(false) }
+  }
+
+  function handleExportCSV() {
+    if (!month || entries.length === 0) return
+    const headers = ["รหัส","ชื่อ","แพล้นท์","เที่ยว","วันทำงาน","ค่าขนส่ง","OT","รับอื่นๆ WHT","รับอื่นๆ ไม่WHT","รวมรับ","เชื้อเพลิง","GPS","ซ่อมใน","ซ่อมนอก","ค่าดำเนินการ8%","ค่าแรง","ยาง","ปะยาง","ล้างรถ","ต่อภาษี","ค่างวด","ผ่อนซ่อม","ดาวน์","รวมหัก","สุทธิ"]
+    const driverMap = Object.fromEntries(drivers.map((d) => [d.contractCode, d]))
+
+    const rows = entries.map((e) => {
+      const d = driverMap[e.contractCode]
+      return [
+        e.contractCode,
+        d?.driverName ?? "",
+        d?.plant ?? "",
+        e.tripCount,
+        e.workingDays,
+        e.transportFee,
+        e.ot,
+        e.otherIncomeWHT,
+        e.otherIncomeNoWHT,
+        e.totalIncome,
+        e.fuel,
+        e.gps,
+        e.repairInHouse,
+        e.repairOutside,
+        e.mgmtFee8pct,
+        e.labor,
+        e.tire,
+        e.tirePatch,
+        e.carWash,
+        e.taxInsurance,
+        e.installment,
+        e.repairInstallment,
+        e.downPaymentInstallment,
+        e.totalDeductions,
+        e.netPay,
+      ].join(",")
+    })
+
+    const csv = [headers.join(","), ...rows].join("\n")
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `payroll-${month}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -89,7 +160,7 @@ export default function PayrollPage() {
             {recorded > 0 && <> · สุทธิรวม <span className="text-zinc-600 font-medium">{formatMoney(totalNetPay)}</span></>}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
           {pendingCount > 0 && month && (
             <Button
               size="sm"
@@ -115,6 +186,16 @@ export default function PayrollPage() {
             </Button>
           )}
           {month && recorded > 0 && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+            >
+              <Download className="w-3.5 h-3.5" />
+              CSV
+            </button>
+          )}
+          {month && recorded > 0 && (
             <Link
               href={`/payroll/${month}/print-all`}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
@@ -122,6 +203,18 @@ export default function PayrollPage() {
               <Printer className="w-3.5 h-3.5" />
               พิมพ์ทั้งหมด
             </Link>
+          )}
+          {isAdmin && month && recorded > 0 && (
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-2 hover:bg-red-50"
+              title="ลบข้อมูลเงินเดือนทั้งหมดของเดือนนี้"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              ล้างเดือนนี้
+            </button>
           )}
           <select
             value={month ?? ""}
@@ -216,17 +309,21 @@ export default function PayrollPage() {
               <th className="px-4 py-3 text-right">รายรับ</th>
               <th className="px-4 py-3 text-right">รายหัก</th>
               <th className="px-4 py-3 text-right">สุทธิ</th>
+              <th className="px-4 py-3 text-right text-zinc-400">เทียบเดือนก่อน</th>
               <th className="px-4 py-3 text-center">สถานะ</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : filtered.map((d) => {
-              const entry = entryMap[d.contractCode]
+              const entry     = entryMap[d.contractCode]
+              const prevEntry = prevEntryMap[d.contractCode]
+              const delta     = entry && prevEntry ? entry.netPay - prevEntry.netPay : null
+
               return (
                 <tr key={d._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                   <td className="px-4 py-3 font-medium">{d.contractCode}</td>
@@ -243,6 +340,17 @@ export default function PayrollPage() {
                   </td>
                   <td className={`px-4 py-3 text-right font-semibold ${entry && entry.netPay < 0 ? "text-red-600" : ""}`}>
                     {entry ? formatMoney(entry.netPay) : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {delta !== null ? (
+                      <span className={`text-xs font-medium ${
+                        delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-500" : "text-zinc-400"
+                      }`}>
+                        {delta > 0 ? "+" : ""}{formatMoney(delta)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-zinc-300">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -281,6 +389,9 @@ export default function PayrollPage() {
             const sumIncome     = visibleEntries.reduce((s, e) => s + (e.totalIncome ?? 0), 0)
             const sumDeductions = visibleEntries.reduce((s, e) => s + (e.totalDeductions ?? 0), 0)
             const sumNet        = visibleEntries.reduce((s, e) => s + (e.netPay ?? 0), 0)
+            const prevVisible   = filtered.map((d) => prevEntryMap[d.contractCode]).filter(Boolean)
+            const prevSumNet    = prevVisible.reduce((s, e) => s + (e.netPay ?? 0), 0)
+            const totalDelta    = prevVisible.length > 0 ? sumNet - prevSumNet : null
             return (
               <tfoot>
                 <tr className="bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold border-t-2 border-zinc-200 dark:border-zinc-700">
@@ -288,6 +399,15 @@ export default function PayrollPage() {
                   <td className="px-4 py-3 text-right text-emerald-600">{formatMoney(sumIncome)}</td>
                   <td className="px-4 py-3 text-right text-red-500">{formatMoney(sumDeductions)}</td>
                   <td className="px-4 py-3 text-right">{formatMoney(sumNet)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {totalDelta !== null && (
+                      <span className={`text-xs font-medium ${
+                        totalDelta > 0 ? "text-emerald-600" : totalDelta < 0 ? "text-red-500" : "text-zinc-400"
+                      }`}>
+                        {totalDelta > 0 ? "+" : ""}{formatMoney(totalDelta)}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3" colSpan={2} />
                 </tr>
               </tfoot>

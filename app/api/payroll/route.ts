@@ -17,6 +17,20 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(items)
 }
 
+/** DELETE /api/payroll?month=YYYY-MM — admin batch-delete all entries for a month */
+export async function DELETE(req: NextRequest) {
+  const { searchParams } = req.nextUrl
+  const month = searchParams.get("month")?.trim() ?? ""
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return NextResponse.json({ error: "month required (YYYY-MM)" }, { status: 400 })
+  }
+
+  const client = await clientPromise
+  const col    = client.db(DB).collection(COLL)
+  const result = await col.deleteMany({ month })
+  return NextResponse.json({ deleted: result.deletedCount })
+}
+
 export async function POST(req: NextRequest) {
   const body: PayrollEntry = await req.json()
   if (!body.contractCode || !body.month) {
