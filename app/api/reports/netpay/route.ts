@@ -12,13 +12,18 @@ export async function GET(req: NextRequest) {
   const db      = client.db(DB)
   const entries = await db.collection("payroll_entries").find({ month }).toArray()
   const drivers = await db.collection("drivers").find({ status: "active" }).sort({ contractCode: 1 }).toArray()
+  const [yearStr, monthStr] = month.split("-")
+  const year = parseInt(yearStr)
+  const mon  = parseInt(monthStr)
+  const startStr = `${yearStr}-${monthStr.padStart(2, "0")}-01`
+  const nextYear = mon === 12 ? year + 1 : year
+  const nextMon  = mon === 12 ? 1 : mon + 1
+  const endStr   = `${nextYear}-${String(nextMon).padStart(2, "0")}-01`
+
   const tripAgg = await db.collection("trips").aggregate([
     {
       $match: {
-        date: {
-          $gte: new Date(Number(month.split("-")[0]), Number(month.split("-")[1]) - 1, 1),
-          $lt:  new Date(Number(month.split("-")[0]), Number(month.split("-")[1]),     1),
-        },
+        date: { $gte: startStr, $lt: endStr },
       },
     },
     { $group: { _id: "$contractCode", tripCount: { $sum: 1 }, totalTripFee: { $sum: "$tripFee" } } },

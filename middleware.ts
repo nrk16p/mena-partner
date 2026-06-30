@@ -7,15 +7,15 @@ const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Allow auth API and login page through
   if (pathname.startsWith("/api/auth") || pathname === "/login") {
     return NextResponse.next()
   }
 
-  const sessionToken =
-    request.cookies.get("next-auth.session-token")?.value ??
-    request.cookies.get("__Secure-next-auth.session-token")?.value
+  // Verify JWT — getToken returns null for missing, expired, or tampered tokens
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
 
-  if (!sessionToken) {
+  if (!token) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -24,12 +24,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Write operations require admin role
-  if (!READ_METHODS.has(request.method) && pathname.startsWith("/api/")) {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-    if (token?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 })
-    }
+  // Write routes: admin only
+  if (!READ_METHODS.has(request.method) && token.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 })
   }
 
   return NextResponse.next()
