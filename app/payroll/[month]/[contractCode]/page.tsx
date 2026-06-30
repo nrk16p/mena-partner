@@ -45,10 +45,11 @@ export default function PayrollEntryPage() {
   const [form, setForm]     = useState<NumericFields & { workingDays: number; tripCount: number }>({
     workingDays: 0, tripCount: 0, ...ZERO_ENTRY,
   })
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState("")
-  const [isNew, setIsNew]     = useState(true)
-  const [prevEntry, setPrevEntry] = useState<PayrollEntry | null>(null)
+  const [saving, setSaving]         = useState(false)
+  const [error, setError]           = useState("")
+  const [isNew, setIsNew]           = useState(true)
+  const [prevEntry, setPrevEntry]   = useState<PayrollEntry | null>(null)
+  const [tripFeeTotal, setTripFeeTotal] = useState<number | null>(null)
 
   useEffect(() => {
     fetch(`/api/payroll/${month}/${contractCode}`)
@@ -57,14 +58,17 @@ export default function PayrollEntryPage() {
         if (d) {
           setForm(d)
           setIsNew(false)
-        } else {
-          fetch(`/api/trips?contractCode=${contractCode}&month=${month}`)
-            .then((r) => r.ok ? r.json() : null)
-            .then((trips: unknown[] | null) => {
-              if (Array.isArray(trips) && trips.length > 0) {
-                setForm((p) => ({ ...p, tripCount: trips.length }))
-              }
-            })
+        }
+      })
+
+    // Load trips for trip count + fee total reference
+    fetch(`/api/trips?contractCode=${encodeURIComponent(contractCode)}&month=${month}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((trips: Array<{ tripFee?: number }> | null) => {
+        if (Array.isArray(trips) && trips.length > 0) {
+          const total = trips.reduce((s, t) => s + (t.tripFee ?? 0), 0)
+          setTripFeeTotal(total)
+          setForm((p) => p.tripCount === 0 ? { ...p, tripCount: trips.length } : p)
         }
       })
 
@@ -155,6 +159,35 @@ export default function PayrollEntryPage() {
                 <p className={`font-semibold text-xs ${color}`}>{value}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trip fee reference card */}
+      {tripFeeTotal !== null && (
+        <div className={`mb-4 rounded-xl border px-5 py-3 ${
+          Math.abs(form.transportFee - tripFeeTotal) > 100
+            ? "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-700"
+            : "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-700"
+        }`}>
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">ข้อมูลจากรายเที่ยว ({form.tripCount} เที่ยว)</p>
+          <div className="flex items-center gap-6 text-sm">
+            <div>
+              <span className="text-zinc-500 text-xs">รวมค่าขนส่งจากเที่ยว</span>
+              <p className="font-bold text-blue-700 dark:text-blue-400">{formatMoney(tripFeeTotal)} บาท</p>
+            </div>
+            <div className="text-zinc-300">→</div>
+            <div>
+              <span className="text-zinc-500 text-xs">ค่าขนส่งที่กรอก</span>
+              <p className={`font-bold ${Math.abs(form.transportFee - tripFeeTotal) > 100 ? "text-amber-600" : "text-zinc-700 dark:text-zinc-300"}`}>
+                {formatMoney(form.transportFee)} บาท
+              </p>
+            </div>
+            {Math.abs(form.transportFee - tripFeeTotal) > 100 && (
+              <div className="ml-auto text-xs text-amber-600 font-medium">
+                ต่างกัน {formatMoney(Math.abs(form.transportFee - tripFeeTotal))} บาท
+              </div>
+            )}
           </div>
         </div>
       )}

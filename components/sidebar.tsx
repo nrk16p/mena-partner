@@ -2,17 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, Users, ClipboardList, Truck, BarChart3, ShieldCheck } from "lucide-react"
+import { FileText, Users, ClipboardList, Truck, BarChart3, ShieldCheck, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV = [
-  { href: "/",          label: "หน้าหลัก",      icon: BarChart3 },
-  { href: "/contracts", label: "สัญญาเช่าซื้อ",  icon: FileText },
-  { href: "/drivers",   label: "พนักงานขับรถ",   icon: Users },
-  { href: "/payroll",   label: "เงินเดือน",       icon: ClipboardList },
-  { href: "/trips",     label: "รายเที่ยว",       icon: Truck },
-  { href: "/reports",      label: "รายงาน",       icon: BarChart3 },
-  { href: "/promotions",  label: "โปรโมชั่น",    icon: ShieldCheck },
+  { href: "/",           label: "หน้าหลัก",     icon: Home },
+  { href: "/contracts",  label: "สัญญาเช่าซื้อ", icon: FileText },
+  { href: "/drivers",    label: "พนักงานขับรถ",  icon: Users },
+  { href: "/payroll",    label: "เงินเดือน",      icon: ClipboardList },
+  { href: "/trips",      label: "รายเที่ยว",      icon: Truck },
+  { href: "/reports",    label: "รายงาน",         icon: BarChart3 },
+  { href: "/promotions", label: "โปรโมชั่น",     icon: ShieldCheck },
 ]
 
 export function Sidebar() {
