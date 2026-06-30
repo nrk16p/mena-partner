@@ -7,7 +7,7 @@ import { Printer, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { formatMoney, formatMonth, computePayroll } from "@/lib/utils"
+import { formatMoney, formatMonth, computePayroll, prevMonth as getPrevMonth } from "@/lib/utils"
 import type { PayrollEntry } from "@/types"
 
 type NumericFields = Omit<PayrollEntry, "_id"|"contractCode"|"month"|"totalIncome"|"totalDeductions"|"netPay"|"createdAt"|"updatedAt">
@@ -69,13 +69,7 @@ export default function PayrollEntryPage() {
       })
 
     // Load previous month for comparison
-    const [yearStr, monthStr] = month.split("-")
-    const y = parseInt(yearStr)
-    const m = parseInt(monthStr)
-    const prevY = m === 1 ? y - 1 : y
-    const prevM = m === 1 ? 12 : m - 1
-    const prevMonth = `${prevY}-${String(prevM).padStart(2, "0")}`
-    fetch(`/api/payroll/${prevMonth}/${contractCode}`)
+    fetch(`/api/payroll/${getPrevMonth(month)}/${contractCode}`)
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d) setPrevEntry(d) })
   }, [month, contractCode])

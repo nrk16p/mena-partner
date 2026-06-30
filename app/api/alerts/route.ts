@@ -14,15 +14,20 @@ type Alert = {
 
 export async function GET() {
   const client = await clientPromise
-  const db = client.db(DB)
+  const db     = client.db(DB)
 
   const alerts: Alert[] = []
 
-  // 1. Latest month with payroll entries
+  // Latest month with payroll entries
   const months = await db.collection("payroll_entries").distinct("month")
   months.sort((a: string, b: string) => b.localeCompare(a))
   const latestMonth = months[0] as string | undefined
 
+  // Pre-load all driver names once (avoid N+1)
+  const allDrivers = await db.collection("drivers").find({}, { projection: { contractCode: 1, driverName: 1 } }).toArray()
+  const driverNameMap = Object.fromEntries(allDrivers.map((d) => [d.contractCode as string, d.driverName as string]))
+
+  // 1. Negative net pay in latest month
   if (latestMonth) {
     const negativeEntries = await db
       .collection("payroll_entries")
@@ -31,55 +36,39 @@ export async function GET() {
       .toArray()
 
     for (const e of negativeEntries) {
-      const driver = await db.collection("drivers").findOne(
-        { contractCode: e.contractCode },
-        { projection: { driverName: 1 } }
-      )
+      const code = e.contractCode as string
       alerts.push({
         type: "negative_pay",
         severity: "warning",
-        contractCode: e.contractCode as string,
-        driverName: (driver?.driverName as string) ?? e.contractCode,
+        contractCode: code,
+        driverName: driverNameMap[code] ?? code,
         message: `ยอดสุทธิติดลบ เดือน ${latestMonth}`,
         value: `${(e.netPay as number).toLocaleString("th-TH", { minimumFractionDigits: 0 })} บาท`,
       })
     }
   }
 
-  // 2. Insurance expired or expiring within 60 days
+  // 2. Insurance: expired or expiring within 60 days (single query with $or)
   const today = new Date().toISOString().slice(0, 10)
-  const in60 = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const in60  = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  const expiredContracts = await db
+  const insuranceContracts = await db
     .collection("contracts")
-    .find({ taxExpiryDate: { $lt: today } }, { projection: { contractCode: 1, driverName: 1, taxExpiryDate: 1 } })
+    .find(
+      { taxExpiryDate: { $lte: in60 } },
+      { projection: { contractCode: 1, driverName: 1, taxExpiryDate: 1 } }
+    )
     .sort({ taxExpiryDate: 1 })
     .toArray()
 
-  for (const c of expiredContracts) {
+  for (const c of insuranceContracts) {
+    const expired = (c.taxExpiryDate as string) < today
     alerts.push({
-      type: "insurance_expired",
-      severity: "critical",
+      type: expired ? "insurance_expired" : "insurance_expiring",
+      severity: expired ? "critical" : "warning",
       contractCode: c.contractCode as string,
       driverName: (c.driverName as string) ?? c.contractCode,
-      message: "ประกันภัย/ภาษีหมดอายุแล้ว",
-      value: c.taxExpiryDate as string,
-    })
-  }
-
-  const expiringContracts = await db
-    .collection("contracts")
-    .find({ taxExpiryDate: { $gte: today, $lte: in60 } }, { projection: { contractCode: 1, driverName: 1, taxExpiryDate: 1 } })
-    .sort({ taxExpiryDate: 1 })
-    .toArray()
-
-  for (const c of expiringContracts) {
-    alerts.push({
-      type: "insurance_expiring",
-      severity: "warning",
-      contractCode: c.contractCode as string,
-      driverName: (c.driverName as string) ?? c.contractCode,
-      message: "ประกันภัย/ภาษีใกล้หมดอายุ",
+      message: expired ? "ประกันภัย/ภาษีหมดอายุแล้ว" : "ประกันภัย/ภาษีใกล้หมดอายุ",
       value: c.taxExpiryDate as string,
     })
   }
@@ -100,24 +89,20 @@ export async function GET() {
   for (const cfg of configs) {
     const code = cfg.contractCode as string
     const used = repairMap[code] ?? 0
-    const pct = used / (cfg.repairBudget as number)
+    const pct  = used / (cfg.repairBudget as number)
     if (pct >= 0.9) {
-      const driver = await db.collection("drivers").findOne(
-        { contractCode: code },
-        { projection: { driverName: 1 } }
-      )
       alerts.push({
         type: "repair_budget_critical",
         severity: pct >= 1.0 ? "critical" : "warning",
         contractCode: code,
-        driverName: (driver?.driverName as string) ?? code,
+        driverName: driverNameMap[code] ?? code,
         message: `โปร 2 วงเงินซ่อมใกล้เต็ม (${Math.round(pct * 100)}%)`,
         value: `คงเหลือ ${((cfg.repairBudget as number) - used).toLocaleString("th-TH", { maximumFractionDigits: 0 })} บาท`,
       })
     }
   }
 
-  // Sort: critical first, then by severity
+  // Sort: critical first
   const severityOrder = { critical: 0, warning: 1, info: 2 }
   alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
 

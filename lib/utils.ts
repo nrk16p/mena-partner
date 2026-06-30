@@ -18,6 +18,21 @@ export function formatMonth(yyyyMM: string): string {
   return `${THAI_MONTHS[month - 1]} ${thaiYear}`
 }
 
+/** Format ISO date string to DD/MM/BBBB (Thai Buddhist year) */
+export function formatDate(isoDate: string | undefined | null): string {
+  if (!isoDate) return "-"
+  const [year, month, day] = isoDate.slice(0, 10).split("-").map(Number)
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year + 543}`
+}
+
+/** Return the previous YYYY-MM */
+export function prevMonth(yyyyMM: string): string {
+  const [y, m] = yyyyMM.split("-").map(Number)
+  const py = m === 1 ? y - 1 : y
+  const pm = m === 1 ? 12 : m - 1
+  return `${py}-${String(pm).padStart(2, "0")}`
+}
+
 export function computePayroll(
   fields: PayrollIncomeFields & PayrollDeductionFields
 ): PayrollComputed {

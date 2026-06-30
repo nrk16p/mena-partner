@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { formatMoney } from "@/lib/utils"
+import { formatMoney, formatDate } from "@/lib/utils"
 import type { Contract } from "@/types"
 
 type FieldSpec = { key: keyof Contract; label: string; type?: string; readOnly?: boolean }
@@ -149,12 +149,12 @@ export default function ContractDetailPage() {
             </div>
             <div>
               <p className="text-xs text-zinc-400 mb-1">วันต่อล่าสุด</p>
-              <p className="text-sm font-medium">{form.taxRenewalDate ?? "-"}</p>
+              <p className="text-sm font-medium">{formatDate(form.taxRenewalDate)}</p>
             </div>
             <div>
               <p className="text-xs text-zinc-400 mb-1">วันหมดอายุ</p>
               <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "text-red-600" : ""}`}>
-                {form.taxExpiryDate ?? "-"}
+                {formatDate(form.taxExpiryDate)}
               </p>
             </div>
             <div>

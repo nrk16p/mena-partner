@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatMoney, formatMonth, computePayroll } from "@/lib/utils"
+import { formatMoney, formatMonth, formatDate, prevMonth, computePayroll } from "@/lib/utils"
 
 describe("formatMoney", () => {
   it("formats positive number with Thai locale", () => {
@@ -19,6 +19,31 @@ describe("formatMonth", () => {
   })
   it("converts Jan", () => {
     expect(formatMonth("2026-01")).toBe("ม.ค. 2569")
+  })
+})
+
+describe("formatDate", () => {
+  it("formats ISO date to Thai DD/MM/BBBB", () => {
+    expect(formatDate("2026-06-30")).toBe("30/06/2569")
+  })
+  it("returns - for null/undefined", () => {
+    expect(formatDate(null)).toBe("-")
+    expect(formatDate(undefined)).toBe("-")
+  })
+  it("handles January correctly", () => {
+    expect(formatDate("2026-01-01")).toBe("01/01/2569")
+  })
+})
+
+describe("prevMonth", () => {
+  it("returns previous month", () => {
+    expect(prevMonth("2026-06")).toBe("2026-05")
+  })
+  it("wraps from January to December of previous year", () => {
+    expect(prevMonth("2026-01")).toBe("2025-12")
+  })
+  it("returns previous month with zero-padding", () => {
+    expect(prevMonth("2026-10")).toBe("2026-09")
   })
 })
 
