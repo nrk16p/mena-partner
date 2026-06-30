@@ -199,12 +199,10 @@ export default function TripsPage() {
                 <td className="px-4 py-3 text-right">{formatMoney(t.tripFee)}</td>
                 {session?.user?.role === "admin" && (
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(t._id!)}
-                      className="text-xs text-red-500 hover:underline"
-                    >
-                      ลบ
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link href={`/trips/${t._id}`} className="text-xs text-zinc-500 hover:underline">แก้ไข</Link>
+                      <button onClick={() => handleDelete(t._id!)} className="text-xs text-red-500 hover:underline">ลบ</button>
+                    </div>
                   </td>
                 )}
               </tr>
