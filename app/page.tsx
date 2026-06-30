@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { FileText, Users, ClipboardList, Truck, BarChart3, ShieldCheck, TrendingUp, TrendingDown } from "lucide-react"
+import { FileText, Users, ClipboardList, Truck, BarChart3, ShieldCheck, TrendingUp, TrendingDown, AlertTriangle, AlertCircle } from "lucide-react"
 import { formatMoney, formatMonth } from "@/lib/utils"
+
+type Alert = {
+  type: string
+  severity: "critical" | "warning" | "info"
+  contractCode: string
+  driverName: string
+  message: string
+  value?: string
+}
 
 type Summary = {
   totalDrivers: number
@@ -35,6 +44,7 @@ export default function DashboardPage() {
   const [months, setMonths]           = useState<string[]>([])
   const [summary, setSummary]         = useState<Summary | null>(null)
   const [topRows, setTopRows]         = useState<TopRow[]>([])
+  const [alerts, setAlerts]           = useState<Alert[]>([])
   const [driverCount, setDriverCount] = useState(0)
   const [totalTrips, setTotalTrips]   = useState(0)
   const [loading, setLoading]         = useState(true)
@@ -51,6 +61,10 @@ export default function DashboardPage() {
     fetch("/api/drivers?status=active")
       .then((r) => r.ok ? r.json() : [])
       .then((d: unknown[]) => setDriverCount(Array.isArray(d) ? d.length : 0))
+      .catch(() => {})
+    fetch("/api/alerts")
+      .then((r) => r.ok ? r.json() : [])
+      .then((a: Alert[]) => setAlerts(Array.isArray(a) ? a : []))
       .catch(() => {})
   }, [])
 
@@ -128,6 +142,47 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-500 mb-3 uppercase tracking-wide flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            แจ้งเตือน ({alerts.length})
+          </h2>
+          <div className="space-y-2">
+            {alerts.slice(0, 8).map((a, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-sm ${
+                  a.severity === "critical"
+                    ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900"
+                    : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900"
+                }`}
+              >
+                <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${a.severity === "critical" ? "text-red-500" : "text-amber-500"}`} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium">{a.contractCode}</span>
+                  <span className="text-zinc-500 mx-1">·</span>
+                  <span className="text-zinc-600 dark:text-zinc-300">{a.driverName}</span>
+                  <span className="text-zinc-400 mx-1">·</span>
+                  <span>{a.message}</span>
+                  {a.value && <span className="ml-1 font-semibold">{a.value}</span>}
+                </div>
+                <Link
+                  href={`/contracts?q=${a.contractCode}`}
+                  className="text-xs text-emerald-600 hover:underline shrink-0"
+                >
+                  ดู →
+                </Link>
+              </div>
+            ))}
+            {alerts.length > 8 && (
+              <p className="text-xs text-zinc-400 pl-4">...และอีก {alerts.length - 8} รายการ</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Quick nav */}
       <div>
