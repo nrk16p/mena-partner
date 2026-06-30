@@ -95,3 +95,54 @@ export interface PayrollComputed {
   totalDeductions: number
   netPay: number
 }
+
+export interface PromoConfig {
+  _id?: string
+  contractCode?: string
+  licensePlate: string
+  repairBudget: number
+  pmOilCost: number
+  annualPmCap: number
+  createdAt?: string
+}
+
+export interface RepairClaim {
+  _id?: string
+  contractCode: string
+  date: string
+  description: string
+  amount: number
+  createdAt?: string
+}
+
+export interface PmRecord {
+  _id?: string
+  contractCode: string
+  year: number
+  type: "PM1" | "PM2"
+  date: string
+  amount: number
+  notes: string
+  createdAt?: string
+}
+
+export interface PromoSummaryRow {
+  contractCode: string
+  licensePlate: string
+  driverName: string
+  truckNumber: string
+  repairBudget: number
+  repairUsed: number
+  repairRemaining: number
+  annualPmCap: number
+  pmUsedThisYear: number
+  pmRemainingThisYear: number
+  pm1UsedThisYear: boolean
+  pm2UsedThisYear: boolean
+}
+
+export interface PromoDetail extends PromoSummaryRow {
+  pmOilCost: number
+  repairClaims: RepairClaim[]
+  pmRecords: PmRecord[]
+}
