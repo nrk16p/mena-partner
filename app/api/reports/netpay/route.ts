@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
     {
       $match: {
         date: {
-          $gte: new Date(Number(month.split("-")[0]), Number(month.split("-")[1]) - 1, 1).toISOString(),
-          $lt:  new Date(Number(month.split("-")[0]), Number(month.split("-")[1]),     1).toISOString(),
+          $gte: new Date(Number(month.split("-")[0]), Number(month.split("-")[1]) - 1, 1),
+          $lt:  new Date(Number(month.split("-")[0]), Number(month.split("-")[1]),     1),
         },
       },
     },
