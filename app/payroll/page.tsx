@@ -2,28 +2,24 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { Search } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { formatMonth, formatMoney } from "@/lib/utils"
 import type { Driver, PayrollEntry } from "@/types"
 
-function monthOptions() {
-  const now  = new Date()
-  const opts = []
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-    opts.push({ value: v, label: formatMonth(v) })
-  }
-  return opts
-}
-
 export default function PayrollPage() {
-  const options             = monthOptions()
-  const [month, setMonth]   = useState(options[0].value)
-  const [drivers, setDrivers] = useState<Driver[]>([])
-  const [entries, setEntries] = useState<PayrollEntry[]>([])
-  const [loading, setLoading] = useState(false)
+  const [months, setMonths]     = useState<string[]>([])
+  const [month, setMonth]       = useState<string | null>(null)
+  const [drivers, setDrivers]   = useState<Driver[]>([])
+  const [entries, setEntries]   = useState<PayrollEntry[]>([])
+  const [q, setQ]               = useState("")
+  const [loading, setLoading]   = useState(false)
 
   useEffect(() => {
+    fetch("/api/payroll/months")
+      .then((r) => r.ok ? r.json() : [])
+      .then((ms: string[]) => { setMonths(ms); if (ms.length > 0) setMonth(ms[0]) })
+      .catch(() => {})
     fetch("/api/drivers?status=active")
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setDrivers(Array.isArray(d) ? d : []))
@@ -35,26 +31,51 @@ export default function PayrollPage() {
     setLoading(true)
     fetch(`/api/payroll?month=${month}`)
       .then((r) => r.ok ? r.json() : [])
-      .then((d) => { setEntries(Array.isArray(d) ? d : []) })
+      .then((d) => setEntries(Array.isArray(d) ? d : []))
       .catch(() => setEntries([]))
       .finally(() => setLoading(false))
   }, [month])
 
   const entryMap = Object.fromEntries(entries.map((e) => [e.contractCode, e]))
 
+  const filtered = q
+    ? drivers.filter((d) =>
+        d.contractCode.toLowerCase().includes(q.toLowerCase()) ||
+        d.driverName.toLowerCase().includes(q.toLowerCase()) ||
+        (d.plant ?? "").toLowerCase().includes(q.toLowerCase())
+      )
+    : drivers
+
+  const recorded = entries.length
+  const totalNetPay = entries.reduce((s, e) => s + (e.netPay ?? 0), 0)
+
   return (
     <div>
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-4">
         <div>
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">เงินเดือน</h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            บันทึกแล้ว {recorded} / {drivers.length} คน
+            {recorded > 0 && <> · สุทธิรวม <span className="text-zinc-600 font-medium">{formatMoney(totalNetPay)}</span></>}
+          </p>
         </div>
         <select
-          value={month}
+          value={month ?? ""}
           onChange={(e) => setMonth(e.target.value)}
           className="ml-auto rounded-lg border border-zinc-200 px-3 py-2 text-sm bg-white dark:bg-zinc-900 dark:border-zinc-700"
         >
-          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {months.map((m) => <option key={m} value={m}>{formatMonth(m)}</option>)}
         </select>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <Search className="w-4 h-4 text-zinc-400" />
+        <Input
+          placeholder="ค้นหา รหัส / ชื่อ / แพล้นท์"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="max-w-xs"
+        />
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
@@ -74,7 +95,9 @@ export default function PayrollPage() {
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
-            ) : drivers.map((d) => {
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
+            ) : filtered.map((d) => {
               const entry = entryMap[d.contractCode]
               return (
                 <tr key={d._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
@@ -87,7 +110,7 @@ export default function PayrollPage() {
                   <td className="px-4 py-3 text-right text-red-500">
                     {entry ? formatMoney(entry.totalDeductions) : "-"}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold">
+                  <td className={`px-4 py-3 text-right font-semibold ${entry && entry.netPay < 0 ? "text-red-600" : ""}`}>
                     {entry ? formatMoney(entry.netPay) : "-"}
                   </td>
                   <td className="px-4 py-3 text-center">

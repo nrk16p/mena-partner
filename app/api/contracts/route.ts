@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
       { driverName:   { $regex: q, $options: "i" } },
       { licensePlate: { $regex: q, $options: "i" } },
       { truckNumber:  { $regex: q, $options: "i" } },
+      { phone:        { $regex: q, $options: "i" } },
+      { plant:        { $regex: q, $options: "i" } },
     ]
   }
   if (status) filter.status = status

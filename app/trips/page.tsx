@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
 import type { Trip } from "@/types"
 
-function monthOptions() {
+function buildMonthOptions() {
   const now = new Date()
   const opts = []
   for (let i = 0; i < 12; i++) {
@@ -22,12 +22,21 @@ function monthOptions() {
 
 export default function TripsPage() {
   const { data: session }   = useSession()
-  const options             = monthOptions()
+  const options             = buildMonthOptions()
   const [month, setMonth]   = useState(options[0].value)
   const [q, setQ]           = useState("")
   const [plant, setPlant]   = useState("")
   const [items, setItems]   = useState<Trip[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Default to latest month with data
+  useEffect(() => {
+    fetch("/api/payroll/months")
+      .then((r) => r.ok ? r.json() : [])
+      .then((ms: string[]) => { if (ms.length > 0) setMonth(ms[0]) })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams({ month })

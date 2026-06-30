@@ -38,7 +38,7 @@ client = MongoClient(MONGO_URI)
 db     = client[DB_NAME]
 now    = datetime.now(timezone.utc)
 
-wb = openpyxl.load_workbook(EXCEL_PATH, read_only=True)
+wb = openpyxl.load_workbook(EXCEL_PATH, read_only=True, data_only=True)
 ws = wb["Summary"]
 
 rows = [r for r in ws.iter_rows(values_only=True) if any(c is not None for c in r)]
@@ -68,7 +68,7 @@ for row in rows:
     other_income_no_wht  = f(row[13])
     fuel                 = f(row[14])
     gps                  = f(row[15])
-    repair_in_house      = f(row[16])
+    repair_in_house      = max(0.0, f(row[16]))  # clamp float rounding artifacts
     repair_outside       = f(row[17])
     mgmt_fee             = f(row[18])
     labor                = f(row[19])
@@ -127,6 +127,16 @@ if ops:
 
 if skipped:
     print(f"Skipped: {skipped}")
+
+# Spot-check MTL003 (expected: transportFee≈79799, fuel≈38999, workingDays=31, tripCount=83)
+sample = db["payroll_entries"].find_one({"contractCode": "MTL003", "month": MONTH}, {"_id": 0})
+if sample:
+    print(f"\nSpot-check MTL003:")
+    print(f"  workingDays={sample['workingDays']} tripCount={sample['tripCount']}")
+    print(f"  transportFee={sample['transportFee']} fuel={sample['fuel']}")
+    print(f"  totalIncome={sample['totalIncome']} totalDeductions={sample['totalDeductions']} netPay={sample['netPay']}")
+else:
+    print("Spot-check: MTL003 not found")
 
 client.close()
 print("Done.")
