@@ -88,6 +88,7 @@ export default function ContractDetailPage() {
 
   if (!form) return <div className="text-zinc-400 text-sm">กำลังโหลด...</div>
 
+  const today = new Date().toISOString().slice(0, 10)
   const paid = form.totalPrice && form.downPayment && form.totalInstallments && form.monthlyInstallment
     ? form.downPayment + form.monthlyInstallment * form.totalInstallments
     : null
@@ -163,13 +164,13 @@ export default function ContractDetailPage() {
       {/* Insurance info card — editable for admins */}
       {(form.insurer || isAdmin) && (
         <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${
-          form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10)
+          form.taxExpiryDate && form.taxExpiryDate < today
             ? "border-red-300 dark:border-red-800"
             : "border-zinc-200 dark:border-zinc-800"
         }`}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ข้อมูลประกันภัย / ภาษี</h2>
-            {form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) && (
+            {form.taxExpiryDate && form.taxExpiryDate < today && (
               <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">หมดอายุแล้ว</span>
             )}
           </div>
@@ -205,7 +206,7 @@ export default function ContractDetailPage() {
                   type="date"
                   value={String(form.taxExpiryDate ?? "")}
                   onChange={(e) => setForm((p) => p ? { ...p, taxExpiryDate: e.target.value } : p)}
-                  className={form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "border-red-400 text-red-600" : ""}
+                  className={form.taxExpiryDate && form.taxExpiryDate < today ? "border-red-400 text-red-600" : ""}
                 />
               </div>
               <div className="space-y-1">
@@ -245,7 +246,7 @@ export default function ContractDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-zinc-400 mb-1">วันหมดอายุ</p>
-                <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < new Date().toISOString().slice(0,10) ? "text-red-600" : ""}`}>
+                <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < today ? "text-red-600" : ""}`}>
                   {formatDate(form.taxExpiryDate)}
                 </p>
               </div>

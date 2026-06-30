@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Printer, Copy, Trash2 } from "lucide-react"
@@ -97,13 +97,16 @@ export default function PayrollEntryPage() {
 
   const computed = computePayroll(form as Parameters<typeof computePayroll>[0])
 
-  // Ctrl+S keyboard shortcut to save
+  // Keep a ref to the latest doSave so the keyboard handler never has a stale closure
+  const doSaveRef = useRef(doSave)
+  useEffect(() => { doSaveRef.current = doSave })
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault()
-      doSave().then((ok) => { if (ok) router.push("/payroll") })
+      doSaveRef.current().then((ok) => { if (ok) router.push("/payroll") })
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router])
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown)
