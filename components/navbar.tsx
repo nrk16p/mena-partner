@@ -12,7 +12,6 @@ export function Navbar() {
   const [isDark, setIsDark]   = useState(false)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(document.documentElement.classList.contains("dark"))
   }, [])
 
@@ -33,25 +32,39 @@ export function Navbar() {
   }
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
-      <div />
-      <div className="flex items-center gap-3">
-        {criticalCount > 0 && (
-          <Link href="/" className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700">
-            <AlertCircle className="w-4 h-4" />
-            <span className="font-semibold">{criticalCount} critical</span>
-          </Link>
-        )}
-        {session?.user && (
-          <span className="text-xs text-zinc-500">{session.user.name ?? session.user.email}</span>
-        )}
-        <Button variant="ghost" size="sm" onClick={toggleTheme} title={isDark ? "สลับโหมดสว่าง" : "สลับโหมดมืด"}>
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/login" })}>
-          <LogOut className="w-4 h-4" />
-        </Button>
-      </div>
+    <header className="flex items-center justify-end gap-2 h-11 px-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+      {criticalCount > 0 && (
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 mr-2 text-[11px] font-semibold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-md px-2 py-1"
+        >
+          <AlertCircle className="w-3 h-3" />
+          {criticalCount} critical
+        </Link>
+      )}
+      {session?.user && (
+        <span className="text-[11px] text-zinc-400 mr-1 hidden sm:block truncate max-w-[180px]">
+          {session.user.email ?? session.user.name}
+        </span>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleTheme}
+        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+        title={isDark ? "สลับโหมดสว่าง" : "สลับโหมดมืด"}
+      >
+        {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+        title="ออกจากระบบ"
+      >
+        <LogOut className="w-3.5 h-3.5" />
+      </Button>
     </header>
   )
 }
