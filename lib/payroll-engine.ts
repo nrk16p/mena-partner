@@ -23,6 +23,8 @@ export interface PayrollResult {
   installment: number
   repairInstallment: number
   downPaymentInstallment: number
+  otherDeductWHT: number
+  otherDeductNoWHT: number
   totalIncome: number
   totalDeductions: number
   netPay: number
@@ -89,13 +91,16 @@ export async function calculatePayrollEntry(
   const ot               = (adjRec?.ot as number) ?? 0
   const otherIncomeWHT   = (adjRec?.otherIncomeWHT as number) ?? 0
   const otherIncomeNoWHT = (adjRec?.otherIncomeNoWHT as number) ?? 0
+  const otherDeductWHT   = (adjRec?.otherDeductWHT as number) ?? 0
+  const otherDeductNoWHT = (adjRec?.otherDeductNoWHT as number) ?? 0
   const downPaymentInstallment = 0
 
   const totalIncome = transportFee + ot + otherIncomeWHT + otherIncomeNoWHT
   const totalDeductions =
     fuel + gps + repairInHouse + repairOutside + mgmtFee8pct +
     labor + tire + tirePatch + carWash +
-    taxInsurance + installment + repairInstallment + downPaymentInstallment
+    taxInsurance + installment + repairInstallment + downPaymentInstallment +
+    otherDeductWHT + otherDeductNoWHT
 
   return {
     contractCode,
@@ -119,6 +124,8 @@ export async function calculatePayrollEntry(
     installment,
     repairInstallment,
     downPaymentInstallment,
+    otherDeductWHT,
+    otherDeductNoWHT,
     totalIncome: Math.round(totalIncome * 100) / 100,
     totalDeductions: Math.round(totalDeductions * 100) / 100,
     netPay: Math.round((totalIncome - totalDeductions) * 100) / 100,
