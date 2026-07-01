@@ -178,3 +178,74 @@ export interface PromoDetail extends PromoSummaryRow {
   repairClaims: RepairClaim[]
   pmRecords: PmRecord[]
 }
+
+export interface GpsConfig {
+  _id?: string
+  contractCode: string
+  truckNumber: string
+  licensePlate: string
+  vendor: string
+  installDate?: string
+  boxNumber: string
+  chassisNumber: string
+  startDate?: string
+  fleet: string
+  plant: string
+  monthlyFee: number
+}
+
+export interface InstallmentSchedule {
+  _id?: string
+  contractCode: string
+  monthlyAmount: number
+  updatedAt?: string
+}
+
+export interface FuelRecord {
+  _id?: string
+  contractCode: string
+  month: string
+  deductionAmount: number
+}
+
+export interface MonthlyAdjustment {
+  _id?: string
+  contractCode: string
+  month: string
+  otherIncomeWHT: number
+  otherIncomeNoWHT: number
+  otherDeductWHT: number
+  otherDeductNoWHT: number
+  note?: string
+  updatedAt?: string
+}
+
+export type MonthPhase = "draft" | "review" | "approved" | "locked"
+
+export interface MonthStatus {
+  _id?: string
+  month: string
+  phase: MonthPhase
+  updatedAt: string
+  updatedBy?: string
+  notes?: string
+}
+
+export interface RepairMonthly {
+  _id?: string
+  contractCode: string
+  month: string
+  driverName?: string
+  truckNumber?: string
+  licensePlate?: string
+  partsAmount: number
+  tireAmount: number
+  tirePatchAmount: number
+  cleaningAmount: number
+  outsideRepairAmount: number
+  managementFee: number
+  laborAmount: number
+  totalRepair: number
+  liabilityTotal?: number
+  liabilityThisMonth?: number
+}

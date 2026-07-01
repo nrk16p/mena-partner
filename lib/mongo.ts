@@ -36,6 +36,11 @@ async function connect(): Promise<MongoClient> {
     db.collection("debt_acceptances").createIndex({ debtAcceptanceNo: 1 }, { unique: true }),
     db.collection("repair_monthly").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
     db.collection("repair_monthly").createIndex({ month: 1 }),
+    db.collection("gps_config").createIndex({ contractCode: 1 }, { unique: true }),
+    db.collection("installment_schedule").createIndex({ contractCode: 1 }, { unique: true }),
+    db.collection("fuel_records").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
+    db.collection("monthly_adjustments").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
+    db.collection("month_status").createIndex({ month: 1 }, { unique: true }),
   ]).catch(() => { /* non-fatal: index creation errors don't block the app */ })
   return client
 }

@@ -198,6 +198,14 @@ export default function PayrollPage() {
           )}
           {month && recorded > 0 && (
             <Link
+              href={`/payroll/${month}`}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
+            >
+              สรุปรอบเดือน
+            </Link>
+          )}
+          {month && recorded > 0 && (
+            <Link
               href={`/payroll/${month}/print-all`}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
             >
