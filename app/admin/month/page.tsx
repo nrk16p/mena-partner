@@ -1,28 +1,37 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { Lock, CheckCircle, FileEdit, Eye, Upload, Calculator, ArrowRight } from "lucide-react"
+import {
+  Lock, CheckCircle, FileEdit, Eye, Upload, Calculator,
+  ArrowRight, AlertTriangle, Truck, Fuel, Wrench, SlidersHorizontal,
+  TrendingDown, ChevronDown, ChevronUp,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { formatMonth } from "@/lib/utils"
+import { formatMonth, formatMoney } from "@/lib/utils"
 
 type Phase = "draft" | "review" | "approved" | "locked"
 
-interface MonthStatus {
+interface MonthStatus { month: string; phase: Phase; updatedAt: string; updatedBy?: string }
+
+interface MonthSummary {
   month: string
-  phase: Phase
-  updatedAt: string
-  updatedBy?: string
+  checklist: {
+    trips:       { count: number; ok: boolean }
+    fuel:        { count: number; ok: boolean }
+    repair:      { count: number; ok: boolean }
+    adjustments: { count: number; total: number }
+  }
+  summary: { driverCount: number; activeDrivers: number; totalIncome: number; totalNetPay: number }
+  problems: {
+    noFuel:      { contractCode: string; driverName: string }[]
+    negativePay: { contractCode: string; driverName: string; netPay: number }[]
+  }
 }
 
 const PHASE_ORDER: Phase[] = ["draft", "review", "approved", "locked"]
-const PHASE_LABEL: Record<Phase, string> = {
-  draft:    "ร่าง",
-  review:   "ตรวจสอบ",
-  approved: "อนุมัติ",
-  locked:   "ล็อค",
-}
+const PHASE_LABEL: Record<Phase, string> = { draft: "ร่าง", review: "ตรวจสอบ", approved: "อนุมัติ", locked: "ล็อค" }
 const PHASE_COLOR: Record<Phase, string> = {
   draft:    "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
   review:   "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
@@ -40,9 +49,11 @@ export default function AdminMonthPage() {
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === "admin"
 
-  const [statuses, setStatuses] = useState<MonthStatus[]>([])
+  const [statuses, setStatuses]       = useState<MonthStatus[]>([])
   const [payrollMonths, setPayrollMonths] = useState<string[]>([])
-  const [advancing, setAdvancing] = useState<string | null>(null)
+  const [summaries, setSummaries]     = useState<Record<string, MonthSummary>>({})
+  const [expanded, setExpanded]       = useState<string | null>(null)
+  const [advancing, setAdvancing]     = useState<string | null>(null)
   const [calculating, setCalculating] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,18 +63,35 @@ export default function AdminMonthPage() {
     ]).then(([s, m]) => {
       setStatuses(s)
       setPayrollMonths(m)
+      // Auto-expand the most recent month
+      const all = Array.from(new Set([...s.map((x: MonthStatus) => x.month), ...m])).sort((a: string, b: string) => b.localeCompare(a))
+      if (all.length > 0) setExpanded(all[0] as string)
     })
   }, [])
 
-  // Merge known months from payroll with status docs
-  const monthSet = new Set([
-    ...statuses.map((s) => s.month),
-    ...payrollMonths,
-  ])
-  const months = Array.from(monthSet).sort((a, b) => b.localeCompare(a))
+  const months = Array.from(new Set([...statuses.map((s) => s.month), ...payrollMonths]))
+    .sort((a, b) => b.localeCompare(a))
 
   function getStatus(month: string): MonthStatus {
     return statuses.find((s) => s.month === month) ?? { month, phase: "draft", updatedAt: "" }
+  }
+
+  const loadSummary = useCallback(async (month: string) => {
+    if (summaries[month]) return
+    const r = await fetch(`/api/admin/month-summary?month=${month}`)
+    if (r.ok) {
+      const data = await r.json() as MonthSummary
+      setSummaries((prev) => ({ ...prev, [month]: data }))
+    }
+  }, [summaries])
+
+  function toggleExpand(month: string) {
+    if (expanded === month) {
+      setExpanded(null)
+    } else {
+      setExpanded(month)
+      loadSummary(month)
+    }
   }
 
   async function advance(month: string, phase: Phase) {
@@ -77,8 +105,8 @@ export default function AdminMonthPage() {
       })
       setStatuses((prev) => {
         const exists = prev.find((s) => s.month === month)
-        if (exists) return prev.map((s) => s.month === month ? { ...s, phase, updatedAt: new Date().toISOString() } : s)
-        return [...prev, { month, phase, updatedAt: new Date().toISOString() }]
+        const updated = { month, phase, updatedAt: new Date().toISOString(), updatedBy: session?.user?.email ?? "" }
+        return exists ? prev.map((s) => s.month === month ? updated : s) : [...prev, updated]
       })
     } finally {
       setAdvancing(null)
@@ -91,35 +119,32 @@ export default function AdminMonthPage() {
     try {
       const r = await fetch(`/api/payroll/calculate?month=${month}`, { method: "POST" })
       const data = await r.json()
-      alert(`คำนวณเสร็จ: อัปเดต ${data.updated} ราย, ข้ามไป ${data.skipped} ราย, ผิดพลาด ${data.errors} ราย`)
+      setSummaries((prev) => { const n = { ...prev }; delete n[month]; return n })
+      await loadSummary(month)
+      alert(`คำนวณเสร็จ: ${data.updated} ราย อัปเดต, ${data.skipped} ข้าม, ${data.errors} ผิดพลาด`)
     } finally {
       setCalculating(null)
     }
   }
 
-  if (!isAdmin) {
-    return <div className="p-8 text-zinc-400">เฉพาะผู้ดูแลระบบเท่านั้น</div>
-  }
+  if (!isAdmin) return <div className="p-8 text-zinc-400">เฉพาะผู้ดูแลระบบเท่านั้น</div>
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">จัดการรอบเดือน</h1>
-        <p className="text-sm text-zinc-500 mt-1">ควบคุมสถานะ ตรวจสอบ อนุมัติ และล็อคข้อมูลเงินเดือนรายเดือน</p>
+        <p className="text-sm text-zinc-500 mt-1">ตรวจสอบ อนุมัติ และล็อคข้อมูลเงินเดือนรายเดือน</p>
       </div>
 
-      {/* Quick actions */}
       <div className="flex gap-3 flex-wrap">
         <Link href="/import">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            นำเข้า Excel
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <Upload className="w-4 h-4" /> นำเข้า Excel
           </Button>
         </Link>
         <Link href="/payroll">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Eye className="w-4 h-4" />
-            ดูเงินเดือน
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <Eye className="w-4 h-4" /> ดูเงินเดือนทั้งหมด
           </Button>
         </Link>
       </div>
@@ -129,36 +154,109 @@ export default function AdminMonthPage() {
       ) : (
         <div className="space-y-3">
           {months.map((month) => {
-            const status = getStatus(month)
-            const idx    = PHASE_ORDER.indexOf(status.phase)
-            const next   = PHASE_ORDER[idx + 1] as Phase | undefined
+            const status   = getStatus(month)
+            const idx      = PHASE_ORDER.indexOf(status.phase)
+            const next     = PHASE_ORDER[idx + 1] as Phase | undefined
             const isLocked = status.phase === "locked"
+            const isOpen   = expanded === month
+            const smry     = summaries[month]
+
+            const problemCount = smry
+              ? smry.problems.noFuel.length + smry.problems.negativePay.length
+              : 0
 
             return (
-              <div
-                key={month}
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4"
-              >
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-base font-semibold text-zinc-800 dark:text-zinc-200 w-28">
+              <div key={month} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                {/* Header row */}
+                <div
+                  className="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                  onClick={() => toggleExpand(month)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 w-32 shrink-0">
                       {formatMonth(month)}
-                    </div>
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${PHASE_COLOR[status.phase]}`}>
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${PHASE_COLOR[status.phase]}`}>
                       {PHASE_ICON[status.phase]}
                       {PHASE_LABEL[status.phase]}
                     </span>
-                    {status.updatedBy && (
-                      <span className="text-xs text-zinc-400">{status.updatedBy}</span>
+                    {problemCount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                        <AlertTriangle className="w-3 h-3" /> {problemCount} ปัญหา
+                      </span>
+                    )}
+                    {smry && (
+                      <span className="text-xs text-zinc-400 hidden sm:block">
+                        {smry.summary.driverCount} คน · Net {formatMoney(smry.summary.totalNetPay)} บาท
+                      </span>
                     )}
                   </div>
+                  {isOpen ? <ChevronUp className="w-4 h-4 text-zinc-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />}
+                </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Phase pipeline visualization */}
-                    <div className="hidden sm:flex items-center gap-1 text-xs text-zinc-400 mr-2">
+                {/* Expanded detail */}
+                {isOpen && (
+                  <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-4 space-y-4">
+                    {/* Checklist */}
+                    {smry ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <CheckItem icon={<Truck className="w-4 h-4" />} label="รายเที่ยว" ok={smry.checklist.trips.ok} value={`${smry.checklist.trips.count.toLocaleString()} trips`} />
+                        <CheckItem icon={<Fuel className="w-4 h-4" />} label="เชื้อเพลิง" ok={smry.checklist.fuel.ok} value={`${smry.checklist.fuel.count} คน`} />
+                        <CheckItem icon={<Wrench className="w-4 h-4" />} label="ค่าซ่อม" ok={smry.checklist.repair.ok} value={`${smry.checklist.repair.count} คน`} />
+                        <CheckItem
+                          icon={<SlidersHorizontal className="w-4 h-4" />}
+                          label="รับ/หักอื่นๆ"
+                          ok={true}
+                          value={`${smry.checklist.adjustments.count}/${smry.checklist.adjustments.total} คน`}
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-xs text-zinc-400 animate-pulse">กำลังโหลดข้อมูล...</div>
+                    )}
+
+                    {/* Summary KPIs */}
+                    {smry && (
+                      <div className="grid grid-cols-3 gap-3">
+                        <KpiCard label="จำนวนคน" value={`${smry.summary.driverCount} / ${smry.summary.activeDrivers}`} />
+                        <KpiCard label="รายรับรวม" value={`฿${formatMoney(smry.summary.totalIncome)}`} />
+                        <KpiCard label="Net Pay รวม" value={`฿${formatMoney(smry.summary.totalNetPay)}`} />
+                      </div>
+                    )}
+
+                    {/* Problem drivers */}
+                    {smry && smry.problems.negativePay.length > 0 && (
+                      <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 p-3">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-400 mb-2">
+                          <TrendingDown className="w-3.5 h-3.5" /> Net pay ติดลบ
+                        </div>
+                        <div className="space-y-1">
+                          {smry.problems.negativePay.map((p) => (
+                            <div key={p.contractCode} className="flex items-center justify-between text-xs">
+                              <span className="text-red-700 dark:text-red-400">{p.contractCode} — {p.driverName}</span>
+                              <span className="font-mono text-red-600 font-semibold">{formatMoney(p.netPay)} บาท</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {smry && smry.problems.noFuel.length > 0 && (
+                      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-3">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">
+                          <AlertTriangle className="w-3.5 h-3.5" /> ไม่มีข้อมูลเชื้อเพลิง ({smry.problems.noFuel.length} คน)
+                        </div>
+                        <div className="text-xs text-amber-700 dark:text-amber-400">
+                          {smry.problems.noFuel.slice(0, 5).map((p) => p.contractCode).join(", ")}
+                          {smry.problems.noFuel.length > 5 && ` และอีก ${smry.problems.noFuel.length - 5} คน`}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Phase pipeline */}
+                    <div className="flex items-center gap-1 text-xs text-zinc-400">
                       {PHASE_ORDER.map((p, i) => (
                         <div key={p} className="flex items-center gap-1">
-                          <span className={`px-1.5 py-0.5 rounded ${i <= idx ? "text-emerald-600 font-medium" : "text-zinc-300"}`}>
+                          <span className={i <= idx ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-zinc-300 dark:text-zinc-600"}>
                             {PHASE_LABEL[p]}
                           </span>
                           {i < 3 && <ArrowRight className="w-3 h-3 text-zinc-300" />}
@@ -166,61 +264,78 @@ export default function AdminMonthPage() {
                       ))}
                     </div>
 
-                    <Link href={`/payroll?month=${month}`}>
-                      <Button variant="outline" size="sm">ดูเงินเดือน</Button>
-                    </Link>
-                    <Link href={`/adjustments/${month}`}>
-                      <Button variant="outline" size="sm">ปรับแต่ง</Button>
-                    </Link>
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Link href={`/payroll/${month}`}>
+                        <Button variant="outline" size="sm">ดูสลิปทั้งหมด</Button>
+                      </Link>
+                      <Link href={`/adjustments/${month}`}>
+                        <Button variant="outline" size="sm">ปรับรับ/หัก</Button>
+                      </Link>
 
-                    {!isLocked && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => calculate(month)}
-                        disabled={calculating === month}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/30"
-                      >
-                        <Calculator className="w-3.5 h-3.5 mr-1" />
-                        {calculating === month ? "คำนวณ..." : "คำนวณใหม่"}
-                      </Button>
-                    )}
+                      {!isLocked && (
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => calculate(month)}
+                          disabled={calculating === month}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/30"
+                        >
+                          <Calculator className="w-3.5 h-3.5 mr-1" />
+                          {calculating === month ? "คำนวณ..." : "คำนวณใหม่"}
+                        </Button>
+                      )}
 
-                    {next && (
-                      <Button
-                        size="sm"
-                        onClick={() => advance(month, next)}
-                        disabled={advancing === month}
-                        className={
-                          next === "locked"
-                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                            : "bg-blue-600 hover:bg-blue-700 text-white"
-                        }
-                      >
-                        {next === "review"    && <><Eye className="w-3.5 h-3.5 mr-1" />ส่งตรวจสอบ</>}
-                        {next === "approved"  && <><CheckCircle className="w-3.5 h-3.5 mr-1" />อนุมัติ</>}
-                        {next === "locked"    && <><Lock className="w-3.5 h-3.5 mr-1" />ล็อคข้อมูล</>}
-                      </Button>
-                    )}
+                      {next && (
+                        <Button
+                          size="sm"
+                          onClick={() => advance(month, next)}
+                          disabled={advancing === month}
+                          className={next === "locked" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}
+                        >
+                          {next === "review"   && <><Eye className="w-3.5 h-3.5 mr-1" />ส่งตรวจสอบ</>}
+                          {next === "approved" && <><CheckCircle className="w-3.5 h-3.5 mr-1" />อนุมัติ</>}
+                          {next === "locked"   && <><Lock className="w-3.5 h-3.5 mr-1" />ล็อคข้อมูล</>}
+                        </Button>
+                      )}
 
-                    {isLocked && idx > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => advance(month, PHASE_ORDER[idx - 1])}
-                        className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400"
-                        disabled={advancing === month}
-                      >
-                        ปลดล็อค
-                      </Button>
-                    )}
+                      {isLocked && idx > 0 && (
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => advance(month, PHASE_ORDER[idx - 1])}
+                          className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400"
+                          disabled={advancing === month}
+                        >
+                          ปลดล็อค
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function CheckItem({ icon, label, ok, value }: { icon: React.ReactNode; label: string; ok: boolean; value: string }) {
+  return (
+    <div className={`rounded-lg border p-3 ${ok ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20" : "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20"}`}>
+      <div className={`flex items-center gap-1.5 text-xs font-semibold mb-1 ${ok ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+        {icon} {label}
+      </div>
+      <div className={`text-xs ${ok ? "text-emerald-600 dark:text-emerald-500" : "text-red-500"}`}>{value}</div>
+    </div>
+  )
+}
+
+function KpiCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-3">
+      <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">{label}</div>
+      <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{value}</div>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { calculatePayrollEntry } from "@/lib/payroll-engine"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(docs)
 }
 
-/** PUT /api/adjustments — upsert one adjustment record */
+/** PUT /api/adjustments — upsert one adjustment, then recalculate payroll for that driver */
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || session.user?.role !== "admin") {
@@ -53,5 +54,15 @@ export async function PUT(req: NextRequest) {
     { upsert: true }
   )
 
-  return NextResponse.json({ ok: true })
+  // Recalculate payroll immediately after saving adjustment
+  const result = await calculatePayrollEntry(db, contractCode, month)
+  if (result) {
+    await db.collection("payroll_entries").updateOne(
+      { contractCode, month },
+      { $set: { ...result, updatedAt: now }, $setOnInsert: { createdAt: now } },
+      { upsert: true }
+    )
+  }
+
+  return NextResponse.json({ ok: true, netPay: result?.netPay ?? null })
 }

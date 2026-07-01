@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { Printer, ArrowLeft } from "lucide-react"
+import { Printer, ArrowLeft, SlidersHorizontal, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatMoney, formatMonth } from "@/lib/utils"
 import type { PayrollEntry, Driver } from "@/types"
@@ -79,7 +79,7 @@ export default function PayrollMonthPage() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={plantFilter}
             onChange={(e) => setPlantFilter(e.target.value)}
@@ -88,12 +88,22 @@ export default function PayrollMonthPage() {
             <option value="">ทุกแพลนท์</option>
             {plants.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
+          <Link href={`/adjustments/${month}`}>
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4" /> ปรับรับ/หัก
+            </Button>
+          </Link>
+          <Link href="/admin/month">
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" /> จัดการรอบ
+            </Button>
+          </Link>
           <Button
             onClick={() => window.print()}
             className="bg-zinc-800 hover:bg-zinc-900 text-white flex items-center gap-2"
+            size="sm"
           >
-            <Printer className="w-4 h-4" />
-            พิมพ์
+            <Printer className="w-4 h-4" /> พิมพ์
           </Button>
         </div>
       </div>

@@ -253,7 +253,7 @@ export default function ImportPage() {
               </div>
             )}
           </div>
-          <div className="flex justify-center gap-3 pt-2">
+          <div className="flex justify-center gap-3 pt-2 flex-wrap">
             <Button
               variant="outline"
               onClick={() => { setStep("upload"); setFile(null); setPreview([]); setResult(null); setMonth("") }}
@@ -261,10 +261,16 @@ export default function ImportPage() {
               นำเข้าใหม่
             </Button>
             <Button
-              onClick={() => window.location.href = `/payroll`}
+              variant="outline"
+              onClick={() => window.location.href = `/payroll/${month}`}
+            >
+              ดูสลิป {formatMonth(month)}
+            </Button>
+            <Button
+              onClick={() => window.location.href = "/admin/month"}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              ดูเงินเดือน {formatMonth(month)}
+              จัดการรอบเดือน →
             </Button>
           </div>
         </div>
