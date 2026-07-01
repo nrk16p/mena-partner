@@ -131,22 +131,23 @@ export default function AdminMonthPage() {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">จัดการรอบเดือน</h1>
-        <p className="text-sm text-zinc-500 mt-1">ตรวจสอบ อนุมัติ และล็อคข้อมูลเงินเดือนรายเดือน</p>
-      </div>
-
-      <div className="flex gap-3 flex-wrap">
-        <Link href="/import">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" /> นำเข้า Excel
-          </Button>
-        </Link>
-        <Link href="/payroll">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
-            <Eye className="w-4 h-4" /> ดูเงินเดือนทั้งหมด
-          </Button>
-        </Link>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium text-zinc-400 uppercase tracking-widest mb-1">Admin</p>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 leading-none">จัดการรอบเดือน</h1>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/import">
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <Upload className="w-3.5 h-3.5" /> นำเข้า Excel
+            </Button>
+          </Link>
+          <Link href="/payroll">
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <Eye className="w-3.5 h-3.5" /> ดูสลิป
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {months.length === 0 ? (
@@ -253,15 +254,28 @@ export default function AdminMonthPage() {
                     )}
 
                     {/* Phase pipeline */}
-                    <div className="flex items-center gap-1 text-xs text-zinc-400">
-                      {PHASE_ORDER.map((p, i) => (
-                        <div key={p} className="flex items-center gap-1">
-                          <span className={i <= idx ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-zinc-300 dark:text-zinc-600"}>
-                            {PHASE_LABEL[p]}
-                          </span>
-                          {i < 3 && <ArrowRight className="w-3 h-3 text-zinc-300" />}
-                        </div>
-                      ))}
+                    <div className="flex items-center gap-0">
+                      {PHASE_ORDER.map((p, i) => {
+                        const done    = i < idx
+                        const current = i === idx
+                        return (
+                          <div key={p} className="flex items-center">
+                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                              current
+                                ? "bg-emerald-500 text-white"
+                                : done
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600"
+                            }`}>
+                              {done && <CheckCircle className="w-3 h-3" />}
+                              {PHASE_LABEL[p]}
+                            </div>
+                            {i < PHASE_ORDER.length - 1 && (
+                              <ArrowRight className={`w-3 h-3 mx-1 ${i < idx ? "text-emerald-400" : "text-zinc-200 dark:text-zinc-700"}`} />
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
 
                     {/* Action buttons */}

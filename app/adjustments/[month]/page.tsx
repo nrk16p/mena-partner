@@ -100,50 +100,55 @@ export default function AdjustmentsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Link href={`/payroll/${month}`}>
-            <Button variant="outline" size="sm"><ArrowLeft className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-700">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
           </Link>
           <div>
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-zinc-400" />
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+              <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 leading-none">
                 รับ/หักอื่นๆ — {formatMonth(month)}
               </h1>
             </div>
-            <p className="text-xs text-zinc-500 mt-0.5">บันทึกแล้วระบบคำนวณเงินเดือนใหม่อัตโนมัติ</p>
+            <p className="text-xs text-zinc-400 mt-0.5">บันทึกแล้วระบบคำนวณ Net Pay ใหม่อัตโนมัติ</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/payroll/${month}`}>
-            <Button variant="outline" size="sm">ดูสลิปเงินเดือน →</Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs">ดูสลิป →</Button>
           </Link>
           <Link href="/admin/month">
-            <Button variant="outline" size="sm">จัดการรอบ →</Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs">จัดการรอบ →</Button>
           </Link>
         </div>
       </div>
 
-      <Input
-        placeholder="ค้นหารหัสหรือชื่อ..."
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        className="w-72"
-      />
-
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-auto">
+        {/* Card toolbar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+          <p className="text-xs font-semibold text-zinc-500">{filtered.length} ราย</p>
+          <Input
+            placeholder="ค้นหารหัส / ชื่อ..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="h-7 w-52 text-xs"
+          />
+        </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
-              <th className="px-4 py-3 text-left text-zinc-500 font-medium w-28">รหัส</th>
-              <th className="px-4 py-3 text-left text-zinc-500 font-medium">ชื่อ</th>
-              <th className="px-4 py-3 text-right text-zinc-500 font-medium">รับอื่นๆ WHT</th>
-              <th className="px-4 py-3 text-right text-zinc-500 font-medium">รับอื่นๆ NoWHT</th>
-              <th className="px-4 py-3 text-right text-zinc-500 font-medium">หักอื่นๆ WHT</th>
-              <th className="px-4 py-3 text-right text-zinc-500 font-medium">หักอื่นๆ NoWHT</th>
-              <th className="px-4 py-3 text-right text-zinc-500 font-medium">Net Pay</th>
-              {isAdmin && <th className="px-4 py-3 w-20" />}
+            <tr className="border-b border-zinc-100 dark:border-zinc-800">
+              <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider w-28">รหัส</th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ชื่อ</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">รับ WHT</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">รับ NoWHT</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">หัก WHT</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">หัก NoWHT</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Net Pay</th>
+              {isAdmin && <th className="px-4 py-2.5 w-16" />}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/60">
             {filtered.map((d) => {
               const isDirty  = !!edits[d.contractCode]
               const feedback = netPayResult[d.contractCode]
@@ -151,50 +156,50 @@ export default function AdjustmentsPage() {
               return (
                 <tr
                   key={d.contractCode}
-                  className={`border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 ${isDirty ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}
+                  className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 transition-colors ${isDirty ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
                 >
-                  <td className="px-4 py-2 font-mono text-xs text-zinc-500">{d.contractCode}</td>
-                  <td className="px-4 py-2 text-zinc-800 dark:text-zinc-200">
-                    <span>{d.driverName}</span>
+                  <td className="px-4 py-2 font-mono text-[11px] text-zinc-400">{d.contractCode}</td>
+                  <td className="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-200">
+                    {d.driverName}
                     {filled && !isDirty && (
                       <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 align-middle" title="มีข้อมูล" />
                     )}
                   </td>
                   {(["otherIncomeWHT", "otherIncomeNoWHT", "otherDeductWHT", "otherDeductNoWHT"] as (keyof Adjustment)[]).map((field) => (
-                    <td key={field} className="px-2 py-1 text-right">
+                    <td key={field} className="px-2 py-1.5 text-right">
                       {isAdmin ? (
                         <Input
                           type="number"
                           step="0.01"
                           value={fieldVal(d.contractCode, field) || ""}
                           onChange={(e) => setField(d.contractCode, field, e.target.value)}
-                          className="w-28 text-right text-sm h-7 px-2"
+                          className="w-24 text-right text-xs h-7 px-2 tabular-nums"
                           placeholder="0"
                         />
                       ) : (
-                        <span className="text-zinc-700 dark:text-zinc-300">
+                        <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">
                           {formatMoney(fieldVal(d.contractCode, field))}
                         </span>
                       )}
                     </td>
                   ))}
                   {/* Net pay feedback column */}
-                  <td className="px-4 py-2 text-right font-mono text-xs">
+                  <td className="px-4 py-2 text-right text-xs tabular-nums">
                     {feedback !== undefined && feedback !== null ? (
                       <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                         <CheckCircle2 className="w-3 h-3" />
                         {formatMoney(feedback)}
                       </span>
                     ) : (
-                      <span className="text-zinc-300 dark:text-zinc-600">—</span>
+                      <span className="text-zinc-300 dark:text-zinc-700">—</span>
                     )}
                   </td>
                   {isAdmin && (
-                    <td className="px-2 py-1 text-center">
+                    <td className="px-3 py-1.5 text-center">
                       <Button
                         size="sm"
-                        variant={isDirty ? "default" : "outline"}
-                        className={isDirty ? "bg-emerald-600 hover:bg-emerald-700 text-white h-7 w-12" : "h-7 w-12"}
+                        variant={isDirty ? "default" : "ghost"}
+                        className={isDirty ? "bg-emerald-600 hover:bg-emerald-700 text-white h-7 w-10 px-0" : "h-7 w-10 px-0 text-zinc-300"}
                         onClick={() => save(d.contractCode)}
                         disabled={!isDirty || saving === d.contractCode}
                       >
