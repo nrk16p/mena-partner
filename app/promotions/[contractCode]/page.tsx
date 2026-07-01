@@ -14,6 +14,7 @@ export default function PromoDetailPage() {
   const router = useRouter()
   const [data, setData]     = useState<PromoDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [repairMonthly, setRepairMonthly] = useState<Record<string, number | string> | null>(null)
 
   const [rDate, setRDate]   = useState("")
   const [rDesc, setRDesc]   = useState("")
@@ -31,9 +32,16 @@ export default function PromoDetailPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/promotions/${contractCode}`)
-      if (r.ok) setData(await r.json())
+      const [promoRes, repairRes] = await Promise.all([
+        fetch(`/api/promotions/${contractCode}`),
+        fetch(`/api/repair-monthly/${contractCode}`),
+      ])
+      if (promoRes.ok) setData(await promoRes.json())
       else setData(null)
+      if (repairRes.ok) {
+        const rm = await repairRes.json()
+        setRepairMonthly(rm)
+      }
     } catch { setData(null) }
     finally { setLoading(false) }
   }
@@ -121,6 +129,26 @@ export default function PromoDetailPage() {
             คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.repairRemaining)}</span>
           </p>
         </div>
+
+        {/* Repair monthly breakdown from Excel */}
+        {repairMonthly && (repairMonthly.totalRepair as number) > 0 && (
+          <div className="bg-zinc-50 dark:bg-zinc-800/40 rounded-lg px-4 py-3 space-y-2">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ค่าซ่อมจริง — {repairMonthly.month as string}</p>
+            <div className="grid grid-cols-4 gap-3">
+              {([
+                ["ค่าอะไหล่", repairMonthly.partsAmount as number, "text-zinc-700"],
+                ["ยาง", repairMonthly.tireAmount as number, "text-zinc-700"],
+                ["ค่าแรง", repairMonthly.laborAmount as number, "text-zinc-700"],
+                ["รวม", repairMonthly.totalRepair as number, "text-red-500 font-bold"],
+              ] as [string, number, string][]).map(([label, val, cls]) => (
+                <div key={label}>
+                  <p className="text-[10px] text-zinc-400 mb-0.5">{label}</p>
+                  <p className={`text-sm ${cls}`}>{val ? val.toLocaleString("th-TH", { maximumFractionDigits: 0 }) : "0"}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Repair history */}
         <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">

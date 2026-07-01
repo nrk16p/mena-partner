@@ -5,7 +5,7 @@ import { nextMonth } from "@/lib/utils"
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
 type Alert = {
-  type: "negative_pay" | "insurance_expired" | "insurance_expiring" | "repair_budget_critical" | "trip_fee_mismatch"
+  type: "negative_pay" | "insurance_expired" | "insurance_expiring" | "repair_budget_critical" | "trip_fee_mismatch" | "overdue_installment"
   severity: "critical" | "warning" | "info"
   contractCode: string
   driverName: string
@@ -139,6 +139,25 @@ export async function GET() {
         }
       }
     }
+  }
+
+  // 5. Overdue installments
+  const overdueContracts = await db
+    .collection("contracts")
+    .find({ overdueCount: { $gt: 0 } }, { projection: { contractCode: 1, driverName: 1, overdueCount: 1, overdueAmount: 1 } })
+    .sort({ overdueCount: -1 })
+    .toArray()
+
+  for (const c of overdueContracts) {
+    const code = c.contractCode as string
+    alerts.push({
+      type: "overdue_installment",
+      severity: (c.overdueCount as number) >= 2 ? "critical" : "warning",
+      contractCode: code,
+      driverName: (c.driverName as string) ?? driverNameMap[code] ?? code,
+      message: `ค้างชำระค่างวด ${c.overdueCount} งวด`,
+      value: `฿${(c.overdueAmount as number).toLocaleString("th-TH", { maximumFractionDigits: 0 })}`,
+    })
   }
 
   // Sort: critical first

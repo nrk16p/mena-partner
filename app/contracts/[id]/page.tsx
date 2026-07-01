@@ -161,6 +161,35 @@ export default function ContractDetailPage() {
         </div>
       )}
 
+      {/* Tax/Insurance cost summary — seeded from Excel, read-only */}
+      {form.taxInsuranceTotalCost ? (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ค่าใช้จ่าย ภาษี + ประกัน + พรบ</h2>
+            <span className="text-xs text-zinc-400">{form.insuranceCompany ?? ""}</span>
+          </div>
+          <div className="grid grid-cols-5 gap-3 mb-4">
+            {([
+              ["ประกันภัย", form.insuranceAmount],
+              ["พรบ", form.prbAmount],
+              ["ภาษีทะเบียน", form.taxAmount],
+              ["ตรวจสภาพ", form.inspectionCost],
+              ["รวมทั้งสิ้น", form.taxInsuranceTotalCost],
+            ] as [string, number | undefined][]).map(([label, val]) => (
+              <div key={label}>
+                <p className="text-xs text-zinc-400 mb-1">{label}</p>
+                <p className={`text-sm font-semibold ${label === "รวมทั้งสิ้น" ? "text-emerald-600" : ""}`}>{val ? formatMoney(val) : "-"}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
+            <div><span className="text-zinc-400">จ่าย </span>{form.taxInstallmentCount ?? 0} งวด × {formatMoney(form.taxMonthlyInstallment ?? 0)}/เดือน</div>
+            <div><span className="text-zinc-400">ต่อภาษี </span>{formatDate(form.taxRenewalDate)}</div>
+            <div><span className="text-zinc-400">คงเหลือ </span><span className="text-zinc-700 font-medium">{formatMoney(form.taxBalanceRemaining ?? 0)}</span></div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Insurance info card — editable for admins */}
       {(form.insurer || isAdmin) && (
         <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${

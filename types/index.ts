@@ -21,14 +21,38 @@ export interface Contract {
   startDate: string             // ISO date string
   status: ContractStatus
   notes: string
-  // Insurance fields (from ภาษี ประกัน พรบ sheet)
+  // Insurance / tax fields (from ภาษี ประกัน พรบ sheet)
   insurer?: string
+  insuranceCompany?: string
   insuranceAmount?: number
   prbAmount?: number
   taxAmount?: number
+  inspectionCost?: number
+  taxInsuranceTotalCost?: number
   monthlyInsuranceFee?: number
   taxRenewalDate?: string       // ISO date string YYYY-MM-DD
   taxExpiryDate?: string        // ISO date string YYYY-MM-DD
+  taxEndDate?: string           // coverage end date
+  taxInstallmentCount?: number
+  taxMonthlyInstallment?: number
+  taxMonthlyCollection?: number
+  taxBalanceRemaining?: number
+  taxInstallmentStart?: string
+  taxInstallmentEnd?: string
+  // Reserve / overdue fields (from เบิกสำรอง sheet)
+  dueInstallmentNo?: number
+  overdueCount?: number
+  overdueAmount?: number
+  otherDebtBalance?: number
+  repairReserve?: number
+  installmentReserve?: number
+  totalReserveBalance?: number
+  netPayLastMonth?: number
+  emergencyDraw?: number
+  reserveDraw?: number
+  reserveNote?: string
+  drawLimit?: number
+  reserveAsOfMonth?: string
   createdAt?: string
   updatedAt?: string
 }
