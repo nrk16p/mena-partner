@@ -10,6 +10,21 @@ import { formatMoney, formatMonth } from "@/lib/utils"
 
 type DriverWithHistory = Driver & { payrollHistory: PayrollEntry[] }
 
+type DebtAcceptance = {
+  _id: string
+  debtAcceptanceNo: string
+  repairOrderNo: string
+  repairType: string
+  issueDate: string
+  startDate: string
+  endDate: string
+  liabilityAmount: number
+  installmentCount: number
+  monthlyInstallment: number
+  status: string
+  description: string
+}
+
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: session } = useSession()
@@ -17,6 +32,8 @@ export default function DriverDetailPage() {
   const [data, setData]       = useState<DriverWithHistory | null>(null)
   const [contractId, setContractId] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
+  const [debts, setDebts]     = useState<DebtAcceptance[]>([])
+  const [debtTotal, setDebtTotal] = useState(0)
 
   useEffect(() => {
     fetch(`/api/drivers/${id}`)
@@ -29,6 +46,12 @@ export default function DriverDetailPage() {
             .then((cs: Array<{ _id: string; contractCode: string }>) => {
               const c = cs.find((c) => c.contractCode === d.contractCode)
               if (c) setContractId(c._id)
+            })
+          fetch(`/api/debt-acceptances/${encodeURIComponent(d.contractCode)}`)
+            .then((r) => r.ok ? r.json() : { docs: [], total: 0 })
+            .then(({ docs, total }: { docs: DebtAcceptance[]; total: number }) => {
+              setDebts(docs)
+              setDebtTotal(total)
             })
         }
       })
@@ -150,6 +173,46 @@ export default function DriverDetailPage() {
                 {formatMoney(history.reduce((s, p) => s + p.netPay, 0) / history.length)}
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debt acceptances */}
+      {debts.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">หนี้รับสภาพซ่อม</h2>
+            <span className="text-xs text-red-500 font-semibold">ยอดรวม {formatMoney(debtTotal)}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">เลขที่เอกสาร</th>
+                  <th className="px-4 py-3 text-left">ประเภท</th>
+                  <th className="px-4 py-3 text-left">เริ่มชำระ</th>
+                  <th className="px-4 py-3 text-right">ยอดรับผิด</th>
+                  <th className="px-4 py-3 text-right">งวด</th>
+                  <th className="px-4 py-3 text-right">เดือนละ</th>
+                  <th className="px-4 py-3 text-left">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {debts.map((d) => (
+                  <tr key={d._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-500">{d.debtAcceptanceNo}</td>
+                    <td className="px-4 py-3 text-xs">{d.repairType}</td>
+                    <td className="px-4 py-3 text-xs text-zinc-500">{d.startDate}</td>
+                    <td className="px-4 py-3 text-right text-red-500 font-medium">{formatMoney(d.liabilityAmount)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400 text-xs">{d.installmentCount}</td>
+                    <td className="px-4 py-3 text-right text-xs">{formatMoney(d.monthlyInstallment)}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{d.status || "ค้างชำระ"}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
