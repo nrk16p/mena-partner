@@ -171,6 +171,8 @@ export default function ContractDocumentPage() {
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
         .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid; }
+        /* หัวข้อ ข้อ 1.–ข้อ 6. ในต้นฉบับขีดเส้นใต้ทั้งบรรทัด */
+        .clause-u { text-decoration: underline; text-underline-offset: 3px; }
         .indent { text-indent: 36pt; }
         .sub { margin-left: 28pt; }
         .contract-doc p { margin: 0; text-align: justify; orphans: 2; widows: 2; }
@@ -263,7 +265,7 @@ export default function ContractDocumentPage() {
         <p className="indent">คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญากันโดยมีเงื่อนไขและรายละเอียดดังต่อไปนี้</p>
 
         {/* ── ข้อ 1 ── */}
-        <p className="clause-h">ข้อ 1. ข้อตกลงการซื้อขาย</p>
+        <p className="clause-h clause-u">ข้อ 1. ข้อตกลงการซื้อขาย</p>
         <p className="indent">
           ผู้ขายตกลงขาย และผู้ซื้อตกลงซื้อรถยนต์บรรทุกใช้แล้ว ประเภท{" "}
           <V w={130}>{c.vehicleType}</V> ลักษณะ/มาตรฐาน <V w={150}>{c.vehicleCharacteristic}</V>{" "}
@@ -282,7 +284,7 @@ export default function ContractDocumentPage() {
         <p className="indent">ในวันทำสัญญาฉบับนี้ ผู้ซื้อตกลงจะเข้าทำสัญญารับจ้างขับรถกับผู้ขายอีกฉบับหนึ่งด้วย</p>
 
         {/* ── ข้อ 2 ── */}
-        <p className="clause-h">ข้อ 2. ราคาซื้อขายและการชำระราคา</p>
+        <p className="clause-h clause-u">ข้อ 2. ราคาซื้อขายและการชำระราคา</p>
         <p className="indent">
           ผู้ซื้อตกลงซื้อและผู้ขายตกลงขายทรัพย์สิน ในราคา <V w={90}>{money(c.totalPrice)}</V> บาท
           (<V w={220}>{c.totalPrice ? bahtText(c.totalPrice) : undefined}</V>) โดยไม่รวมภาษีมูลค่าเพิ่ม
@@ -333,7 +335,7 @@ export default function ContractDocumentPage() {
         </p>
 
         {/* ── ข้อ 3 ── */}
-        <p className="clause-h">ข้อ 3. หน้าที่ผู้ซื้อ</p>
+        <p className="clause-h clause-u">ข้อ 3. หน้าที่ผู้ซื้อ</p>
         <p className="indent">
           ตลอดระยะเวลาที่ผู้ซื้อยังชำระราคาซื้อขายตามสัญญาฉบับนี้ให้แก่ผู้ขายยังไม่ครบถ้วนเสร็จสิ้น
           และผู้ซื้อยังไม่ได้รับโอนกรรมสิทธิ์ในทรัพย์สิน ผู้ซื้อตกลงจะปฏิบัติดังต่อไปนี้
@@ -389,7 +391,7 @@ export default function ContractDocumentPage() {
         </p>
 
         {/* ── ข้อ 4 ── */}
-        <p className="clause-h">ข้อ 4. กรรมสิทธิ์ในทรัพย์สิน</p>
+        <p className="clause-h clause-u">ข้อ 4. กรรมสิทธิ์ในทรัพย์สิน</p>
         <p className="sub">
           4.1 คู่สัญญาทั้งสองฝ่ายรับทราบและตกลงว่า กรรมสิทธิ์ในทรัพย์สินตามสัญญานี้
           จะยังไม่โอนไปเป็นของผู้ซื้อจนกว่าผู้ขายจะได้รับชำระราคาซื้อขายทรัพย์สินและได้ปฏิบัติตามสัญญาฉบับนี้ครบถ้วนแล้ว
@@ -409,7 +411,7 @@ export default function ContractDocumentPage() {
         </p>
 
         {/* ── ข้อ 5 ── */}
-        <p className="clause-h">ข้อ 5. การผิดนัด การบอกเลิกสัญญา การเรียกค่าเสียหาย</p>
+        <p className="clause-h clause-u">ข้อ 5. การผิดนัด การบอกเลิกสัญญา การเรียกค่าเสียหาย</p>
         <p className="sub">
           5.1 เมื่อมีเหตุการณ์ใดเหตุการณ์หนึ่งดังต่อไปนี้ ให้ถือว่าผู้ซื้อผิดนัดผิดสัญญาฉบับนี้
           และผู้ขายมีสิทธิบอกเลิกสัญญาได้ทันที
@@ -469,7 +471,7 @@ export default function ContractDocumentPage() {
         </p>
 
         {/* ── ข้อ 6 ── */}
-        <p className="clause-h">ข้อ 6. ข้อตกลงอื่นๆ</p>
+        <p className="clause-h clause-u">ข้อ 6. ข้อตกลงอื่นๆ</p>
         <p className="sub">
           6.1 การโอนสิทธิ หรือผลประโยชน์ใด ๆ
           ตามสัญญานี้จะกระทำได้ต่อเมื่อได้รับความยินยอมเป็นหนังสือจากคู่สัญญาอีกฝ่ายหนึ่ง
@@ -642,14 +644,13 @@ export default function ContractDocumentPage() {
           ผู้ขายมีสิทธิบอกเลิกสัญญาได้ทันที และไม่คืนเงินค้ำประกัน และ/หรือ
           ค่าใช้จ่ายหรือสิทธิประโยชน์ใด ๆ ที่ผู้ขายได้ให้แก่ผู้ซื้อไปแล้ว (ถ้ามี)
         </p>
-        <p className="indent">
-          ทั้งนี้ การฝ่าฝืนหรือละเลยดังกล่าว
-          ให้ถือเป็นการละเมิดสัญญาอันแสดงถึงความไม่รับผิดชอบของผู้ซื้อในการดูแลรักษาทรัพย์สิน
-          ซึ่งเป็นเงื่อนไขที่สำคัญของสัญญาหลัก และสัญญาแนบท้ายฉบับนี้
-        </p>
-
-        {/* attachment signatures */}
+        {/* ย่อหน้าปิดท้าย + ลายเซ็น อยู่ด้วยกันเสมอ (ไม่ให้ลายเซ็นลอยหน้าเดี่ยว) */}
         <div className="sig-block">
+          <p className="indent">
+            ทั้งนี้ การฝ่าฝืนหรือละเลยดังกล่าว
+            ให้ถือเป็นการละเมิดสัญญาอันแสดงถึงความไม่รับผิดชอบของผู้ซื้อในการดูแลรักษาทรัพย์สิน
+            ซึ่งเป็นเงื่อนไขที่สำคัญของสัญญาหลัก และสัญญาแนบท้ายฉบับนี้
+          </p>
           <table className="sig-table">
             <tbody>
               <tr>
