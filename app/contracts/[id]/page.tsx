@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Truck, ClipboardList, BarChart3 } from "lucide-react"
+import { Truck, ClipboardList, BarChart3, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -117,6 +117,12 @@ export default function ContractDetailPage() {
             className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-1.5"
           >
             <BarChart3 className="w-3.5 h-3.5" /> โปรโมชั่น
+          </Link>
+          <Link
+            href={`/contracts/${id}/document`}
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" /> เอกสารสัญญา (PDF)
           </Link>
         </div>
       </div>
