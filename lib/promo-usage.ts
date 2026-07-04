@@ -1,0 +1,266 @@
+import type { Db } from "mongodb"
+
+/**
+ * Single source of truth for promotion budget usage (ค่าซ่อม / PM) per vehicle.
+ *
+ * Real-world repairs are recorded in TWO collections at different granularity:
+ *  - repair_claims:   one row per MR document (เลข MR อยู่ใน field `description`),
+ *                     keyed by contractCode (seeded from Excel history)
+ *  - stock_movements: one row per part issued, keyed by licensePlate with
+ *                     `mr` + `promoType` ("repair" | "pm") (live data going forward)
+ *
+ * The same MR can appear in both (verified: totals match) — so usage MUST be
+ * deduplicated by MR number. Both /api/promotions/* and /api/vehicle-cost
+ * read from this module so the two pages always show identical numbers.
+ */
+
+/** "สบ.71-1515" → "71-1515" (server-side twin of components/contract-document normPlate) */
+export function normPlate(p?: string | null): string {
+  return (p ?? "").replace(/^[^0-9]*/, "").trim()
+}
+
+export interface RepairRecord {
+  mr: string
+  date: string
+  amount: number
+  /** claim = manual/Excel record, stock = item-level warehouse data, both = present in both (deduped) */
+  source: "claim" | "stock" | "both"
+  contractCode?: string
+  licensePlate?: string
+  itemCount?: number
+  /** PM1 | PM2 (manual pm_records only) */
+  pmType?: string
+}
+
+export interface PlateUsage {
+  plate: string // normalized e.g. "71-1959"
+  licensePlate: string // display form e.g. "สบ.71-1959"
+  contractCode?: string
+  truckNumber?: string
+  driverName?: string
+  repairBudget: number | null
+  repairUsed: number
+  repairRemaining: number | null
+  annualPmCap: number | null
+  pmUsedThisYear: number
+  pmRemainingThisYear: number | null
+  pm1Used: boolean
+  pm2Used: boolean
+  repairRecords: RepairRecord[]
+  pmRecords: RepairRecord[]
+}
+
+interface PlateIdentity {
+  licensePlate: string
+  contractCode?: string
+  truckNumber?: string
+  driverName?: string
+}
+
+/** Canonical plate ↔ contract mapping. Priority: contracts > repair_monthly > gps_config. */
+export async function getPlateContractMap(db: Db): Promise<Map<string, PlateIdentity>> {
+  const map = new Map<string, PlateIdentity>()
+  const put = (plate: string | undefined, info: Partial<PlateIdentity>, overwrite: boolean) => {
+    const key = normPlate(plate)
+    if (!key) return
+    const cur = map.get(key)
+    if (cur && !overwrite) {
+      // fill blanks only
+      map.set(key, {
+        licensePlate: cur.licensePlate || info.licensePlate || "",
+        contractCode: cur.contractCode || info.contractCode,
+        truckNumber: cur.truckNumber || info.truckNumber,
+        driverName: cur.driverName || info.driverName,
+      })
+    } else {
+      map.set(key, { ...(cur ?? { licensePlate: "" }), ...info } as PlateIdentity)
+    }
+  }
+  const [gps, monthly, contracts] = await Promise.all([
+    db.collection("gps_config").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1 }).toArray(),
+    db.collection("repair_monthly").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1, driverName: 1 }).toArray(),
+    db.collection("contracts").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1, driverName: 1 }).toArray(),
+  ])
+  for (const g of gps) put(g.licensePlate, { licensePlate: g.licensePlate, contractCode: g.contractCode, truckNumber: g.truckNumber }, false)
+  for (const m of monthly) put(m.licensePlate, { licensePlate: m.licensePlate, contractCode: m.contractCode, truckNumber: m.truckNumber, driverName: m.driverName }, true)
+  for (const c of contracts) put(c.licensePlate, { licensePlate: c.licensePlate, contractCode: c.contractCode, truckNumber: c.truckNumber, driverName: c.driverName }, true)
+  return map
+}
+
+const num = (v: unknown): number => {
+  const n = typeof v === "number" ? v : parseFloat(String(v ?? 0))
+  return isNaN(n) ? 0 : n
+}
+
+/**
+ * Aggregate deduplicated repair + PM usage per plate.
+ * @param year Buddhist/AD calendar year for the PM annual cap window (default: current year)
+ */
+export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, PlateUsage>> {
+  const y = year ?? new Date().getFullYear()
+  const yearPrefix = String(y)
+
+  const [identity, claims, movements, configs, pmManual] = await Promise.all([
+    getPlateContractMap(db),
+    db.collection("repair_claims").find({}).toArray(),
+    db
+      .collection("stock_movements")
+      .find({ promoType: { $in: ["repair", "pm"] } })
+      .project({ mr: 1, date: 1, amount: 1, licensePlate: 1, promoType: 1 })
+      .toArray(),
+    db.collection("promo_config").find({}).toArray(),
+    db.collection("pm_records").find({ year: y }).toArray(),
+  ])
+
+  // contractCode -> plate (reverse of identity map)
+  const ccToPlate = new Map<string, string>()
+  for (const [plate, info] of identity) if (info.contractCode) ccToPlate.set(info.contractCode, plate)
+
+  // ── stock_movements: group item lines by MR ──
+  interface MrGroup { mr: string; date: string; amount: number; plate: string; itemCount: number; promoType: string }
+  const stockByMr = new Map<string, MrGroup>()
+  for (const m of movements) {
+    const mr = String(m.mr ?? "").trim()
+    const plate = normPlate(m.licensePlate)
+    if (!plate) continue
+    const key = mr || `no-mr:${plate}:${m.date}:${m._id}` // lines without MR are their own record
+    const cur = stockByMr.get(key)
+    if (cur) {
+      cur.amount += num(m.amount)
+      cur.itemCount += 1
+      if ((m.date ?? "") < cur.date) cur.date = m.date
+    } else {
+      stockByMr.set(key, { mr, date: m.date ?? "", amount: num(m.amount), plate, itemCount: 1, promoType: m.promoType })
+    }
+  }
+
+  // ── repair_claims keyed by MR (description) ──
+  interface ClaimRow { mr: string; date: string; amount: number; contractCode: string }
+  const claimByMr = new Map<string, ClaimRow>()
+  for (const c of claims) {
+    const mr = String(c.description ?? "").trim()
+    const key = mr || `claim:${c._id}`
+    claimByMr.set(key, { mr, date: c.date ?? "", amount: num(c.amount), contractCode: c.contractCode })
+  }
+
+  // ── merge, dedupe by MR ──
+  const usage = new Map<string, PlateUsage>()
+  const ensure = (plate: string): PlateUsage => {
+    let u = usage.get(plate)
+    if (!u) {
+      const info = identity.get(plate)
+      u = {
+        plate,
+        licensePlate: info?.licensePlate || plate,
+        contractCode: info?.contractCode,
+        truckNumber: info?.truckNumber,
+        driverName: info?.driverName,
+        repairBudget: null,
+        repairUsed: 0,
+        repairRemaining: null,
+        annualPmCap: null,
+        pmUsedThisYear: 0,
+        pmRemainingThisYear: null,
+        pm1Used: false,
+        pm2Used: false,
+        repairRecords: [],
+        pmRecords: [],
+      }
+      usage.set(plate, u)
+    }
+    return u
+  }
+
+  // stock records first (most detailed)
+  for (const g of stockByMr.values()) {
+    const u = ensure(g.plate)
+    const inClaims = g.mr !== "" && claimByMr.has(g.mr)
+    const rec: RepairRecord = {
+      mr: g.mr,
+      date: g.date,
+      amount: g.amount,
+      source: inClaims ? "both" : "stock",
+      contractCode: u.contractCode,
+      licensePlate: u.licensePlate,
+      itemCount: g.itemCount,
+    }
+    if (g.promoType === "pm") {
+      // PM cap is annual — count only records of the requested year
+      if ((g.date ?? "").startsWith(yearPrefix)) {
+        u.pmUsedThisYear += g.amount
+        u.pmRecords.push(rec)
+      }
+    } else {
+      u.repairUsed += g.amount
+      u.repairRecords.push(rec)
+    }
+  }
+
+  // claims not already covered by stock movements
+  const stockMrs = new Set([...stockByMr.values()].map((g) => g.mr).filter(Boolean))
+  for (const [key, c] of claimByMr) {
+    if (c.mr && stockMrs.has(c.mr)) continue // already counted from stock (deduped)
+    const plate = ccToPlate.get(c.contractCode)
+    if (!plate) continue // unmapped contract — surfaced via getUnmappedClaims below
+    const u = ensure(plate)
+    u.repairUsed += c.amount
+    u.repairRecords.push({
+      mr: c.mr || key,
+      date: c.date,
+      amount: c.amount,
+      source: "claim",
+      contractCode: c.contractCode,
+      licensePlate: u.licensePlate,
+    })
+  }
+
+  // ── manual PM records (pm_records: keyed by contractCode + integer year) ──
+  for (const p of pmManual) {
+    const plate = ccToPlate.get(p.contractCode)
+    if (!plate) continue
+    const u = ensure(plate)
+    u.pmUsedThisYear += num(p.amount)
+    if (p.type === "PM1") u.pm1Used = true
+    if (p.type === "PM2") u.pm2Used = true
+    u.pmRecords.push({
+      mr: "",
+      date: p.date ?? "",
+      amount: num(p.amount),
+      source: "claim",
+      contractCode: p.contractCode,
+      licensePlate: u.licensePlate,
+      pmType: p.type,
+    })
+  }
+
+  // ── budgets from promo_config ──
+  for (const cfg of configs) {
+    const plate = normPlate(cfg.licensePlate)
+    if (!plate) continue
+    const u = usage.get(plate) ?? ensure(plate)
+    u.repairBudget = num(cfg.repairBudget)
+    u.annualPmCap = num(cfg.annualPmCap)
+  }
+  for (const u of usage.values()) {
+    if (u.repairBudget != null) u.repairRemaining = u.repairBudget - u.repairUsed
+    if (u.annualPmCap != null) u.pmRemainingThisYear = u.annualPmCap - u.pmUsedThisYear
+    u.repairRecords.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    u.pmRecords.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+  }
+  return usage
+}
+
+/** Claims whose contractCode has no known plate mapping (data-quality signal). */
+export async function getUnmappedClaims(db: Db): Promise<{ contractCode: string; total: number; count: number }[]> {
+  const identity = await getPlateContractMap(db)
+  const ccKnown = new Set([...identity.values()].map((i) => i.contractCode).filter(Boolean))
+  const out = new Map<string, { contractCode: string; total: number; count: number }>()
+  for (const c of await db.collection("repair_claims").find({}).toArray()) {
+    if (ccKnown.has(c.contractCode)) continue
+    const cur = out.get(c.contractCode) ?? { contractCode: c.contractCode, total: 0, count: 0 }
+    cur.total += num(c.amount)
+    cur.count += 1
+    out.set(c.contractCode, cur)
+  }
+  return [...out.values()].sort((a, b) => b.total - a.total)
+}

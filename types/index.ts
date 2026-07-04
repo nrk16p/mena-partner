@@ -239,10 +239,26 @@ export interface PromoSummaryRow {
   pm2UsedThisYear: boolean
 }
 
+/** warehouse-sourced usage record (stock_movements grouped by MR) — read-only here */
+export interface StockUsageRecord {
+  mr: string
+  date: string
+  amount: number
+  source: "claim" | "stock" | "both"
+  itemCount?: number
+  pmType?: string
+}
+
 export interface PromoDetail extends PromoSummaryRow {
   pmOilCost: number
   repairClaims: RepairClaim[]
   pmRecords: PmRecord[]
+  /** repair usage recorded via vehicle-cost page (stock movements, not in repairClaims) */
+  stockRepairs?: StockUsageRecord[]
+  /** PM usage recorded via vehicle-cost page */
+  stockPm?: StockUsageRecord[]
+  /** MR numbers present in BOTH repairClaims and stock movements (counted once) */
+  dedupedMrs?: string[]
 }
 
 export interface GpsConfig {

@@ -887,7 +887,11 @@ function PromoPanel({ promo, repairDeduct = 0, pmDeduct = 0 }: { promo: PlatePro
         <div className="flex items-center justify-between mt-1.5">
           <span className="text-[10px] text-zinc-400">
             ใช้ไป ฿{fmt(promo.repairUsed)}
-            {repairDeduct > 0 && <span className="text-red-500 font-semibold"> + เลือกไว้ ฿{fmt(repairDeduct)}</span>}
+            {repairDeduct !== 0 && (
+              <span className="text-red-500 font-semibold">
+                {" "}{repairDeduct > 0 ? "+ ค้างบันทึก" : "− ยกเลิก"} ฿{fmt(Math.abs(repairDeduct))}
+              </span>
+            )}
           </span>
           <span className={`text-xs font-bold ${repairAfter < 0 ? "text-red-600" : "text-emerald-600"}`}>คงเหลือ ฿{fmt(repairAfter)}</span>
         </div>
@@ -908,7 +912,11 @@ function PromoPanel({ promo, repairDeduct = 0, pmDeduct = 0 }: { promo: PlatePro
         <div className="flex items-center justify-between mt-1.5">
           <span className="text-[10px] text-zinc-400">
             ใช้ไป ฿{fmt(promo.pmUsedThisYear)}
-            {pmDeduct > 0 && <span className="text-blue-500 font-semibold"> + เลือกไว้ ฿{fmt(pmDeduct)}</span>}
+            {pmDeduct !== 0 && (
+              <span className="text-blue-500 font-semibold">
+                {" "}{pmDeduct > 0 ? "+ ค้างบันทึก" : "− ยกเลิก"} ฿{fmt(Math.abs(pmDeduct))}
+              </span>
+            )}
           </span>
           <span className={`text-xs font-bold ${pmAfter < 0 ? "text-red-600" : "text-emerald-600"}`}>คงเหลือ ฿{fmt(pmAfter)}</span>
         </div>
@@ -941,20 +949,29 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
   const isBalanced = movements.length > 0 && Math.abs(diff) < 0.01
 
   // Promotion deductions from effective selections
+  const savedOf = (m: StockMovement): PromoSel => ((m.promoType ?? "") as PromoSel)
   const repairItems  = movements.filter((m) => eff(m) === "repair")
   const pmItems      = movements.filter((m) => eff(m) === "pm")
   const repairDeduct = repairItems.reduce((s, m) => s + (m.amount ?? 0), 0)
   const pmDeduct     = pmItems.reduce((s, m) => s + (m.amount ?? 0), 0)
   const driverOwes   = movementTotal - repairDeduct - pmDeduct
+  // ยอดที่บันทึกไว้แล้ว (ถูกนับรวมใน promo.repairUsed จาก API แล้ว) — ใช้หาส่วนต่างที่ยังไม่บันทึก
+  const savedRepairTotal = movements.filter((m) => savedOf(m) === "repair").reduce((s, m) => s + (m.amount ?? 0), 0)
+  const savedPmTotal     = movements.filter((m) => savedOf(m) === "pm").reduce((s, m) => s + (m.amount ?? 0), 0)
+  const repairDelta = repairDeduct - savedRepairTotal
+  const pmDelta     = pmDeduct - savedPmTotal
 
   function togglePromo(id: string, value: PromoSel) {
     setDraft((d) => ({ ...d, [id]: value }))
   }
 
   // Bulk select (draft only): assign every item, in order, until the budget runs out
+  // (budget = remaining + what this card already consumed, since we re-decide all items)
   function bulkAssign(type: "repair" | "pm") {
     if (!promo) return
-    let budget = type === "repair" ? promo.repairRemaining : promo.pmRemainingThisYear
+    let budget = type === "repair"
+      ? promo.repairRemaining + savedRepairTotal
+      : promo.pmRemainingThisYear + savedPmTotal
     const next: Record<string, PromoSel> = {}
     for (const m of movements) {
       const amt = m.amount ?? 0
@@ -1015,7 +1032,7 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
             {promo && (
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600">
                 <ShieldCheck className="w-3 h-3" />
-                โปรฯ ซ่อมเหลือ ฿{fmt(promo.repairRemaining - repairDeduct)} · PM เหลือ ฿{fmt(promo.pmRemainingThisYear - pmDeduct)}
+                โปรฯ ซ่อมเหลือ ฿{fmt(promo.repairRemaining - repairDelta)} · PM เหลือ ฿{fmt(promo.pmRemainingThisYear - pmDelta)}
               </span>
             )}
           </div>
@@ -1049,7 +1066,7 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
       {/* Movement details */}
       {open && (
         <div className="border-t border-zinc-50 dark:border-zinc-800">
-          {promo && <PromoPanel promo={promo} repairDeduct={repairDeduct} pmDeduct={pmDeduct} />}
+          {promo && <PromoPanel promo={promo} repairDeduct={repairDelta} pmDeduct={pmDelta} />}
           {promo && movements.length > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50/50 dark:bg-zinc-800/30 border-b border-zinc-50 dark:border-zinc-800">
               <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">เลือกทั้งหมด:</span>
@@ -1227,6 +1244,8 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
           pmDeduct={pmDeduct}
           driverOwes={driverOwes}
           promo={promo}
+          repairAfter={promo ? promo.repairRemaining - repairDelta : 0}
+          pmAfter={promo ? promo.pmRemainingThisYear - pmDelta : 0}
           onClose={() => setShowReceipt(false)}
         />
       )}
@@ -1236,7 +1255,7 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
 
 // ─── Receipt (ใบเสร็จ / ใบสรุปรายการรับสภาพหนี้) ────────────────────────────────
 
-function ReceiptModal({ doc, items, movementTotal, repairDeduct, pmDeduct, driverOwes, promo, onClose }: {
+function ReceiptModal({ doc, items, movementTotal, repairDeduct, pmDeduct, driverOwes, promo, repairAfter = 0, pmAfter = 0, onClose }: {
   doc:           DebtDoc
   items:         StockMovement[]
   movementTotal: number
@@ -1244,6 +1263,8 @@ function ReceiptModal({ doc, items, movementTotal, repairDeduct, pmDeduct, drive
   pmDeduct:      number
   driverOwes:    number
   promo?:        PlatePromo
+  repairAfter?:  number
+  pmAfter?:      number
   onClose:       () => void
 }) {
   const today = new Date().toISOString().slice(0, 10)
@@ -1364,7 +1385,7 @@ function ReceiptModal({ doc, items, movementTotal, repairDeduct, pmDeduct, drive
           </div>
           {promo && (
             <div className="flex justify-between text-[10px] text-zinc-400 pt-1">
-              <span>วงเงินโปรฯ คงเหลือหลังหัก: ซ่อม ฿{fmt(promo.repairRemaining - repairDeduct)} · PM ฿{fmt(promo.pmRemainingThisYear - pmDeduct)}</span>
+              <span>วงเงินโปรฯ คงเหลือหลังหัก: ซ่อม ฿{fmt(repairAfter)} · PM ฿{fmt(pmAfter)}</span>
             </div>
           )}
         </div>
@@ -1421,6 +1442,9 @@ function MergedTab() {
       const u = updates.find((x) => x.id === m._id)
       return u ? { ...m, promoType: u.promoType } : m
     }))
+    // refresh budgets — saved tags are now counted inside promo.repairUsed by the API
+    const fresh = await fetch("/api/promotions/by-plate").then((r) => (r.ok ? r.json() : null))
+    if (fresh) setPromos(fresh)
   }
 
   // Group movements by MR
@@ -1504,6 +1528,12 @@ export default function VehicleCostPage() {
   const isAdmin = session?.user?.role === "admin"
   const [tab,       setTab]       = useState<PageTab>("cost")
   const [contracts, setContracts] = useState<Contract[]>([])
+
+  // deep-link support: /vehicle-cost?tab=merged (linked from promotions pages)
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab")
+    if (t === "cost" || t === "debt" || t === "movement" || t === "merged") setTab(t)
+  }, [])
 
   useEffect(() => {
     fetch("/api/contracts?status=active")

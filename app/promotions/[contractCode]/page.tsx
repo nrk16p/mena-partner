@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { ArrowLeft, Warehouse } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -102,12 +103,22 @@ export default function PromoDetailPage() {
         <button onClick={() => router.back()} className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 mb-3">
           <ArrowLeft className="w-3 h-3" /> กลับ
         </button>
-        <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
-          {data.driverName || data.contractCode}
-        </h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
-          {data.contractCode} · {data.licensePlate} · {data.truckNumber}
-        </p>
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
+              {data.driverName || data.contractCode}
+            </h1>
+            <p className="text-sm text-zinc-400 mt-0.5">
+              {data.contractCode} · {data.licensePlate} · {data.truckNumber}
+            </p>
+          </div>
+          <Link
+            href="/vehicle-cost?tab=merged"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 border border-emerald-200 dark:border-emerald-900 rounded-lg px-3 py-1.5"
+          >
+            <Warehouse className="w-3.5 h-3.5" /> จัดการหักโปรฯ จากรายการเบิก (ค่าใช้จ่ายรถ)
+          </Link>
+        </div>
       </div>
 
       {/* ─── Promo 2: Repair Budget ─── */}
@@ -162,18 +173,49 @@ export default function PromoDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {data.repairClaims.length === 0 ? (
+              {data.repairClaims.length === 0 && (data.stockRepairs ?? []).length === 0 ? (
                 <tr><td colSpan={4} className="px-3 py-4 text-center text-zinc-400 text-xs">ยังไม่มีรายการซ่อม</td></tr>
-              ) : data.repairClaims.map((c: RepairClaim) => (
-                <tr key={c._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-3 py-2 text-zinc-500">{c.date}</td>
-                  <td className="px-3 py-2">{c.description}</td>
-                  <td className="px-3 py-2 text-right font-medium">{formatMoney(c.amount)}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
-                  </td>
-                </tr>
-              ))}
+              ) : (
+                <>
+                  {data.repairClaims.map((c: RepairClaim) => (
+                    <tr key={c._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                      <td className="px-3 py-2 text-zinc-500">{c.date}</td>
+                      <td className="px-3 py-2">
+                        {c.description}
+                        {data.dedupedMrs?.includes((c.description ?? "").trim()) && (
+                          <span
+                            title="MR นี้มีรายการเบิกอะไหล่ในคลังด้วย — นับยอดครั้งเดียว (ไม่ซ้ำ)"
+                            className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5"
+                          >
+                            <Warehouse className="w-2.5 h-2.5" /> ตรงกับคลัง
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium">{formatMoney(c.amount)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* จากหน้า ค่าใช้จ่ายรถ (ติ๊กหักโปรฯ บนรายการเบิกคลัง) — จัดการที่หน้านั้น */}
+                  {(data.stockRepairs ?? []).map((s) => (
+                    <tr key={`stock-${s.mr}-${s.date}`} className="bg-emerald-50/40 dark:bg-emerald-950/10">
+                      <td className="px-3 py-2 text-zinc-500">{s.date}</td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center gap-1">
+                          <Warehouse className="w-3 h-3 text-emerald-600" />
+                          {s.mr || "รายการเบิกคลัง"}
+                          {s.itemCount ? <span className="text-[10px] text-zinc-400">({s.itemCount} รายการ)</span> : null}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium">{formatMoney(s.amount)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <Link href="/vehicle-cost?tab=merged" className="text-[10px] text-emerald-600 hover:underline whitespace-nowrap">จัดการ →</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
             </tbody>
           </table>
         </div>
@@ -251,7 +293,23 @@ export default function PromoDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {data.pmRecords.length === 0 ? (
+              {(data.stockPm ?? []).map((s) => (
+                <tr key={`stockpm-${s.mr}-${s.date}`} className="bg-blue-50/40 dark:bg-blue-950/10">
+                  <td className="px-3 py-2 text-zinc-500">{(s.date ?? "").slice(0, 4)}</td>
+                  <td className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
+                      <Warehouse className="w-3 h-3" /> คลัง
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-zinc-500">{s.date}</td>
+                  <td className="px-3 py-2 text-right font-medium">{formatMoney(s.amount)}</td>
+                  <td className="px-3 py-2 text-zinc-400 text-xs">{s.mr}{s.itemCount ? ` (${s.itemCount} รายการ)` : ""}</td>
+                  <td className="px-3 py-2 text-right">
+                    <Link href="/vehicle-cost?tab=merged" className="text-[10px] text-blue-600 hover:underline whitespace-nowrap">จัดการ →</Link>
+                  </td>
+                </tr>
+              ))}
+              {data.pmRecords.length === 0 && (data.stockPm ?? []).length === 0 ? (
                 <tr><td colSpan={6} className="px-3 py-4 text-center text-zinc-400 text-xs">ยังไม่มีบันทึก PM</td></tr>
               ) : data.pmRecords.map((p: PmRecord) => (
                 <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">

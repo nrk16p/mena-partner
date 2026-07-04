@@ -1,68 +1,42 @@
 import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { getPromoUsage } from "@/lib/promo-usage"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
-// Normalize a plate like "สบ.71-1959" → "71-1959" so callers can match
-// plates extracted from free text against configured plates.
-function normPlate(p: string): string {
-  const m = String(p).match(/\d{2}-\d{4}/)
-  return m ? m[0] : String(p).trim()
-}
-
+/**
+ * Promotion budget status per plate — SINGLE SOURCE OF TRUTH.
+ * Usage combines repair_claims + pm_records + stock_movements(promoType),
+ * deduplicated by MR number (lib/promo-usage), so this endpoint and the
+ * vehicle-cost page always agree.
+ */
 export async function GET() {
   const client = await clientPromise
-  const db     = client.db(DB)
-  const currentYear = new Date().getFullYear()
+  const db = client.db(DB)
 
-  const configs = await db
-    .collection("promo_config")
-    .find({ licensePlate: { $exists: true, $ne: "" } })
-    .toArray()
+  const usage = await getPromoUsage(db)
 
-  const contractCodes = configs
-    .map((c) => String(c.contractCode ?? ""))
-    .filter(Boolean)
-
-  // Usage totals only exist for configs linked to a contractCode
-  const repairAgg = contractCodes.length
-    ? await db.collection("repair_claims").aggregate([
-        { $match: { contractCode: { $in: contractCodes } } },
-        { $group: { _id: "$contractCode", total: { $sum: "$amount" } } },
-      ]).toArray()
-    : []
-  const repairMap = Object.fromEntries(repairAgg.map((r) => [r._id, r.total]))
-
-  const pmAgg = contractCodes.length
-    ? await db.collection("pm_records").aggregate([
-        { $match: { contractCode: { $in: contractCodes }, year: currentYear } },
-        { $group: { _id: "$contractCode", total: { $sum: "$amount" }, types: { $addToSet: "$type" } } },
-      ]).toArray()
-    : []
-  const pmMap = Object.fromEntries(
-    pmAgg.map((p) => [p._id, { total: p.total, types: p.types as string[] }])
-  )
-
-  const rows = configs.map((cfg) => {
-    const code       = String(cfg.contractCode ?? "")
-    const repairUsed = code ? (repairMap[code] ?? 0) : 0
-    const pm         = code ? (pmMap[code] ?? { total: 0, types: [] }) : { total: 0, types: [] }
-    const repairBudget = Number(cfg.repairBudget ?? 0)
-    const annualPmCap  = Number(cfg.annualPmCap  ?? 0)
-    return {
-      plate:               normPlate(String(cfg.licensePlate)),
-      licensePlate:        String(cfg.licensePlate),
-      contractCode:        code,
-      repairBudget,
-      repairUsed,
-      repairRemaining:     repairBudget - repairUsed,
-      annualPmCap,
-      pmUsedThisYear:      pm.total,
-      pmRemainingThisYear: annualPmCap - pm.total,
-      pm1UsedThisYear:     pm.types.includes("PM1"),
-      pm2UsedThisYear:     pm.types.includes("PM2"),
-    }
-  })
+  const rows = [...usage.values()]
+    // only plates that have a promo budget configured (promo_config)
+    .filter((u) => u.repairBudget != null || u.annualPmCap != null)
+    .map((u) => ({
+      plate: u.plate,
+      licensePlate: u.licensePlate,
+      contractCode: u.contractCode ?? "",
+      truckNumber: u.truckNumber ?? "",
+      driverName: u.driverName ?? "",
+      repairBudget: u.repairBudget ?? 0,
+      repairUsed: u.repairUsed,
+      repairRemaining: (u.repairBudget ?? 0) - u.repairUsed,
+      annualPmCap: u.annualPmCap ?? 0,
+      pmUsedThisYear: u.pmUsedThisYear,
+      pmRemainingThisYear: (u.annualPmCap ?? 0) - u.pmUsedThisYear,
+      pm1UsedThisYear: u.pm1Used,
+      pm2UsedThisYear: u.pm2Used,
+      repairRecordCount: u.repairRecords.length,
+      pmRecordCount: u.pmRecords.length,
+    }))
+    .sort((a, b) => a.licensePlate.localeCompare(b.licensePlate, "th"))
 
   return NextResponse.json(rows)
 }

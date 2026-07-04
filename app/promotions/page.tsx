@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import Link from "next/link"
 import {
   ChevronRight, ChevronDown, Gift, Wrench, Settings2,
-  Plus, Power, PowerOff, Trash2, Search, X, Check, Car,
+  Plus, Power, PowerOff, Trash2, Search, X, Check, Car, ExternalLink,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -27,12 +28,19 @@ interface PromoEntry {
 
 interface Vehicle { _id?: string; licensePlate?: string; truckNumber?: string }
 
-interface PlateUsage {
-  plate:       string
-  repairUsed:  number
-  repairCount: number
-  pmUsed:      number
-  pmCount:     number
+/** Budget + usage per plate from /api/promotions/by-plate (single source of truth
+ *  shared with the vehicle-cost page: repair_claims + pm_records + stock_movements) */
+interface BudgetRow {
+  plate:               string
+  licensePlate:        string
+  contractCode:        string
+  driverName:          string
+  repairBudget:        number
+  repairUsed:          number
+  repairRemaining:     number
+  annualPmCap:         number
+  pmUsedThisYear:      number
+  pmRemainingThisYear: number
 }
 
 type GroupedData = Record<string, PromoEntry[]>
@@ -517,30 +525,49 @@ export default function PromotionsPage() {
   const [q,            setQ]           = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
 
+  const [budgets, setBudgets] = useState<BudgetRow[]>([])
+
   const load = useCallback(async () => {
-    const [entriesRes, vehiclesRes] = await Promise.all([
+    const [entriesRes, vehiclesRes, budgetRes] = await Promise.all([
       fetch("/api/promotions/entries"),
       fetch("/api/vehicles"),
+      fetch("/api/promotions/by-plate"),
     ])
     if (entriesRes.ok) setData(await entriesRes.json())
     if (vehiclesRes.ok) setVehicles(await vehiclesRes.json())
+    if (budgetRes.ok) setBudgets(await budgetRes.json())
     setLoading(false)
   }, [])
 
+  // budget/usage lookup by normalized plate (same numbers as vehicle-cost page)
+  const budgetMap = useMemo(() => {
+    const m: Record<string, BudgetRow> = {}
+    for (const b of budgets) m[b.plate] = b
+    return m
+  }, [budgets])
+
   useEffect(() => { load() }, [load])
 
-  const plates = useMemo(() => Object.keys(data).sort(), [data])
+  const plates = useMemo(() => {
+    const set = new Set(Object.keys(data))
+    // รวมรถ fleet ที่มีสัญญา/มีการใช้งบจริง แม้ยังไม่มี entry (เช่น รถที่หักโปรฯ จากหน้า ค่าใช้จ่ายรถ)
+    for (const b of budgets) {
+      if (b.contractCode || b.repairUsed > 0 || b.pmUsedThisYear > 0) set.add(b.licensePlate)
+    }
+    return [...set].sort()
+  }, [data, budgets])
   const existingPlates = useMemo(() => new Set(plates), [plates])
 
   const filteredPlates = useMemo(() => plates.filter((plate) => {
     if (q && !plate.toLowerCase().includes(q.toLowerCase())) return false
-    if (statusFilter === "active"   && !data[plate].some((e) => e.active))  return false
-    if (statusFilter === "disabled" && !data[plate].some((e) => !e.active)) return false
+    const entries = data[plate] ?? []
+    if (statusFilter === "active"   && !entries.some((e) => e.active))  return false
+    if (statusFilter === "disabled" && !entries.some((e) => !e.active)) return false
     return true
   }), [plates, data, q, statusFilter])
 
-  const totalEntries    = plates.reduce((s, p) => s + data[p].length, 0)
-  const activeEntries   = plates.reduce((s, p) => s + data[p].filter((e) => e.active).length, 0)
+  const totalEntries    = plates.reduce((s, p) => s + (data[p] ?? []).length, 0)
+  const activeEntries   = plates.reduce((s, p) => s + (data[p] ?? []).filter((e) => e.active).length, 0)
   const disabledEntries = totalEntries - activeEntries
 
   function toggleExpand(plate: string) {
@@ -632,8 +659,8 @@ export default function PromotionsPage() {
           >
             {{ all: "ทั้งหมด", active: "ใช้งาน", disabled: "ระงับสิทธิ์" }[f]}
             {" "}({f === "all" ? filteredPlates.length : f === "active"
-              ? plates.filter((p) => data[p].some((e) => e.active)).length
-              : plates.filter((p) => data[p].some((e) => !e.active)).length})
+              ? plates.filter((p) => (data[p] ?? []).some((e) => e.active)).length
+              : plates.filter((p) => (data[p] ?? []).some((e) => !e.active)).length})
           </button>
         ))}
 
@@ -658,6 +685,7 @@ export default function PromotionsPage() {
           const isAdding     = addingTo === plate
           const activeCount  = entries.filter((e) => e.active).length
           const disabledCount = entries.filter((e) => !e.active).length
+          const budget       = budgetMap[normPlate(plate)]
 
           return (
             <div key={plate} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
@@ -685,10 +713,33 @@ export default function PromotionsPage() {
                   ))}
                 </div>
 
+                {/* budget usage — same source of truth as vehicle-cost page */}
+                {budget && (
+                  <div className="hidden md:flex items-center gap-3 text-[10px] shrink-0 tabular-nums">
+                    <span className={budget.repairRemaining < 0 ? "text-red-600 font-bold" : "text-zinc-500"}>
+                      ซ่อม <b className={budget.repairUsed > 0 ? "text-red-500" : ""}>{fmt(budget.repairUsed)}</b>/{fmt(budget.repairBudget)}
+                    </span>
+                    <span className={budget.pmRemainingThisYear < 0 ? "text-red-600 font-bold" : "text-zinc-500"}>
+                      PM <b className={budget.pmUsedThisYear > 0 ? "text-blue-500" : ""}>{fmt(budget.pmUsedThisYear)}</b>/{fmt(budget.annualPmCap)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 text-[11px] shrink-0">
                   {activeCount   > 0 && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{activeCount} ใช้งาน</span>}
                   {disabledCount > 0 && <span className="text-red-500 dark:text-red-400 font-semibold">{disabledCount} ปิด</span>}
                 </div>
+
+                {budget?.contractCode && (
+                  <Link
+                    href={`/promotions/${encodeURIComponent(budget.contractCode)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    title="ดูการใช้สิทธิ์ / บันทึกการใช้โปรโมชั่น"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 border border-emerald-200 dark:border-emerald-900 rounded-lg px-2 py-1 shrink-0"
+                  >
+                    การใช้สิทธิ์ <ExternalLink className="w-3 h-3" />
+                  </Link>
+                )}
 
                 <Button
                   size="sm" variant="ghost"

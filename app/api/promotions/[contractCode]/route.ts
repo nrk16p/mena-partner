@@ -1,41 +1,51 @@
 import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { getPromoUsage, normPlate } from "@/lib/promo-usage"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
 type Ctx = { params: Promise<{ contractCode: string }> }
 
-export async function GET(
-  _req: Request,
-  { params }: Ctx
-) {
+/**
+ * Promotion detail for one contract.
+ * repairUsed / pmUsedThisYear come from lib/promo-usage (repair_claims +
+ * pm_records + stock_movements tagged on the vehicle-cost page, deduplicated
+ * by MR) so the numbers here always match the vehicle-cost page.
+ *
+ * repairClaims / pmRecords keep their original shape (_id for delete buttons);
+ * stockRepairs / stockPm list warehouse-sourced usage (read-only here,
+ * managed on /vehicle-cost).
+ */
+export async function GET(_req: Request, { params }: Ctx) {
   const { contractCode } = await params
   const client = await clientPromise
   const db = client.db(DB)
-  const currentYear = new Date().getFullYear()
 
   const cfg = await db.collection("promo_config").findOne({ contractCode })
   if (!cfg) return NextResponse.json({ error: "not found" }, { status: 404 })
 
   const driver = await db.collection("drivers").findOne({ contractCode })
 
-  const repairClaims = await db
-    .collection("repair_claims")
-    .find({ contractCode })
-    .sort({ date: -1 })
-    .toArray()
+  const [repairClaims, pmRecords, usage] = await Promise.all([
+    db.collection("repair_claims").find({ contractCode }).sort({ date: -1 }).toArray(),
+    db.collection("pm_records").find({ contractCode }).sort({ year: -1, date: -1 }).toArray(),
+    getPromoUsage(db),
+  ])
 
-  const pmRecords = await db
-    .collection("pm_records")
-    .find({ contractCode })
-    .sort({ year: -1, date: -1 })
-    .toArray()
+  const plateKey = normPlate(String(cfg.licensePlate ?? ""))
+  const u = usage.get(plateKey)
 
-  const repairUsed = repairClaims.reduce((s, c) => s + (c.amount ?? 0), 0)
-  const pmThisYear = pmRecords.filter((p) => p.year === currentYear)
-  const pmUsedThisYear = pmThisYear.reduce((s, p) => s + (p.amount ?? 0), 0)
-  const pm1Used = pmThisYear.some((p) => p.type === "PM1")
-  const pm2Used = pmThisYear.some((p) => p.type === "PM2")
+  // combined (deduped) totals from the shared source of truth
+  const repairUsed = u?.repairUsed ?? repairClaims.reduce((s, c) => s + (c.amount ?? 0), 0)
+  const pmUsedThisYear = u?.pmUsedThisYear ?? 0
+  const pm1Used = u?.pm1Used ?? false
+  const pm2Used = u?.pm2Used ?? false
+
+  // warehouse-sourced records not already represented by a manual claim
+  const stockRepairs = (u?.repairRecords ?? []).filter((r) => r.source === "stock")
+  const stockPm = (u?.pmRecords ?? []).filter((r) => r.source === "stock")
+  // claims that also exist in stock movements (shown with a badge on the UI)
+  const dedupedMrs = (u?.repairRecords ?? []).filter((r) => r.source === "both").map((r) => r.mr)
 
   const toPlain = (doc: Record<string, unknown>) => ({
     ...doc,
@@ -45,8 +55,8 @@ export async function GET(
   return NextResponse.json({
     contractCode,
     licensePlate: cfg.licensePlate ?? "",
-    driverName: driver?.driverName ?? "",
-    truckNumber: driver?.truckNumber ?? "",
+    driverName: driver?.driverName ?? u?.driverName ?? "",
+    truckNumber: driver?.truckNumber ?? u?.truckNumber ?? "",
     repairBudget: cfg.repairBudget ?? 0,
     pmOilCost: cfg.pmOilCost ?? 0,
     repairUsed,
@@ -58,5 +68,8 @@ export async function GET(
     pm2UsedThisYear: pm2Used,
     repairClaims: repairClaims.map(toPlain),
     pmRecords: pmRecords.map(toPlain),
+    stockRepairs,
+    stockPm,
+    dedupedMrs,
   })
 }

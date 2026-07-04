@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { getPromoUsage, normPlate } from "@/lib/promo-usage"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
+/**
+ * Promotion summary per contract.
+ * Usage figures come from lib/promo-usage (repair_claims + pm_records +
+ * stock_movements tagged on the vehicle-cost page, deduplicated by MR)
+ * so this list always matches the vehicle-cost page.
+ */
 export async function GET() {
   const client = await clientPromise
   const db = client.db(DB)
-  const currentYear = new Date().getFullYear()
 
-  // All promo configs that have a contractCode
   const configs = await db
     .collection("promo_config")
     .find({ contractCode: { $exists: true, $ne: "" } })
@@ -17,59 +22,31 @@ export async function GET() {
 
   const contractCodes = configs.map((c) => c.contractCode as string)
 
-  // Batch fetch drivers
-  const drivers = await db
-    .collection("drivers")
-    .find({ contractCode: { $in: contractCodes } })
-    .toArray()
+  const [drivers, usage] = await Promise.all([
+    db.collection("drivers").find({ contractCode: { $in: contractCodes } }).toArray(),
+    getPromoUsage(db),
+  ])
   const driverMap = Object.fromEntries(drivers.map((d) => [d.contractCode, d]))
-
-  // Batch fetch repair claim totals
-  const repairAgg = await db
-    .collection("repair_claims")
-    .aggregate([
-      { $match: { contractCode: { $in: contractCodes } } },
-      { $group: { _id: "$contractCode", total: { $sum: "$amount" } } },
-    ])
-    .toArray()
-  const repairMap = Object.fromEntries(repairAgg.map((r) => [r._id, r.total]))
-
-  // Batch fetch PM totals this year + coupon status
-  const pmAgg = await db
-    .collection("pm_records")
-    .aggregate([
-      { $match: { contractCode: { $in: contractCodes }, year: currentYear } },
-      {
-        $group: {
-          _id: "$contractCode",
-          total: { $sum: "$amount" },
-          types: { $addToSet: "$type" },
-        },
-      },
-    ])
-    .toArray()
-  const pmMap = Object.fromEntries(
-    pmAgg.map((p) => [p._id, { total: p.total, types: p.types as string[] }])
-  )
 
   const rows = configs.map((cfg) => {
     const code = cfg.contractCode as string
     const driver = driverMap[code] ?? {}
-    const repairUsed = repairMap[code] ?? 0
-    const pm = pmMap[code] ?? { total: 0, types: [] }
+    const u = usage.get(normPlate(String(cfg.licensePlate ?? "")))
+    const repairUsed = u?.repairUsed ?? 0
+    const pmUsed = u?.pmUsedThisYear ?? 0
     return {
       contractCode: code,
       licensePlate: cfg.licensePlate ?? "",
-      driverName: driver.driverName ?? "",
-      truckNumber: driver.truckNumber ?? "",
+      driverName: driver.driverName ?? u?.driverName ?? "",
+      truckNumber: driver.truckNumber ?? u?.truckNumber ?? "",
       repairBudget: cfg.repairBudget ?? 0,
       repairUsed,
       repairRemaining: (cfg.repairBudget ?? 0) - repairUsed,
       annualPmCap: cfg.annualPmCap ?? 0,
-      pmUsedThisYear: pm.total,
-      pmRemainingThisYear: (cfg.annualPmCap ?? 0) - pm.total,
-      pm1UsedThisYear: pm.types.includes("PM1"),
-      pm2UsedThisYear: pm.types.includes("PM2"),
+      pmUsedThisYear: pmUsed,
+      pmRemainingThisYear: (cfg.annualPmCap ?? 0) - pmUsed,
+      pm1UsedThisYear: u?.pm1Used ?? false,
+      pm2UsedThisYear: u?.pm2Used ?? false,
     }
   })
 
