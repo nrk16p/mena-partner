@@ -178,6 +178,7 @@ interface FormState {
   chassisNumber:           string
   engineNumber:            string
   engineSize:              string
+  mileage:                 number
   // price fields (from master_price_list by licensePlate)
   totalPrice:              number
   downPayment:             number
@@ -204,7 +205,7 @@ const EMPTY: FormState = {
   driverAddress: "", phone: "", bankName: "", accountNumber: "",
   vehicleId: "", vehicleType: "", vehicleCharacteristic: "", vehicleBrand: "",
   vehicleModel: "", vehicleRegistrationDate: "", vehicleColor: "",
-  licensePlate: "", truckNumber: "", chassisNumber: "", engineNumber: "", engineSize: "",
+  licensePlate: "", truckNumber: "", chassisNumber: "", engineNumber: "", engineSize: "", mileage: 0,
   totalPrice: 0, downPayment: 0, cashDown: 0, remainingInstallment: 0,
   downInstallmentCount: 0, downInstallmentAmt: 0, financeAmount: 0,
   monthlyInstallment: 0, totalInstallments: 0,
@@ -568,6 +569,16 @@ export default function NewContractPage() {
               </div>
             </div>
           )}
+          <div className="mt-4 w-1/2 pr-2">
+            <label className="block text-xs text-zinc-400 mb-1">ระยะทางที่ใช้แล้ว (กม.) — ใช้ในเอกสารสัญญา</label>
+            <Input
+              type="number"
+              value={form.mileage || ""}
+              onChange={(e) => set("mileage", Number(e.target.value) || 0)}
+              className="h-9 text-sm"
+              placeholder="เว้นว่างได้ ถ้าไม่ทราบ"
+            />
+          </div>
         </Section>
 
         {/* ── 4. ราคาซื้อและการชำระราคา ── */}

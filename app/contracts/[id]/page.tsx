@@ -30,9 +30,29 @@ const TEXT_FIELDS: FieldSpec[] = [
 
 const NUM_FIELDS: FieldSpec[] = [
   { key: "totalPrice",          label: "ราคาขายรถ (บาท)" },
-  { key: "downPayment",         label: "เงินดาวน์ (บาท)" },
+  { key: "downPayment",         label: "เงินดาวน์รวม (บาท)" },
+  { key: "cashDown",            label: "เงินดาวน์ชำระแล้ว (บาท)" },
+  { key: "remainingInstallment", label: "เงินดาวน์คงเหลือ (บาท)" },
+  { key: "downInstallmentAmt",  label: "ค่างวดดาวน์/เดือน (บาท)" },
+  { key: "downInstallmentCount", label: "จำนวนงวดดาวน์ (เดือน)" },
+  { key: "financeAmount",       label: "ยอดเงินค่างวด (บาท)" },
   { key: "monthlyInstallment",  label: "ค่างวดรายเดือน (บาท)" },
   { key: "totalInstallments",   label: "จำนวนงวดรวม" },
+]
+
+// ข้อมูลที่ใช้ในเอกสารสัญญาซื้อขาย (PDF) — กรอกให้ครบเพื่อให้เอกสารไม่มีช่องว่าง
+const DOC_FIELDS: FieldSpec[] = [
+  { key: "birthDate",               label: "วันเกิดผู้ซื้อ (คำนวณอายุ)", type: "date" },
+  { key: "nationalId",              label: "เลขบัตรประชาชนผู้ซื้อ" },
+  { key: "driverAddress",           label: "ที่อยู่ผู้ซื้อ (เลขที่/หมู่/ตำบล/อำเภอ/จังหวัด)" },
+  { key: "vehicleType",             label: "ประเภทรถ" },
+  { key: "vehicleCharacteristic",   label: "ลักษณะ/มาตรฐาน" },
+  { key: "vehicleModel",            label: "รุ่นรถ" },
+  { key: "vehicleRegistrationDate", label: "วันจดทะเบียนรถ", type: "date" },
+  { key: "vehicleColor",            label: "สีรถ" },
+  { key: "chassisNumber",           label: "หมายเลขตัวรถ (ตัวถัง)" },
+  { key: "engineNumber",            label: "หมายเลขเครื่องยนต์" },
+  { key: "engineSize",              label: "ขนาดกำลังเครื่องยนต์" },
 ]
 
 export default function ContractDetailPage() {
@@ -319,6 +339,23 @@ export default function ContractDetailPage() {
                 <option value="completed">สิ้นสุด</option>
                 <option value="terminated">ยกเลิก</option>
               </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ข้อมูลผู้ซื้อ / รถ (สำหรับเอกสารสัญญา)</h2>
+          <p className="text-xs text-zinc-400 mb-4">กรอกให้ครบเพื่อให้เอกสารสัญญา (PDF) ไม่มีช่องว่างให้เติมมือ</p>
+          <div className="grid grid-cols-2 gap-4">
+            {DOC_FIELDS.map(({ key, label, type, readOnly }) => (
+              <div key={key} className="space-y-1">
+                <Label className="text-xs">{label}</Label>
+                <Input {...strField(key, type ?? "text", readOnly)} />
+              </div>
+            ))}
+            <div className="space-y-1">
+              <Label className="text-xs">ระยะทางที่ใช้แล้ว (กม.)</Label>
+              <Input {...numField("mileage")} />
             </div>
           </div>
         </div>

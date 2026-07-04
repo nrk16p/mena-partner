@@ -68,7 +68,8 @@ function V({ children, w }: { children?: React.ReactNode; w?: number }) {
         &nbsp;
       </span>
     )
-  return <span className="font-semibold">{children}</span>
+  // ตามต้นฉบับ: ข้อมูลที่กรอกในสัญญาพิมพ์เป็นตัวหนา
+  return <b>{children}</b>
 }
 
 export default function ContractDocumentPage() {
@@ -122,6 +123,36 @@ export default function ContractDocumentPage() {
   // Promotion 1 helper values
   const pro1Every = promo?.pro1Condition?.match(/\d+/)?.[0] ?? "9"
   const pro1Value = promo?.pro1InstallmentValue ?? c.monthlyInstallment
+
+  // ── เช็คความครบถ้วนของข้อมูลที่ใช้ในเอกสาร (แสดงเฉพาะบนจอ ไม่พิมพ์ออก) ──
+  const missing: string[] = []
+  const need = (cond: unknown, label: string) => { if (!cond) missing.push(label) }
+  need(c.contractDate, "วันที่ทำสัญญา")
+  need(c.buyerName, "ชื่อผู้ซื้อ")
+  need(c.birthDate, "วันเกิดผู้ซื้อ (อายุ)")
+  need(c.nationalId, "เลขบัตรประชาชน")
+  need(c.driverAddress, "ที่อยู่ผู้ซื้อ")
+  need(c.vehicleType, "ประเภทรถ")
+  need(c.vehicleCharacteristic, "ลักษณะ/มาตรฐาน")
+  need(c.vehicleBrand, "ยี่ห้อ")
+  need(c.vehicleModel, "รุ่น")
+  need(c.vehicleRegistrationDate, "วันจดทะเบียน")
+  need(c.vehicleColor, "สีรถ")
+  need(c.licensePlate, "เลขทะเบียน")
+  need(c.chassisNumber, "หมายเลขตัวรถ")
+  need(c.engineNumber, "หมายเลขเครื่องยนต์")
+  need(c.engineSize, "ขนาดกำลังเครื่องยนต์")
+  need(c.mileage, "ระยะทางที่ใช้แล้ว (กม.)")
+  need(c.totalPrice, "ราคาซื้อขาย")
+  need(c.downPayment, "เงินดาวน์รวม")
+  need(c.cashDown != null && c.cashDown !== 0, "เงินดาวน์ชำระแล้ว")
+  need(downRemaining != null, "เงินดาวน์คงเหลือ")
+  need(c.downInstallmentAmt, "ค่างวดดาวน์")
+  need(c.downInstallmentCount, "จำนวนงวดดาวน์")
+  need(c.financeAmount, "ยอดเงินค่างวด")
+  need(c.monthlyInstallment, "ค่างวดรายเดือน")
+  need(c.totalInstallments, "จำนวนงวดรวม")
+  need(promo, "ข้อมูลโปรโมชั่น (promotion_master)")
 
   return (
     <div className={`${sarabun.className} contract-doc`}>
@@ -183,11 +214,25 @@ export default function ContractDocumentPage() {
         </span>
       </div>
 
-      {!promo && (
-        <div className="print-hide w-[210mm] mx-auto mb-3 flex items-center gap-2 text-[11px] bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-3 py-2">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          ไม่พบข้อมูลโปรโมชั่นของทะเบียน {c.licensePlate} ใน promotion_master —
-          เอกสารแนบท้าย (โปรโมชั่น) จะแสดงช่องว่างให้กรอกเอง
+      {missing.length > 0 ? (
+        <div className="print-hide w-[210mm] mx-auto mb-3 text-[11px] bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-1.5 font-semibold mb-1">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            ข้อมูลยังไม่ครบ {missing.length} รายการ — ช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ
+          </div>
+          <div className="flex flex-wrap gap-1 mb-1.5">
+            {missing.map((m) => (
+              <span key={m} className="bg-white border border-amber-200 rounded px-1.5 py-0.5">{m}</span>
+            ))}
+          </div>
+          <a href={`/contracts/${id}`} className="underline font-semibold hover:text-amber-900">
+            → ไปกรอกข้อมูลที่หน้าแก้ไขสัญญา
+          </a>
+          {!promo && <span className="ml-2 text-amber-700">(โปรโมชั่น: เพิ่มข้อมูลทะเบียน {c.licensePlate} ใน promotion_master)</span>}
+        </div>
+      ) : (
+        <div className="print-hide w-[210mm] mx-auto mb-3 text-[11px] bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg px-3 py-2 font-semibold">
+          ✓ ข้อมูลครบถ้วน พร้อมออกเอกสารจริง
         </div>
       )}
 
@@ -227,7 +272,7 @@ export default function ContractDocumentPage() {
           สี <V w={70}>{c.vehicleColor}</V> เลขทะเบียน <V w={80}>{plate}</V> หมายเลขตัวรถ{" "}
           <V w={140}>{c.chassisNumber}</V> หมายเลขเครื่องยนต์ <V w={100}>{c.engineNumber}</V>{" "}
           ขนาดกำลังเครื่องยนต์ <V w={160}>{c.engineSize}</V>{" "}
-          ระยะทางที่ได้ใช้แล้ว <V w={50}>{undefined}</V> กิโลเมตร
+          ระยะทางที่ได้ใช้แล้ว <V w={50}>{c.mileage ? money(c.mileage) : undefined}</V> กิโลเมตร
           รายละเอียดปรากฏตามใบสมุดคู่มือจดทะเบียน เอกสารแนบท้ายสัญญา
           ซึ่งถือเป็นส่วนหนึ่งของสัญญานี้ พร้อมด้วยอุปกรณ์ ต่อไปในสัญญานี้จะเรียกว่า “ ทรัพย์สิน ”
           โดยเป็นการซื้อตามสภาพทรัพย์สินที่เป็นอยู่ขณะทำสัญญาฉบับนี้

@@ -49,6 +49,7 @@ export interface Contract {
   chassisNumber?:          string  // เลขตัวถัง
   engineNumber?:           string  // เลขเครื่อง
   engineSize?:             string  // ขนาดกำลังเครื่องยนต์
+  mileage?:                number  // ระยะทางที่ใช้แล้ว (กม.) — ใช้ในเอกสารสัญญา
   // Financial (from master_price_list, keyed by licensePlate)
   totalPrice:          number   // totalSalePrice
   downPayment:         number   // เงินดาวน์รวม
