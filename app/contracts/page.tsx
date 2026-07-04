@@ -155,13 +155,14 @@ export default function ContractsPage() {
               <th className="px-4 py-3 text-right font-semibold">ค่างวด/เดือน</th>
               <th className="px-4 py-3 text-center font-semibold">ประกัน</th>
               <th className="px-4 py-3 text-center font-semibold">สถานะ</th>
+              <th className="px-4 py-3 text-center font-semibold">เอกสาร</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : items.map((c) => {
               const insExpired  = c.taxExpiryDate && c.taxExpiryDate < today
               const insExpiring = !insExpired && c.taxExpiryDate && c.taxExpiryDate <= in60
@@ -216,6 +217,15 @@ export default function ContractsPage() {
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_COLOR[c.status]}`}>
                       {STATUS_LABEL[c.status]}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <Link
+                      href={`/contracts/${c._id}/document`}
+                      title="เอกสารสัญญา (PDF)"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Link>
                   </td>
                 </tr>
               )
