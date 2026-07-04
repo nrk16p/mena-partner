@@ -20,6 +20,7 @@ const TEXT_FIELDS: FieldSpec[] = [
   { key: "buyerName",     label: "ชื่อผู้เช่าซื้อ" },
   { key: "driverName",    label: "ชื่อผู้ขับขี่" },
   { key: "phone",         label: "เบอร์โทร",            type: "tel" },
+  { key: "bankName",      label: "ธนาคาร" },
   { key: "accountNumber", label: "เลขที่บัญชี" },
   { key: "plant",         label: "แพล้นท์" },
   { key: "truckNumber",   label: "เบอร์รถ" },

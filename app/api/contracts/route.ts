@@ -64,13 +64,14 @@ export async function POST(req: NextRequest) {
 
   // Auto-create driver document
   const driverDoc: Driver = {
+    firstName:    body.driverName ?? body.buyerName ?? "",
+    lastName:     "",
     contractCode: body.contractCode,
     buyerName:    body.buyerName,
     driverName:   body.driverName,
     truckNumber:  body.truckNumber,
     licensePlate: body.licensePlate,
     phone:        body.phone,
-    plant:        body.plant,
     status:       "active",
     createdAt:    now,
   }

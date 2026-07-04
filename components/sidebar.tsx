@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, Users, ClipboardList, Truck, BarChart3, ShieldCheck, Home, Upload, Settings } from "lucide-react"
+import { FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
 
@@ -10,10 +10,10 @@ const NAV = [
   { href: "/",           label: "หน้าหลัก",      icon: Home },
   { href: "/contracts",  label: "สัญญาเช่าซื้อ",  icon: FileText },
   { href: "/drivers",    label: "พนักงานขับรถ",   icon: Users },
-  { href: "/payroll",    label: "เงินเดือน",       icon: ClipboardList },
-  { href: "/trips",      label: "รายเที่ยว",       icon: Truck },
-  { href: "/reports",    label: "รายงาน",          icon: BarChart3 },
   { href: "/promotions", label: "โปรโมชั่น",      icon: ShieldCheck },
+  { href: "/price-list", label: "ราคาขาย",        icon: Tag },
+  { href: "/vehicles",      label: "ทะเบียนรถ",      icon: Truck },
+  { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ",  icon: Wrench },
 ]
 
 const ADMIN_NAV = [

@@ -2,22 +2,63 @@ export type ContractStatus = "active" | "completed" | "terminated"
 export type DriverStatus = "active" | "inactive"
 export type UserRole = "admin" | "viewer"
 
+export interface Vehicle {
+  _id?: string
+  vehicleType?:    string   // ประเภทรถ
+  characteristic?: string  // ลักษณะ
+  brand?:          string  // ยี่ห้อ
+  model?:          string  // รุ่น
+  registrationDate?: string // YYYY-MM-DD วันจดทะเบียน
+  color?:          string  // สีรถ
+  licensePlate?:   string  // ทะเบียนรถ
+  truckNumber?:    string  // เบอร์รถ
+  chassisNumber?:  string  // เลขตัวถัง
+  engineNumber?:   string  // เลขเครื่อง
+  engineSize?:     string  // ขนาดกำลังเครื่องยนต์
+  status?:              string  // active / inactive
+  registrationDocUrl?:  string  // URL สำเนาทะเบียนรถ
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Contract {
   _id?: string
   contractCode: string
   contractDate: string          // ISO date string
-  buyerName: string
-  driverName: string
-  accountNumber: string
-  phone: string
-  plant: string
-  truckNumber: string
-  licensePlate: string
-  vehicleBrand: string
-  totalPrice: number
-  downPayment: number
-  monthlyInstallment: number
-  totalInstallments: number
+  // Driver / personal data
+  driverId?:       string       // ref to drivers._id
+  buyerName:       string
+  driverName:      string
+  birthDate?:      string       // YYYY-MM-DD from driver
+  nationalId?:     string       // 13 digits from driver
+  driverAddress?:  string       // from driver
+  accountNumber:   string
+  bankName?:       string
+  phone:           string
+  plant:           string
+  // Vehicle data
+  vehicleId?:              string  // ref to vehicle_master._id
+  truckNumber:             string
+  licensePlate:            string
+  vehicleBrand:            string  // ยี่ห้อ
+  vehicleModel?:           string  // รุ่น
+  vehicleType?:            string  // ประเภทรถ
+  vehicleCharacteristic?:  string  // ลักษณะ
+  vehicleRegistrationDate?: string // วันจดทะเบียน
+  vehicleColor?:           string  // สีรถ
+  chassisNumber?:          string  // เลขตัวถัง
+  engineNumber?:           string  // เลขเครื่อง
+  engineSize?:             string  // ขนาดกำลังเครื่องยนต์
+  // Financial (from master_price_list, keyed by licensePlate)
+  totalPrice:          number   // totalSalePrice
+  downPayment:         number   // เงินดาวน์รวม
+  cashDown?:           number   // เงินดาวน์สด
+  remainingInstallment?: number // งวดดาวน์คงเหลือ
+  downInstallmentCount?: number // จำนวนงวดดาวน์
+  downInstallmentAmt?: number   // ค่างวดดาวน์
+  financeAmount?:      number   // ยอดไฟแนนซ์
+  monthlyInstallment:  number   // monthlyPayment
+  totalInstallments:   number   // financeInstallments
   startDate: string             // ISO date string
   status: ContractStatus
   notes: string
@@ -53,21 +94,45 @@ export interface Contract {
   reserveNote?: string
   drawLimit?: number
   reserveAsOfMonth?: string
+  payEveryLastDay?: boolean      // จ่ายทุกวันสุดท้ายของเดือน
+  saleContractUrl?:      string  // สัญญาซื้อขาย
+  hireContractUrl?:      string  // สัญญาว่าจ้าง
+  guaranteeContractUrl?: string  // สัญญาค้ำประกัน
+  attachments?: string[]        // public URLs of uploaded files (legacy)
   createdAt?: string
   updatedAt?: string
 }
 
 export interface Driver {
   _id?: string
-  contractCode: string
-  buyerName: string
-  driverName: string
-  truckNumber: string
-  licensePlate: string
-  phone: string
-  plant: string
-  status: DriverStatus
+  firstName:      string
+  lastName:       string
+  birthDate?:     string   // YYYY-MM-DD
+  nationalId?:    string   // 13 digits
+  address?:       string
+  staffCode?:     string   // รหัสพนักงาน
+  phone?:         string   // เบอร์โทรศัพท์
+  bankName?:      string   // ธนาคาร
+  accountNumber?: string   // เลขที่บัญชี
+  idCardUrl?:      string   // URL ภาพบัตรประชาชน
+  licenseUrl?:     string   // URL ใบขับขี่
+  houseRegUrl?:    string   // URL ทะเบียนบ้าน
+  licenseNumber?:  string   // เลขบัตรใบขับขี่
+  licenseType?:    string   // ประเภทใบขับขี่
+  licenseExpiry?:  string   // วันหมดอายุ YYYY-MM-DD
+  isTruckOwner?:  boolean  // เป็นเจ้าของรถ
+  isDriver?:      boolean  // เป็นพนักงานขับรถ
+  startDate?:     string   // YYYY-MM-DD เริ่มงานวันที่
+  endDate?:       string   // YYYY-MM-DD สิ้นสุด
+  status:         DriverStatus
   createdAt?: string
+  updatedAt?: string
+  // legacy — optional so old pages don't break at compile time
+  contractCode?: string
+  buyerName?:    string
+  driverName?:   string
+  truckNumber?:  string
+  licensePlate?: string
 }
 
 export interface PayrollIncomeFields {

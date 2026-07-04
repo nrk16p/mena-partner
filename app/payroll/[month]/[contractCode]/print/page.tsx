@@ -114,7 +114,7 @@ export default function PrintPayslipPage() {
           <Row label="ชื่อผู้ขับขี่"   value={driver?.driverName ?? contract?.driverName ?? "-"} />
           <Row label="ชื่อผู้เช่าซื้อ"  value={driver?.buyerName  ?? contract?.buyerName  ?? "-"} />
           <Row label="ทะเบียนรถ"      value={driver?.licensePlate ?? contract?.licensePlate ?? "-"} />
-          <Row label="แพล้นท์"         value={driver?.plant ?? contract?.plant ?? "-"} />
+          <Row label="แพล้นท์"         value={contract?.plant ?? "-"} />
           <Row label="วันทำงาน"       value={`${entry.workingDays} วัน`} />
           <Row label="จำนวนเที่ยว"    value={`${tripCount || entry.tripCount} เที่ยว`} />
         </div>

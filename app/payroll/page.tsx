@@ -57,26 +57,25 @@ export default function PayrollPage() {
   const entryMap     = Object.fromEntries(entries.map((e) => [e.contractCode, e]))
   const prevEntryMap = Object.fromEntries(prevEntries.map((e) => [e.contractCode, e]))
 
-  // Unique plant list from drivers
-  const plants = Array.from(new Set(drivers.map((d) => d.plant).filter(Boolean))).sort()
+  const plants: string[] = []
 
   const filtered = drivers.filter((d) => {
-    const matchQ = !q || [d.contractCode, d.driverName, d.plant ?? ""]
+    const matchQ = !q || [d.contractCode ?? "", d.driverName ?? ""]
       .some((v) => v.toLowerCase().includes(q.toLowerCase()))
-    const matchPending = !showPending || !entryMap[d.contractCode]
-    const matchPlant = !plantFilter || d.plant === plantFilter
+    const matchPending = !showPending || !entryMap[d.contractCode ?? ""]
+    const matchPlant = !plantFilter
     return matchQ && matchPending && matchPlant
   })
 
   const recorded = entries.length
   const totalNetPay = entries.reduce((s, e) => s + (e.netPay ?? 0), 0)
   const entryCodeSet = new Set(entries.map((e) => e.contractCode))
-  const nextPending = drivers.find((d) => !entryCodeSet.has(d.contractCode))
-  const pendingCount = drivers.filter((d) => !entryCodeSet.has(d.contractCode)).length
+  const nextPending = drivers.find((d) => !entryCodeSet.has(d.contractCode ?? ""))
+  const pendingCount = drivers.filter((d) => !entryCodeSet.has(d.contractCode ?? "")).length
 
   async function handleBatchCreate() {
     if (!month) return
-    const pending = drivers.filter((d) => !entryCodeSet.has(d.contractCode)).length
+    const pending = drivers.filter((d) => !entryCodeSet.has(d.contractCode ?? "")).length
     if (!confirm(`สร้างเงินเดือนอัตโนมัติให้ ${pending} คนที่ยังไม่บันทึก?\n\nระบบจะดึงค่าขนส่งจากรายเที่ยว, คำนวณค่าดำเนินการ 8%, และเติมค่างวด+ประกันจากสัญญาอัตโนมัติ`)) return
     setLoading(true)
     try {
@@ -265,8 +264,8 @@ export default function PayrollPage() {
             ทั้งหมด
           </button>
           {plants.map((p) => {
-            const driversInPlant = drivers.filter((d) => d.plant === p)
-            const recordedInPlant = driversInPlant.filter((d) => entryMap[d.contractCode]).length
+            const driversInPlant = drivers.filter((_d) => false || p)
+            const recordedInPlant = driversInPlant.filter((d) => entryMap[d.contractCode ?? ""]).length
             return (
               <button
                 key={p}
@@ -329,15 +328,15 @@ export default function PayrollPage() {
             ) : filtered.length === 0 ? (
               <tr><td colSpan={10} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : filtered.map((d) => {
-              const entry     = entryMap[d.contractCode]
-              const prevEntry = prevEntryMap[d.contractCode]
+              const entry     = entryMap[d.contractCode ?? ""]
+              const prevEntry = prevEntryMap[d.contractCode ?? ""]
               const delta     = entry && prevEntry ? entry.netPay - prevEntry.netPay : null
 
               return (
                 <tr key={d._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                   <td className="px-4 py-3 font-medium">{d.contractCode}</td>
                   <td className="px-4 py-3">{d.driverName}</td>
-                  <td className="px-4 py-3 text-zinc-500">{d.plant}</td>
+                  <td className="px-4 py-3 text-zinc-500"></td>
                   <td className="px-4 py-3 text-right text-zinc-500 text-xs">
                     {entry ? entry.tripCount : "-"}
                   </td>
@@ -393,12 +392,12 @@ export default function PayrollPage() {
           </tbody>
           {/* Totals row */}
           {!loading && filtered.length > 0 && entries.length > 0 && (() => {
-            const visibleEntries = filtered.map((d) => entryMap[d.contractCode]).filter(Boolean)
+            const visibleEntries = filtered.map((d) => entryMap[d.contractCode ?? ""]).filter(Boolean)
             if (visibleEntries.length === 0) return null
             const sumIncome     = visibleEntries.reduce((s, e) => s + (e.totalIncome ?? 0), 0)
             const sumDeductions = visibleEntries.reduce((s, e) => s + (e.totalDeductions ?? 0), 0)
             const sumNet        = visibleEntries.reduce((s, e) => s + (e.netPay ?? 0), 0)
-            const prevVisible   = filtered.map((d) => prevEntryMap[d.contractCode]).filter(Boolean)
+            const prevVisible   = filtered.map((d) => prevEntryMap[d.contractCode ?? ""]).filter(Boolean)
             const prevSumNet    = prevVisible.reduce((s, e) => s + (e.netPay ?? 0), 0)
             const totalDelta    = prevVisible.length > 0 ? sumNet - prevSumNet : null
             return (

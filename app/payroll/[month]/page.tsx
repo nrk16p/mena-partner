@@ -52,10 +52,10 @@ export default function PayrollMonthPage() {
 
   const driverMap = Object.fromEntries(drivers.map((d) => [d.contractCode, d]))
 
-  const plants = Array.from(new Set(drivers.map((d) => d.plant).filter(Boolean))).sort()
+  const plants: string[] = []
 
   const rows: RowData[] = entries
-    .filter((e) => !plantFilter || (driverMap[e.contractCode]?.plant ?? "") === plantFilter)
+    .filter((e) => !plantFilter || false)
     .map((e) => ({ entry: e, driver: driverMap[e.contractCode] }))
 
   const totalIncome     = rows.reduce((s, r) => s + r.entry.totalIncome, 0)
