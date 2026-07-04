@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Truck, ClipboardList, BarChart3, FileText } from "lucide-react"
+import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { missingDocFields } from "@/lib/contract-doc"
+import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,18 +65,32 @@ export default function ContractDetailPage() {
   const [form, setForm]    = useState<Contract | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError]  = useState("")
+  const [promoList, setPromoList] = useState<PromoMaster[]>([])
 
   useEffect(() => {
     fetch(`/api/contracts/${id}`)
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d) setForm(d) })
+    fetch("/api/promotions/master")
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setPromoList(d))
   }, [id])
+
+  // ทุกข้อมูลที่ปรากฏในเอกสารสัญญา = จำเป็นต้องกรอก → ไฮไลต์ช่องที่ยังขาด
+  const missingDoc  = missingDocFields(form)
+  const missingKeys = new Set(missingDoc.map((f) => f.key))
+  const missingCls = (key: keyof Contract) =>
+    missingKeys.has(key)
+      ? "border-amber-400 ring-1 ring-amber-300 bg-amber-50 dark:bg-amber-950/30 placeholder:text-amber-400"
+      : ""
 
   function strField(key: keyof Contract, type = "text", readOnly = false) {
     return {
       value: String(form?.[key] ?? ""),
       type,
       disabled: !isAdmin || readOnly,
+      className: missingCls(key),
+      placeholder: missingKeys.has(key) ? "จำเป็นต้องกรอก" : undefined,
       onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm((p) => p ? { ...p, [key]: e.target.value } : p),
     }
@@ -86,6 +102,7 @@ export default function ContractDetailPage() {
       type: "number",
       min: "0",
       disabled: !isAdmin,
+      className: missingCls(key),
       onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm((p) => p ? { ...p, [key]: Number(e.target.value) } : p),
     }
@@ -115,7 +132,7 @@ export default function ContractDetailPage() {
     : null
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-[1500px]">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">สัญญา {form.contractCode}</h1>
         <p className="text-sm text-zinc-400 mt-0.5">{form.buyerName} · {form.licensePlate}</p>
@@ -146,6 +163,34 @@ export default function ContractDetailPage() {
           </Link>
         </div>
       </div>
+
+      {/* ความครบถ้วนของข้อมูลเอกสารสัญญา — ทุกช่องในสัญญาจำเป็นต้องกรอก */}
+      {missingDoc.length > 0 ? (
+        <div className="mb-6 rounded-xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-4">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            ข้อมูลเอกสารสัญญายังไม่ครบ — ขาดอีก {missingDoc.length} รายการ (ทุกข้อมูลในสัญญาจำเป็นต้องกรอก)
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {missingDoc.map((f) => (
+              <span key={f.key} className="text-[11px] font-medium bg-white dark:bg-zinc-900 text-amber-800 dark:text-amber-300 border border-amber-300 rounded-full px-2.5 py-0.5">
+                {f.label}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">
+            ช่องที่ต้องกรอกถูกไฮไลต์เป็นสีเหลืองในฟอร์มด้านล่าง — กรอกแล้วกดบันทึก
+          </p>
+        </div>
+      ) : (
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          <CheckCircle2 className="w-4 h-4" /> ข้อมูลเอกสารสัญญาครบถ้วน — พร้อมออกเอกสารจริง
+        </div>
+      )}
+
+      {/* ── ซ้าย: ฟอร์ม | ขวา: preview สัญญาสด ── */}
+      <div className="flex gap-6 items-start">
+        <div className="w-full xl:max-w-2xl min-w-0 shrink-0 xl:w-[42rem]">
 
       {/* Installment summary card */}
       {form.totalPrice > 0 && (
@@ -393,6 +438,28 @@ export default function ContractDetailPage() {
           </div>
         )}
       </form>
+        </div>
+
+        {/* ── Preview เอกสารสัญญา (อัปเดตทันทีตามที่กรอก) ── */}
+        <div className="hidden xl:block flex-1 min-w-0 sticky top-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+              ตัวอย่างเอกสารสัญญา — อัปเดตตามที่กรอกทันที
+            </span>
+            <Link href={`/contracts/${id}/document`} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline">
+              เปิดหน้าพิมพ์ / PDF →
+            </Link>
+          </div>
+          <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
+            <div style={{ zoom: 0.58 }}>
+              <ContractDocument
+                contract={form}
+                promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
