@@ -128,18 +128,21 @@ export default function ContractDocumentPage() {
       <style>{`
         /* screen: gray backdrop + A4 sheet */
         .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
+        /* ให้เหมือนต้นฉบับ Word มากที่สุด: CordiaUPC/Cordia New 16pt, single spacing
+           (มีในเครื่อง Windows ทุกเครื่อง / Mac ที่ลง MS Office) — ถ้าไม่มีจะใช้ Sarabun แทน */
+        .contract-doc, .sheet { font-family: "Cordia New", "CordiaUPC", ${sarabun.style.fontFamily}; }
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
           padding: 15mm 16mm 14mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
-          font-size: 15.5pt; line-height: 1.45;
+          font-size: 16pt; line-height: normal;
         }
-        .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 10px; }
-        .clause-h { font-weight: 700; margin-top: 8px; break-after: avoid-page; page-break-after: avoid; }
-        .indent { text-indent: 3.2em; }
-        .sub { margin-left: 2.4em; }
-        .contract-doc p { margin: 2px 0; text-align: justify; orphans: 2; widows: 2; }
+        .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
+        .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid; }
+        .indent { text-indent: 36pt; }
+        .sub { margin-left: 28pt; }
+        .contract-doc p { margin: 0; text-align: justify; orphans: 2; widows: 2; }
         .sig-table { width: 100%; margin-top: 18px; }
         .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
         .attach-sheet { break-before: page; page-break-before: always; }
@@ -368,22 +371,22 @@ export default function ContractDocumentPage() {
           โดยไม่เป็นการตัดสิทธิหรือปลดความรับผิดใด ๆ
           ของคู่สัญญาที่เกิดขึ้นและมีอยู่จนถึงวันที่ผู้ขายใช้สิทธิบอกเลิกสัญญา
         </p>
-        <p className="sub" style={{ marginLeft: "3.6em" }}>
+        <p className="sub" style={{ marginLeft: "56pt" }}>
           5.1.1 เมื่อผู้ซื้อผิดนัดการชำระเงินดาวน์และ/หรือเงินค่างวดตามข้อ 2 งวดใดงวดหนึ่ง
         </p>
-        <p className="sub" style={{ marginLeft: "3.6em" }}>
+        <p className="sub" style={{ marginLeft: "56pt" }}>
           5.1.2 ผู้ซื้อหรือผู้ค้ำประกันไม่ปฏิบัติหรือปฏิบัติผิดสัญญาข้อหนึ่งข้อใดแห่งสัญญานี้
           และ/หรือเอกสารอื่นใดที่เกี่ยวเนื่องกับสัญญาฉบับนี้ รวมถึงกรณีสัญญารับจ้างขับรถถูกบอกเลิกสัญญา
         </p>
-        <p className="sub" style={{ marginLeft: "3.6em" }}>
+        <p className="sub" style={{ marginLeft: "56pt" }}>
           5.1.3 ผู้ซื้อถูกศาลมีคำสั่งพิทักษ์ทรัพย์เด็ดขาดหรือพิพากษาให้เป็นบุคคลล้มละลาย
           หรือถูกศาลสั่งให้เป็นคนไร้ความสามารถหรือเสมือนไร้ความสามารถ หรือตกเป็นคนวิกลจริต
         </p>
-        <p className="sub" style={{ marginLeft: "3.6em" }}>
+        <p className="sub" style={{ marginLeft: "56pt" }}>
           5.1.4 ผู้ซื้อมีหนี้สินล้นพ้นตัว หรือไม่สามารถชำระหนี้ตามคำพิพากษา ถูกบังคับคดี ถูกยึด
           หรือถูกอายัดทรัพย์สิน
         </p>
-        <p className="sub" style={{ marginLeft: "3.6em" }}>
+        <p className="sub" style={{ marginLeft: "56pt" }}>
           5.1.5 เมื่อทรัพย์สินถูกใช้ในการกระทำความผิดหรือมีการใช้ในลักษณะที่ขัดต่อบทบัญญัติแห่งกฎหมาย
           ระเบียบ คำสั่ง หรือข้อบังคับใด ๆ
           หรือมีการใช้ทรัพย์สินโดยประการอื่นจนอาจจะเป็นเหตุให้ทรัพย์สินถูกริบ ยึด อายัด
@@ -391,7 +394,7 @@ export default function ContractDocumentPage() {
           หรือมีความพยายามที่จะนำทรัพย์สินออกไปนอกราชอาณาจักร
           ไม่ว่าจะด้วยเหตุเพราะตัวผู้ซื้อเองหรือเพราะบุคคลอื่น
         </p>
-        <p className="sub" style={{ marginLeft: "3.6em" }}>
+        <p className="sub" style={{ marginLeft: "56pt" }}>
           5.1.6 ผู้ซื้อได้กระทำการอย่างหนึ่งใดต่อทรัพย์สิน
           อันอาจจะเป็นการกระทบต่อกรรมสิทธิ์ของผู้ขายหรืออาจทำให้ทรัพย์สินได้รับความเสียหาย
           และผู้ขายเห็นว่าเหตุดังกล่าวสามารถแก้ไขได้และได้บอกกล่าวให้ผู้ซื้อแก้ไขแล้วแต่ผู้ซื้อไม่ปฏิบัติตามภายในเวลาที่กำหนด
