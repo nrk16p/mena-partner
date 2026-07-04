@@ -85,6 +85,8 @@ export default function ContractDocumentPage() {
         if (!cRes.ok) throw new Error("ไม่พบข้อมูลสัญญา")
         const c: Contract = await cRes.json()
         setContract(c)
+        // browser Save-as-PDF uses the tab title as the default filename
+        document.title = `สัญญาซื้อขาย-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
         const pRes = await fetch("/api/promotions/master")
         if (pRes.ok) {
           const all: PromoMaster[] = await pRes.json()
@@ -128,30 +130,33 @@ export default function ContractDocumentPage() {
         .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
-          background: #fff; color: #18181b;
-          padding: 14mm 16mm 12mm 20mm;
+          background: #fff; color: #000;
+          padding: 15mm 16mm 14mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
-          font-size: 11.5pt; line-height: 1.6;
+          font-size: 15.5pt; line-height: 1.45;
         }
-        .doc-title { text-align: center; font-weight: 700; font-size: 12.5pt; margin-bottom: 10px; }
-        .clause-h { font-weight: 700; margin-top: 10px; }
+        .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 10px; }
+        .clause-h { font-weight: 700; margin-top: 8px; break-after: avoid-page; page-break-after: avoid; }
         .indent { text-indent: 3.2em; }
         .sub { margin-left: 2.4em; }
-        .contract-doc p { margin: 2px 0; text-align: justify; }
+        .contract-doc p { margin: 2px 0; text-align: justify; orphans: 2; widows: 2; }
         .sig-table { width: 100%; margin-top: 18px; }
         .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
         .attach-sheet { break-before: page; page-break-before: always; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }
 
-        @page { size: A4; margin: 0; }
+        /* Real A4 margins applied by the printer on EVERY page (มาตรฐานเอกสาร:
+           บน 15mm ขวา 16mm ล่าง 14mm ซ้าย 20mm — ตามต้นฉบับ Word) */
+        @page { size: A4 portrait; margin: 15mm 16mm 14mm 20mm; }
         @media print {
-          html, body { display: block !important; height: auto !important; overflow: visible !important; }
+          html, body { display: block !important; height: auto !important; overflow: visible !important;
+                       background: #fff !important; }
           aside, header, nav { display: none !important; }
           main, .overflow-hidden { overflow: visible !important; height: auto !important; }
           main { padding: 0 !important; }
           .contract-doc { background: #fff; margin: 0; padding: 0; }
-          .sheet { width: auto; min-height: 0; margin: 0; box-shadow: none;
-                   padding: 12.5mm 16mm 10mm 20mm; }
+          /* page margins come from @page — the sheet itself must have none */
+          .sheet { width: auto; min-height: 0; margin: 0; box-shadow: none; padding: 0; }
           .print-hide { display: none !important; }
         }
       `}</style>
