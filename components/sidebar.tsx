@@ -16,7 +16,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     items: [{ href: "/", label: "หน้าหลัก · คู่มือ", icon: Home }],
   },
   {
-    title: "1 · ข้อมูลหลัก",
+    title: "ข้อมูลหลัก",
     items: [
       { href: "/drivers", label: "พนักงานขับรถ", icon: Users },
       { href: "/vehicles", label: "ทะเบียนรถ", icon: Truck },
@@ -24,11 +24,11 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     ],
   },
   {
-    title: "2 · สัญญา",
+    title: "สัญญา",
     items: [{ href: "/contracts", label: "สัญญาเช่าซื้อ", icon: FileText }],
   },
   {
-    title: "3 · งานประจำวัน",
+    title: "งานประจำวัน",
     items: [
       { href: "/trips", label: "เที่ยววิ่ง", icon: ClipboardList },
       { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ", icon: Wrench },
@@ -36,7 +36,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     ],
   },
   {
-    title: "4-5 · เงินเดือน & ปิดเดือน",
+    title: "เงินเดือน & ปิดเดือน",
     items: [
       { href: "/payroll", label: "เงินเดือน", icon: Banknote },
       { href: "/adjustments", label: "รายการปรับปรุง", icon: SlidersHorizontal },
