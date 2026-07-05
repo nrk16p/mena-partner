@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     date: String(date),
     amount: Number(amount),
     notes: String(notes ?? ""),
+    // บันทึกโดยทีมจากหน้าโปรโมชั่น = ระบุแล้ว → ตัดเพดานทันที
+    confirmed: true,
     createdAt: new Date(),
   }
   const result = await db.collection("pm_records").insertOne(doc)

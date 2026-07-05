@@ -226,7 +226,9 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
   }
 
   // ── manual PM records (pm_records: keyed by contractCode + integer year) ──
+  // กติกาเดียวกับค่าซ่อม: ตัดเพดานเฉพาะรายการที่ทีมยืนยันแล้ว (confirmed === true)
   for (const p of pmManual) {
+    if (p.confirmed !== true) continue // ประวัติ/ยังไม่ยืนยัน — ไม่ตัดเพดาน
     const plate = ccToPlate.get(p.contractCode)
     if (!plate) continue
     const u = ensure(plate)

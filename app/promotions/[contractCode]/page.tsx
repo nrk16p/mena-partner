@@ -99,6 +99,16 @@ export default function PromoDetailPage() {
     if (r.ok) await load()
   }
 
+  const handlePmConfirmToggle = async (id: string, confirmed: boolean) => {
+    if (confirmed && !confirm("ยืนยันตัดเพดาน PM สำหรับรายการนี้?")) return
+    const r = await fetch(`/api/promotions/pm/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmed }),
+    })
+    if (r.ok) await load()
+  }
+
   if (loading) return <div className="text-zinc-400 text-sm py-8">กำลังโหลด...</div>
   if (!data)   return <div className="text-zinc-400 text-sm py-8">ไม่พบข้อมูล</div>
 
@@ -322,6 +332,16 @@ export default function PromoDetailPage() {
           <p className="text-sm text-right text-zinc-500">
             คงเหลือปีนี้ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.pmRemainingThisYear)}</span>
           </p>
+          {(() => {
+            const pending = data.pmRecords.filter((p) => p.year === currentYear && p.confirmed !== true)
+            const pendingTotal = pending.reduce((s, p) => s + (p.amount ?? 0), 0)
+            return pending.length > 0 ? (
+              <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                ⚠ บันทึก PM รอทีมยืนยัน {pending.length} รายการ รวม {formatMoney(pendingTotal)} บาท —
+                <b> ยังไม่ถูกหักจากเพดาน</b> จนกว่าจะกด “ยืนยันตัดงบ” หรือติ๊กหักจากรายการเบิกในหน้า ค่าใช้จ่ายรถ
+              </p>
+            ) : null
+          })()}
         </div>
 
         {/* PM history */}
@@ -356,29 +376,46 @@ export default function PromoDetailPage() {
               ))}
               {data.pmRecords.length === 0 && (data.stockPm ?? []).length === 0 ? (
                 <tr><td colSpan={6} className="px-3 py-4 text-center text-zinc-400 text-xs">ยังไม่มีบันทึก PM</td></tr>
-              ) : data.pmRecords.map((p: PmRecord) => (
-                <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-3 py-2 text-zinc-500">{p.year}</td>
-                  <td className="px-3 py-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.type === "PM1" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
-                      {p.type}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-zinc-500">{p.date}</td>
-                  <td className="px-3 py-2 text-right font-medium">{formatMoney(p.amount)}</td>
-                  <td className="px-3 py-2 text-zinc-400 text-xs">{p.notes}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={() => handlePmDelete(p._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
-                  </td>
-                </tr>
-              ))}
+              ) : data.pmRecords.map((p: PmRecord) => {
+                const counted = p.confirmed === true
+                return (
+                  <tr key={p._id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${!counted ? "opacity-80" : ""}`}>
+                    <td className="px-3 py-2 text-zinc-500">{p.year}</td>
+                    <td className="px-3 py-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.type === "PM1" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                        {p.type}
+                      </span>
+                      {counted ? (
+                        <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
+                          ✓ ยืนยันแล้ว
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5">
+                          รอยืนยัน — ยังไม่ตัดเพดาน
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-500">{p.date}</td>
+                    <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(p.amount)}</td>
+                    <td className="px-3 py-2 text-zinc-400 text-xs">{p.notes}</td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      {counted ? (
+                        <button onClick={() => handlePmConfirmToggle(p._id!, false)} className="text-xs text-zinc-400 hover:text-amber-600 mr-2" title="ยกเลิกการตัดเพดาน">ยกเลิกยืนยัน</button>
+                      ) : (
+                        <button onClick={() => handlePmConfirmToggle(p._id!, true)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
+                      )}
+                      <button onClick={() => handlePmDelete(p._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
 
         {/* Add PM form */}
         <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 space-y-3">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึก PM</p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึก PM (บันทึกโดยทีม = ยืนยันตัดเพดานทันที)</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">ปี (ค.ศ.)</Label>

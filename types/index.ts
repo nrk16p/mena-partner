@@ -223,6 +223,8 @@ export interface PmRecord {
   date: string
   amount: number
   notes: string
+  /** ทีมยืนยันตัดเพดานแล้ว — รายการที่ไม่มี field นี้ = รอยืนยัน (ไม่ตัดเพดาน) */
+  confirmed?: boolean
   createdAt?: string
 }
 
