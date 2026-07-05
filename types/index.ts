@@ -210,6 +210,8 @@ export interface RepairClaim {
   date: string
   description: string
   amount: number
+  /** ทีมยืนยันตัดงบโปรฯ แล้ว — ประวัติเก่าที่ไม่มี field นี้ = รอยืนยัน (ไม่ตัดงบ) */
+  confirmed?: boolean
   createdAt?: string
 }
 

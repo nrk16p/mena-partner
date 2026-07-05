@@ -135,12 +135,18 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
   }
 
   // ── repair_claims keyed by MR (description) ──
-  interface ClaimRow { mr: string; date: string; amount: number; contractCode: string }
+  interface ClaimRow { mr: string; date: string; amount: number; contractCode: string; confirmed: boolean }
   const claimByMr = new Map<string, ClaimRow>()
   for (const c of claims) {
     const mr = String(c.description ?? "").trim()
     const key = mr || `claim:${c._id}`
-    claimByMr.set(key, { mr, date: c.date ?? "", amount: num(c.amount), contractCode: c.contractCode })
+    claimByMr.set(key, {
+      mr,
+      date: c.date ?? "",
+      amount: num(c.amount),
+      contractCode: c.contractCode,
+      confirmed: c.confirmed === true, // field ไม่มี (ประวัติเก่า) = ยังไม่ยืนยัน
+    })
   }
 
   // ── merge, dedupe by MR ──
@@ -196,10 +202,15 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
     }
   }
 
-  // claims not already covered by stock movements
+  // claims not already covered by stock movements.
+  // กติกา: ตัดงบเฉพาะรายการที่ทีม "ระบุแล้ว" เท่านั้น —
+  //   - รายการเบิกคลังที่ติ๊ก promoType (นับด้านบนแล้ว) หรือ
+  //   - claim ที่ confirmed === true (กดยืนยัน / บันทึกใหม่จากหน้าโปรโมชั่น)
+  // claim ประวัติจาก Excel ที่ยังไม่ยืนยัน = ไม่ตัดงบ (แสดงเป็น "รอยืนยัน" บน UI)
   const stockMrs = new Set([...stockByMr.values()].map((g) => g.mr).filter(Boolean))
   for (const [key, c] of claimByMr) {
     if (c.mr && stockMrs.has(c.mr)) continue // already counted from stock (deduped)
+    if (!c.confirmed) continue // ยังไม่ระบุจากทีม — ไม่ตัดงบ
     const plate = ccToPlate.get(c.contractCode)
     if (!plate) continue // unmapped contract — surfaced via getUnmappedClaims below
     const u = ensure(plate)

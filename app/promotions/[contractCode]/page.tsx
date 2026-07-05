@@ -69,6 +69,17 @@ export default function PromoDetailPage() {
     if (r.ok) await load()
   }
 
+  // กติกา: ทีมต้องระบุ (ยืนยัน) ก่อน งบโปรฯ ถึงถูกตัด
+  const handleConfirmToggle = async (id: string, confirmed: boolean) => {
+    if (confirmed && !confirm("ยืนยันตัดงบโปรโมชั่นสำหรับรายการนี้?")) return
+    const r = await fetch(`/api/promotions/repair/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmed }),
+    })
+    if (r.ok) await load()
+  }
+
   const handlePmSave = async () => {
     if (!pmDate || !pmAmt) return
     setPmSaving(true)
@@ -139,6 +150,18 @@ export default function PromoDetailPage() {
           <p className="text-sm text-right text-zinc-500">
             คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.repairRemaining)}</span>
           </p>
+          {(() => {
+            const pending = data.repairClaims.filter(
+              (c) => !c.confirmed && !data.dedupedMrs?.includes((c.description ?? "").trim())
+            )
+            const pendingTotal = pending.reduce((s, c) => s + (c.amount ?? 0), 0)
+            return pending.length > 0 ? (
+              <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                ⚠ ประวัติค่าซ่อมรอทีมยืนยัน {pending.length} รายการ รวม {formatMoney(pendingTotal)} บาท —
+                <b> ยังไม่ถูกหักจากวงเงิน</b> จนกว่าจะกด “ยืนยันตัดงบ” หรือติ๊กหักจากรายการเบิกในหน้า ค่าใช้จ่ายรถ
+              </p>
+            ) : null
+          })()}
         </div>
 
         {/* Repair monthly breakdown from Excel */}
@@ -177,26 +200,48 @@ export default function PromoDetailPage() {
                 <tr><td colSpan={4} className="px-3 py-4 text-center text-zinc-400 text-xs">ยังไม่มีรายการซ่อม</td></tr>
               ) : (
                 <>
-                  {data.repairClaims.map((c: RepairClaim) => (
-                    <tr key={c._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                      <td className="px-3 py-2 text-zinc-500">{c.date}</td>
-                      <td className="px-3 py-2">
-                        {c.description}
-                        {data.dedupedMrs?.includes((c.description ?? "").trim()) && (
-                          <span
-                            title="MR นี้มีรายการเบิกอะไหล่ในคลังด้วย — นับยอดครั้งเดียว (ไม่ซ้ำ)"
-                            className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5"
-                          >
-                            <Warehouse className="w-2.5 h-2.5" /> ตรงกับคลัง
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium">{formatMoney(c.amount)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
-                      </td>
-                    </tr>
-                  ))}
+                  {data.repairClaims.map((c: RepairClaim) => {
+                    const coveredByStock = data.dedupedMrs?.includes((c.description ?? "").trim())
+                    const counted = coveredByStock || c.confirmed === true
+                    return (
+                      <tr key={c._id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${!counted ? "opacity-80" : ""}`}>
+                        <td className="px-3 py-2 text-zinc-500">{c.date}</td>
+                        <td className="px-3 py-2">
+                          {c.description}
+                          {coveredByStock ? (
+                            <span
+                              title="ทีมติ๊กหักโปรฯ จากรายการเบิกคลังแล้ว — ตัดงบจากคลัง (นับครั้งเดียว)"
+                              className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5"
+                            >
+                              <Warehouse className="w-2.5 h-2.5" /> ตัดงบจากคลังแล้ว
+                            </span>
+                          ) : c.confirmed ? (
+                            <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
+                              ✓ ยืนยันตัดงบแล้ว
+                            </span>
+                          ) : (
+                            <span
+                              title="ประวัติค่าซ่อม — ยังไม่ตัดงบโปรฯ จนกว่าทีมจะยืนยัน"
+                              className="ml-2 text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5"
+                            >
+                              รอยืนยัน — ยังไม่ตัดงบ
+                            </span>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(c.amount)}</td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                          {!coveredByStock && (
+                            c.confirmed ? (
+                              <button onClick={() => handleConfirmToggle(c._id!, false)} className="text-xs text-zinc-400 hover:text-amber-600 mr-2" title="ยกเลิกการตัดงบ">ยกเลิกยืนยัน</button>
+                            ) : (
+                              <button onClick={() => handleConfirmToggle(c._id!, true)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
+                            )
+                          )}
+                          <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                   {/* จากหน้า ค่าใช้จ่ายรถ (ติ๊กหักโปรฯ บนรายการเบิกคลัง) — จัดการที่หน้านั้น */}
                   {(data.stockRepairs ?? []).map((s) => (
                     <tr key={`stock-${s.mr}-${s.date}`} className="bg-emerald-50/40 dark:bg-emerald-950/10">
@@ -222,7 +267,7 @@ export default function PromoDetailPage() {
 
         {/* Add repair form */}
         <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 space-y-3">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึกการซ่อม</p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึกการซ่อม (บันทึกโดยทีม = ยืนยันตัดงบทันที)</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">วันที่ซ่อม</Label>
