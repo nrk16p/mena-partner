@@ -363,8 +363,13 @@ export default function PromoDetailPage() {
                   <td className="px-3 py-2 text-zinc-500">{(s.date ?? "").slice(0, 4)}</td>
                   <td className="px-3 py-2">
                     <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
-                      <Warehouse className="w-3 h-3" /> คลัง
+                      <Warehouse className="w-3 h-3" /> คลัง{s.pmType ? ` · ${s.pmType}` : ""}
                     </span>
+                    {!(s.date ?? "").startsWith(String(currentYear)) && (
+                      <span className="ml-1.5 text-[10px] text-zinc-400" title="นับในเพดาน PM ของปีตามวันที่รายการ">
+                        (เพดานปี {(s.date ?? "").slice(0, 4)})
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-zinc-500">{s.date}</td>
                   <td className="px-3 py-2 text-right font-medium">{formatMoney(s.amount)}</td>

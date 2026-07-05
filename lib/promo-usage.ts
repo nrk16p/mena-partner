@@ -190,7 +190,8 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
   // stock records first (most detailed)
   for (const g of stockByMr.values()) {
     const u = ensure(g.plate)
-    const inClaims = g.mr !== "" && claimByMr.has(g.mr)
+    // dedupe กับ repair_claims เฉพาะกลุ่มซ่อม — กลุ่ม PM เป็นคนละงบ ไม่ชนกับ claim
+    const inClaims = g.promoType !== "pm" && g.mr !== "" && claimByMr.has(g.mr)
     const rec: RepairRecord = {
       mr: g.mr,
       date: g.date,
@@ -201,14 +202,15 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
       itemCount: g.itemCount,
     }
     if (g.promoType === "pm") {
-      // PM cap is annual — count only records of the requested year
+      // PM cap is annual — เงิน/ป้ายสิทธิ์นับเฉพาะปีที่ขอ แต่รายการโชว์ทุกปี
+      // (ไม่ให้รายการปีก่อนหายไปจากตารางจนทีมงง)
+      rec.pmType = [...g.pmTypes].sort().join("+") || undefined
       if ((g.date ?? "").startsWith(yearPrefix)) {
         u.pmUsedThisYear += g.amount
         if (g.pmTypes.has("PM1")) u.pm1Used = true
         if (g.pmTypes.has("PM2")) u.pm2Used = true
-        rec.pmType = [...g.pmTypes].sort().join("+") || undefined
-        u.pmRecords.push(rec)
       }
+      u.pmRecords.push(rec)
     } else {
       u.repairUsed += g.amount
       u.repairRecords.push(rec)
