@@ -4,6 +4,106 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ════════════════════════════════════════════════════════════════════
+   Octo Code design system — docs/DESIGN.md (designmd.ai/chef/octo-code)
+   Implemented at token level: every zinc/emerald/blue/red/amber/purple
+   utility class across the app resolves to the GitHub-inspired palette.
+   Dark-mode-first; depth via color layering (#0D1117 > #161B22 > #1C2128).
+   ════════════════════════════════════════════════════════════════════ */
+@theme {
+  /* neutrals — Void Black scale */
+  --color-zinc-50:  #F6F8FA;
+  --color-zinc-100: #E6EDF3;
+  --color-zinc-200: #C9D1D9;
+  --color-zinc-300: #B1BAC4;
+  --color-zinc-400: #8B949E;
+  --color-zinc-500: #6E7681;
+  --color-zinc-600: #484F58;
+  --color-zinc-700: #30363D;
+  --color-zinc-800: #21262D;
+  --color-zinc-900: #161B22;
+  --color-zinc-950: #0D1117;
+
+  /* primary action — Growth Green; hover:emerald-700 brightens per spec */
+  --color-emerald-50:  #DAFBE1;
+  --color-emerald-100: #ACEEBB;
+  --color-emerald-200: #7EE787;
+  --color-emerald-300: #56D364;
+  --color-emerald-400: #3FB950;
+  --color-emerald-500: #2EA043;
+  --color-emerald-600: #238636;
+  --color-emerald-700: #2EA043;
+  --color-emerald-800: #1B6E2E;
+  --color-emerald-900: #12451F;
+  --color-emerald-950: #071F10;
+
+  /* links / interactive — Mona Blue */
+  --color-blue-50:  #DDF4FF;
+  --color-blue-100: #B6E3FF;
+  --color-blue-200: #80CCFF;
+  --color-blue-300: #79C0FF;
+  --color-blue-400: #58A6FF;
+  --color-blue-500: #2F81F7;
+  --color-blue-600: #1F6FEB;
+  --color-blue-700: #1158C7;
+  --color-blue-800: #0D419D;
+  --color-blue-900: #0C2D6B;
+  --color-blue-950: #051D4D;
+
+  /* danger */
+  --color-red-50:  #FFEBE9;
+  --color-red-100: #FFCECB;
+  --color-red-200: #FFABA8;
+  --color-red-300: #FFA198;
+  --color-red-400: #FF7B72;
+  --color-red-500: #F85149;
+  --color-red-600: #DA3633;
+  --color-red-700: #B62324;
+  --color-red-800: #8E1519;
+  --color-red-900: #67060C;
+  --color-red-950: #490202;
+
+  /* warning */
+  --color-amber-50:  #FFF8C5;
+  --color-amber-100: #FAE17D;
+  --color-amber-200: #EAC54F;
+  --color-amber-300: #E3B341;
+  --color-amber-400: #E3B341;
+  --color-amber-500: #D29922;
+  --color-amber-600: #BF8700;
+  --color-amber-700: #9E6A03;
+  --color-amber-800: #845306;
+  --color-amber-900: #693E00;
+  --color-amber-950: #3B2300;
+
+  /* purple / violet accents (PM2, promo chips) */
+  --color-purple-50:  #FBEFFF;
+  --color-purple-100: #ECD8FF;
+  --color-purple-200: #D8B9FF;
+  --color-purple-300: #C297FF;
+  --color-purple-400: #A371F7;
+  --color-purple-500: #8957E5;
+  --color-purple-600: #8250DF;
+  --color-purple-700: #6E40C9;
+  --color-purple-800: #553098;
+  --color-purple-900: #3C1E70;
+  --color-purple-950: #271052;
+  --color-violet-50:  #FBEFFF;
+  --color-violet-100: #ECD8FF;
+  --color-violet-200: #D8B9FF;
+  --color-violet-300: #C297FF;
+  --color-violet-400: #A371F7;
+  --color-violet-500: #8957E5;
+  --color-violet-600: #8250DF;
+  --color-violet-700: #6E40C9;
+  --color-violet-800: #553098;
+  --color-violet-900: #3C1E70;
+  --color-violet-950: #271052;
+
+  /* JetBrains Mono for anything code-related (plates, MR, SHAs, amounts) */
+  --font-mono: var(--font-jbmono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -24,10 +124,11 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 3px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Octo: no rounded corners larger than 6px on functional UI */
+  --radius-xl: var(--radius);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -48,32 +149,35 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  /* Octo: 6px radius for buttons/inputs/cards/most components */
+  --radius: 0.375rem;
+  --font-sans: var(--font-inter), var(--font-noto-thai), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  /* light mode (secondary per Octo spec) — GitHub-light values */
+  --card: #FFFFFF;
+  --card-foreground: #1F2328;
+  --popover: #FFFFFF;
+  --popover-foreground: #1F2328;
 
-  /* Primary — Mena Orange (partner trucks) */
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Primary — Growth Green (Octo primary buttons) */
+  --primary: #1F883D;
+  --primary-foreground: #FFFFFF;
 
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary: #F6F8FA;
+  --secondary-foreground: #1F2328;
 
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted: #F6F8FA;
+  --muted-foreground: #656D76;
 
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: #F6F8FA;
+  --accent-foreground: #1F2328;
 
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --destructive: #CF222E;
+  --border: #D0D7DE;
+  --input: #D0D7DE;
+  --ring: #0969DA;
+  --background: #FFFFFF;
+  --foreground: #1F2328;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -90,24 +194,25 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* Octo dark — the default canvas */
+  --background: #0D1117;
+  --foreground: #E6EDF3;
+  --card: #161B22;
+  --card-foreground: #E6EDF3;
+  --popover: #1C2128;
+  --popover-foreground: #E6EDF3;
+  --primary: #238636;
+  --primary-foreground: #FFFFFF;
+  --secondary: #21262D;
+  --secondary-foreground: #E6EDF3;
+  --muted: #21262D;
+  --muted-foreground: #8B949E;
+  --accent: #21262D;
+  --accent-foreground: #E6EDF3;
+  --destructive: #F85149;
+  --border: #30363D;
+  --input: #30363D;
+  --ring: #2F81F7;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -129,7 +234,12 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+  }
+  h1, h2, h3 {
+    /* Octo display headings: tight, engineered */
+    letter-spacing: -0.02em;
   }
   html {
     @apply font-sans;
@@ -143,13 +253,13 @@
   }
   .text-kpi {
     font-size: 1.25rem;
-    font-weight: 700;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 600;
+    font-family: var(--font-jbmono), ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
   .num {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-jbmono), ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
