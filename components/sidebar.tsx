@@ -2,24 +2,75 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench } from "lucide-react"
+import {
+  FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
+  ClipboardList, Banknote, BarChart3, SlidersHorizontal,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
 
-const NAV = [
-  { href: "/",           label: "หน้าหลัก",      icon: Home },
-  { href: "/contracts",  label: "สัญญาเช่าซื้อ",  icon: FileText },
-  { href: "/drivers",    label: "พนักงานขับรถ",   icon: Users },
-  { href: "/promotions", label: "โปรโมชั่น",      icon: ShieldCheck },
-  { href: "/price-list", label: "ราคาขาย",        icon: Tag },
-  { href: "/vehicles",      label: "ทะเบียนรถ",      icon: Truck },
-  { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ",  icon: Wrench },
+// จัดหมวดตาม Flow หลัก 5 ขั้น (ดูหน้าแรก)
+const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] }[] = [
+  {
+    title: null,
+    items: [{ href: "/", label: "หน้าหลัก · คู่มือ", icon: Home }],
+  },
+  {
+    title: "1 · ข้อมูลหลัก",
+    items: [
+      { href: "/drivers", label: "พนักงานขับรถ", icon: Users },
+      { href: "/vehicles", label: "ทะเบียนรถ", icon: Truck },
+      { href: "/price-list", label: "ราคาขาย", icon: Tag },
+    ],
+  },
+  {
+    title: "2 · สัญญา",
+    items: [{ href: "/contracts", label: "สัญญาเช่าซื้อ", icon: FileText }],
+  },
+  {
+    title: "3 · งานประจำวัน",
+    items: [
+      { href: "/trips", label: "เที่ยววิ่ง", icon: ClipboardList },
+      { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ", icon: Wrench },
+      { href: "/promotions", label: "โปรโมชั่น", icon: ShieldCheck },
+    ],
+  },
+  {
+    title: "4-5 · เงินเดือน & ปิดเดือน",
+    items: [
+      { href: "/payroll", label: "เงินเดือน", icon: Banknote },
+      { href: "/adjustments", label: "รายการปรับปรุง", icon: SlidersHorizontal },
+      { href: "/reports", label: "รายงาน", icon: BarChart3 },
+    ],
+  },
 ]
 
 const ADMIN_NAV = [
-  { href: "/import",       label: "นำเข้า Excel",   icon: Upload },
-  { href: "/admin/month",  label: "จัดการรอบเดือน", icon: Settings },
+  { href: "/import", label: "นำเข้า Excel", icon: Upload },
+  { href: "/admin/month", label: "จัดการรอบเดือน", icon: Settings },
 ]
+
+function NavLink({ href, label, icon: Icon, active }: {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  active: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-[13px] transition-colors relative",
+        active
+          ? "bg-zinc-800 text-white font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
+          : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200"
+      )}
+    >
+      <Icon className={cn("w-[15px] h-[15px] shrink-0", active ? "text-emerald-400" : "text-zinc-500")} />
+      {label}
+    </Link>
+  )
+}
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -27,6 +78,7 @@ export function Sidebar() {
   const isAdmin = session?.user?.role === "admin"
 
   const initial = (session?.user?.email ?? session?.user?.name ?? "?")[0].toUpperCase()
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
 
   return (
     <aside className="flex flex-col w-52 shrink-0 bg-zinc-900 h-screen border-r border-zinc-800">
@@ -41,54 +93,33 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Main nav */}
+      {/* Grouped nav (ตาม flow 5 ขั้น) */}
       <nav className="flex-1 py-3 overflow-y-auto">
-        <div className="space-y-0.5 px-2">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-[9px] rounded-lg text-[13px] transition-colors relative",
-                  active
-                    ? "bg-zinc-800 text-white font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
-                    : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200"
-                )}
-              >
-                <Icon className={cn("w-[15px] h-[15px] shrink-0", active ? "text-emerald-400" : "text-zinc-500")} />
-                {label}
-              </Link>
-            )
-          })}
-        </div>
+        {GROUPS.map((g, gi) => (
+          <div key={gi} className={cn("px-2", gi > 0 && "mt-3")}>
+            {g.title && (
+              <p className="px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+                {g.title}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {g.items.map((item) => (
+                <NavLink key={item.href} {...item} active={isActive(item.href)} />
+              ))}
+            </div>
+          </div>
+        ))}
 
         {/* Admin section */}
         {isAdmin && (
-          <div className="mt-4 px-2">
-            <p className="px-3 mb-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+          <div className="mt-3 px-2">
+            <p className="px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
               Admin
             </p>
             <div className="space-y-0.5">
-              {ADMIN_NAV.map(({ href, label, icon: Icon }) => {
-                const active = pathname.startsWith(href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      "flex items-center gap-2.5 px-3 py-[9px] rounded-lg text-[13px] transition-colors relative",
-                      active
-                        ? "bg-zinc-800 text-white font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
-                        : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200"
-                    )}
-                  >
-                    <Icon className={cn("w-[15px] h-[15px] shrink-0", active ? "text-emerald-400" : "text-zinc-500")} />
-                    {label}
-                  </Link>
-                )
-              })}
+              {ADMIN_NAV.map((item) => (
+                <NavLink key={item.href} {...item} active={isActive(item.href)} />
+              ))}
             </div>
           </div>
         )}
