@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
 // PATCH — bulk-set promoType on multiple movement items at once
 export async function PATCH(req: NextRequest) {
-  const body = await req.json() as { updates?: { id: string; promoType: string }[] }
+  const body = await req.json() as { updates?: { id: string; promoType: string; pmType?: string }[] }
   const updates = body.updates ?? []
 
   if (updates.length === 0) {
@@ -49,6 +49,10 @@ export async function PATCH(req: NextRequest) {
     if (!["", "repair", "pm"].includes(u.promoType)) {
       return NextResponse.json({ error: `invalid promoType: ${u.promoType}` }, { status: 400 })
     }
+    // pmType ระบุประเภทสิทธิ์เมื่อ promoType = "pm" (ทำให้ป้าย PM1/PM2 ติดจากคลังได้)
+    if (u.pmType !== undefined && !["", "PM1", "PM2"].includes(u.pmType)) {
+      return NextResponse.json({ error: `invalid pmType: ${u.pmType}` }, { status: 400 })
+    }
   }
 
   const client = await clientPromise
@@ -57,7 +61,13 @@ export async function PATCH(req: NextRequest) {
   const ops: AnyBulkWriteOperation<any>[] = updates.map((u) => ({
     updateOne: {
       filter: { _id: new ObjectId(u.id) },
-      update: { $set: { promoType: u.promoType, updatedAt: now } },
+      update: {
+        $set: {
+          promoType: u.promoType,
+          pmType: u.promoType === "pm" ? (u.pmType ?? "") : "",
+          updatedAt: now,
+        },
+      },
     },
   }))
 

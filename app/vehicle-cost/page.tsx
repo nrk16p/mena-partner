@@ -668,6 +668,7 @@ interface StockMovement {
   notes:        string
   subNotes:     string
   promoType?:   "" | "repair" | "pm"
+  pmType?:      "" | "PM1" | "PM2"
 }
 
 function MovementRow({ m }: { m: StockMovement }) {
@@ -925,13 +926,21 @@ function PromoPanel({ promo, repairDeduct = 0, pmDeduct = 0 }: { promo: PlatePro
   )
 }
 
-type PromoSel = "" | "repair" | "pm"
+// การเลือกต่อรายการ: โปรซ่อม หรือ โปรPM ระบุสิทธิ์ PM1/PM2 (ทำให้ป้ายสิทธิ์ติดจากคลังได้)
+type PromoSel = "" | "repair" | "PM1" | "PM2"
+const isPm = (s: PromoSel) => s === "PM1" || s === "PM2"
+/** ค่าที่บันทึกไว้ของรายการ → PromoSel */
+function savedSel(m: StockMovement): PromoSel {
+  if (m.promoType === "repair") return "repair"
+  if (m.promoType === "pm") return m.pmType === "PM2" ? "PM2" : "PM1"
+  return ""
+}
 
 function MergedCard({ doc, movements, promo, onBulkChange }: {
   doc:           DebtDoc
   movements:     StockMovement[]
   promo?:        PlatePromo
-  onBulkChange:  (updates: { id: string; promoType: PromoSel }[]) => Promise<void>
+  onBulkChange:  (updates: { id: string; promoType: "" | "repair" | "pm"; pmType: "" | "PM1" | "PM2" }[]) => Promise<void>
 }) {
   const [open,        setOpen]        = useState(false)
   const [draft,       setDraft]       = useState<Record<string, PromoSel>>({})
@@ -940,26 +949,32 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
 
   // Effective selection = unsaved draft override, else saved value
   const eff = (m: StockMovement): PromoSel =>
-    draft[m._id] !== undefined ? draft[m._id] : ((m.promoType ?? "") as PromoSel)
+    draft[m._id] !== undefined ? draft[m._id] : savedSel(m)
 
-  const dirty = movements.some((m) => draft[m._id] !== undefined && draft[m._id] !== ((m.promoType ?? "") as PromoSel))
+  const dirty = movements.some((m) => draft[m._id] !== undefined && draft[m._id] !== savedSel(m))
 
   const movementTotal = movements.reduce((s, m) => s + (m.amount ?? 0), 0)
   const diff = (doc.liabilityAmount ?? 0) - movementTotal
   const isBalanced = movements.length > 0 && Math.abs(diff) < 0.01
 
   // Promotion deductions from effective selections
-  const savedOf = (m: StockMovement): PromoSel => ((m.promoType ?? "") as PromoSel)
   const repairItems  = movements.filter((m) => eff(m) === "repair")
-  const pmItems      = movements.filter((m) => eff(m) === "pm")
+  const pmItems      = movements.filter((m) => isPm(eff(m)))
   const repairDeduct = repairItems.reduce((s, m) => s + (m.amount ?? 0), 0)
   const pmDeduct     = pmItems.reduce((s, m) => s + (m.amount ?? 0), 0)
   const driverOwes   = movementTotal - repairDeduct - pmDeduct
   // ยอดที่บันทึกไว้แล้ว (ถูกนับรวมใน promo.repairUsed จาก API แล้ว) — ใช้หาส่วนต่างที่ยังไม่บันทึก
-  const savedRepairTotal = movements.filter((m) => savedOf(m) === "repair").reduce((s, m) => s + (m.amount ?? 0), 0)
-  const savedPmTotal     = movements.filter((m) => savedOf(m) === "pm").reduce((s, m) => s + (m.amount ?? 0), 0)
+  // หมายเหตุ PM: เพดานเป็นรายปี — ส่วนต่างที่ฉายลงแถบ "ปีนี้" นับเฉพาะรายการปีปัจจุบัน
+  const thisYear = String(new Date().getFullYear())
+  const inThisYear = (m: StockMovement) => (m.date ?? "").startsWith(thisYear)
+  const savedRepairTotal = movements.filter((m) => savedSel(m) === "repair").reduce((s, m) => s + (m.amount ?? 0), 0)
+  const savedPmTotal     = movements.filter((m) => isPm(savedSel(m))).reduce((s, m) => s + (m.amount ?? 0), 0)
   const repairDelta = repairDeduct - savedRepairTotal
-  const pmDelta     = pmDeduct - savedPmTotal
+  const pmDelta =
+    pmItems.filter(inThisYear).reduce((s, m) => s + (m.amount ?? 0), 0) -
+    movements.filter((m) => isPm(savedSel(m)) && inThisYear(m)).reduce((s, m) => s + (m.amount ?? 0), 0)
+  // ยอด PM ของปีอื่น (นับในเพดานปีของรายการนั้น ไม่ใช่แถบปีนี้)
+  const pmOtherYearTotal = pmItems.filter((m) => !inThisYear(m)).reduce((s, m) => s + (m.amount ?? 0), 0)
 
   function togglePromo(id: string, value: PromoSel) {
     setDraft((d) => ({ ...d, [id]: value }))
@@ -967,7 +982,8 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
 
   // Bulk select (draft only): assign every item, in order, until the budget runs out
   // (budget = remaining + what this card already consumed, since we re-decide all items)
-  function bulkAssign(type: "repair" | "pm") {
+  // PM bulk เลือกเป็น PM1 ก่อน — เปลี่ยนรายชิ้นเป็น PM2 ได้ในตาราง
+  function bulkAssign(type: "repair" | "PM1") {
     if (!promo) return
     let budget = type === "repair"
       ? promo.repairRemaining + savedRepairTotal
@@ -989,8 +1005,15 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
 
   async function handleSave() {
     const updates = movements
-      .filter((m) => draft[m._id] !== undefined && draft[m._id] !== ((m.promoType ?? "") as PromoSel))
-      .map((m) => ({ id: m._id, promoType: draft[m._id] }))
+      .filter((m) => draft[m._id] !== undefined && draft[m._id] !== savedSel(m))
+      .map((m) => {
+        const sel = draft[m._id]
+        return {
+          id: m._id,
+          promoType: (sel === "repair" ? "repair" : isPm(sel) ? "pm" : "") as "" | "repair" | "pm",
+          pmType: (isPm(sel) ? sel : "") as "" | "PM1" | "PM2",
+        }
+      })
     if (updates.length === 0) return
     setSaving(true)
     try {
@@ -1067,6 +1090,11 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
       {open && (
         <div className="border-t border-zinc-50 dark:border-zinc-800">
           {promo && <PromoPanel promo={promo} repairDeduct={repairDelta} pmDeduct={pmDelta} />}
+          {promo && pmOtherYearTotal > 0 && (
+            <div className="px-4 py-1.5 text-[10px] text-blue-700 bg-blue-50/60 dark:bg-blue-950/20 border-b border-zinc-50 dark:border-zinc-800">
+              ℹ รายการ PM ที่เลือกไว้ ฿{fmt(pmOtherYearTotal)} เป็นของปีก่อน — ถูกนับในเพดาน PM ของปีนั้น (ไม่แสดงในแถบ “ปีนี้”) แต่ยังหักจากยอดที่ พจร. ต้องรับผิดตามปกติ
+            </div>
+          )}
           {promo && movements.length > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50/50 dark:bg-zinc-800/30 border-b border-zinc-50 dark:border-zinc-800">
               <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">เลือกทั้งหมด:</span>
@@ -1079,7 +1107,8 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
               </button>
               <button
                 type="button"
-                onClick={() => bulkAssign("pm")}
+                onClick={() => bulkAssign("PM1")}
+                title="เลือกเป็น PM1 ทั้งหมด — เปลี่ยนรายชิ้นเป็น PM2 ได้ในตาราง"
                 className="px-2.5 py-1 rounded-md text-[10px] font-semibold border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
               >
                 ใช้โปรPM ทุกรายการ (จนครบวงเงิน)
@@ -1141,7 +1170,7 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
                     return (
                       <tr key={m._id} className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 ${
                         sel === "repair" ? "bg-red-50/40 dark:bg-red-950/10" :
-                        sel === "pm"     ? "bg-blue-50/40 dark:bg-blue-950/10" : ""
+                        isPm(sel)        ? "bg-blue-50/40 dark:bg-blue-950/10" : ""
                       }`}>
                         <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{thaiDate(m.date)}</td>
                         <td className="px-3 py-2 font-mono text-zinc-500 whitespace-nowrap">{m.wd || "—"}</td>
@@ -1172,15 +1201,29 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
                             </button>
                             <button
                               type="button"
-                              onClick={() => togglePromo(m._id, sel === "pm" ? "" : "pm")}
+                              onClick={() => togglePromo(m._id, sel === "PM1" ? "" : "PM1")}
                               disabled={!promo}
+                              title="โปรPM — ใช้สิทธิ์ PM1"
                               className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
-                                sel === "pm"
+                                sel === "PM1"
                                   ? "bg-blue-500 text-white border-blue-500"
                                   : "bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-blue-400 hover:text-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                               }`}
                             >
-                              โปรPM
+                              PM1
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => togglePromo(m._id, sel === "PM2" ? "" : "PM2")}
+                              disabled={!promo}
+                              title="โปรPM — ใช้สิทธิ์ PM2"
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
+                                sel === "PM2"
+                                  ? "bg-purple-500 text-white border-purple-500"
+                                  : "bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-purple-400 hover:text-purple-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                              }`}
+                            >
+                              PM2
                             </button>
                           </div>
                         </td>
@@ -1238,7 +1281,10 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
       {showReceipt && (
         <ReceiptModal
           doc={doc}
-          items={movements.map((m) => ({ ...m, promoType: eff(m) }))}
+          items={movements.map((m) => {
+            const sel = eff(m)
+            return { ...m, promoType: (sel === "repair" ? "repair" : isPm(sel) ? "pm" : "") as "" | "repair" | "pm", pmType: (isPm(sel) ? sel : "") as "" | "PM1" | "PM2" }
+          })}
           movementTotal={movementTotal}
           repairDeduct={repairDeduct}
           pmDeduct={pmDeduct}
@@ -1429,8 +1475,8 @@ function MergedTab() {
   const promoMap: Record<string, PlatePromo> = {}
   for (const p of promos) promoMap[p.plate] = p
 
-  // Persist promoType selections (called from the card's บันทึก button)
-  async function bulkUpdatePromo(updates: { id: string; promoType: "" | "repair" | "pm" }[]) {
+  // Persist promoType + pmType selections (called from the card's บันทึก button)
+  async function bulkUpdatePromo(updates: { id: string; promoType: "" | "repair" | "pm"; pmType: "" | "PM1" | "PM2" }[]) {
     if (updates.length === 0) return
     const res = await fetch("/api/stock-movements", {
       method: "PATCH",
@@ -1440,7 +1486,7 @@ function MergedTab() {
     if (!res.ok) throw new Error("save failed")
     setMovements((prev) => prev.map((m) => {
       const u = updates.find((x) => x.id === m._id)
-      return u ? { ...m, promoType: u.promoType } : m
+      return u ? { ...m, promoType: u.promoType, pmType: u.pmType } : m
     }))
     // refresh budgets — saved tags are now counted inside promo.repairUsed by the API
     const fresh = await fetch("/api/promotions/by-plate").then((r) => (r.ok ? r.json() : null))

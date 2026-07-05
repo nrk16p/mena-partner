@@ -106,7 +106,7 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
     db
       .collection("stock_movements")
       .find({ promoType: { $in: ["repair", "pm"] } })
-      .project({ mr: 1, date: 1, amount: 1, licensePlate: 1, promoType: 1 })
+      .project({ mr: 1, date: 1, amount: 1, licensePlate: 1, promoType: 1, pmType: 1 })
       .toArray(),
     db.collection("promo_config").find({}).toArray(),
     db.collection("pm_records").find({ year: y }).toArray(),
@@ -117,20 +117,30 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
   for (const [plate, info] of identity) if (info.contractCode) ccToPlate.set(info.contractCode, plate)
 
   // ── stock_movements: group item lines by MR ──
-  interface MrGroup { mr: string; date: string; amount: number; plate: string; itemCount: number; promoType: string }
+  interface MrGroup { mr: string; date: string; amount: number; plate: string; itemCount: number; promoType: string; pmTypes: Set<string> }
   const stockByMr = new Map<string, MrGroup>()
   for (const m of movements) {
     const mr = String(m.mr ?? "").trim()
     const plate = normPlate(m.licensePlate)
     if (!plate) continue
-    const key = mr || `no-mr:${plate}:${m.date}:${m._id}` // lines without MR are their own record
+    // repair กับ pm แยกกลุ่มกัน — MR เดียวกันอาจมีทั้งชิ้นซ่อมและชิ้น PM
+    const key = (mr || `no-mr:${plate}:${m.date}:${m._id}`) + `|${m.promoType}`
     const cur = stockByMr.get(key)
     if (cur) {
       cur.amount += num(m.amount)
       cur.itemCount += 1
       if ((m.date ?? "") < cur.date) cur.date = m.date
+      if (m.pmType) cur.pmTypes.add(String(m.pmType))
     } else {
-      stockByMr.set(key, { mr, date: m.date ?? "", amount: num(m.amount), plate, itemCount: 1, promoType: m.promoType })
+      stockByMr.set(key, {
+        mr,
+        date: m.date ?? "",
+        amount: num(m.amount),
+        plate,
+        itemCount: 1,
+        promoType: m.promoType,
+        pmTypes: new Set(m.pmType ? [String(m.pmType)] : []),
+      })
     }
   }
 
@@ -194,6 +204,9 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
       // PM cap is annual — count only records of the requested year
       if ((g.date ?? "").startsWith(yearPrefix)) {
         u.pmUsedThisYear += g.amount
+        if (g.pmTypes.has("PM1")) u.pm1Used = true
+        if (g.pmTypes.has("PM2")) u.pm2Used = true
+        rec.pmType = [...g.pmTypes].sort().join("+") || undefined
         u.pmRecords.push(rec)
       }
     } else {
