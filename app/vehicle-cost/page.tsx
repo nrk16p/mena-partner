@@ -1425,10 +1425,27 @@ function ReceiptModal({ doc, items, movementTotal, repairDeduct, pmDeduct, drive
             <span className="font-bold text-sm">ยอดสุทธิที่ พจร. ต้องรับผิด</span>
             <span className="font-bold text-lg">฿{fmt(driverOwes)}</span>
           </div>
-          <div className="flex justify-between text-zinc-500">
-            <span>ผ่อนชำระ {doc.installmentCount} งวด · งวดละ ฿{fmt(doc.monthlyInstallment)}</span>
-            <span>เริ่ม {thaiDate(doc.startDate)} — สิ้นสุด {thaiDate(doc.endDate)}</span>
-          </div>
+          {/* แผนผ่อนอิงยอดสุทธิหลังหักโปรฯ — แผนใน record คำนวณจากยอดเต็มก่อนหัก */}
+          {driverOwes <= 0 ? (
+            <div className="flex justify-between text-emerald-600 font-semibold">
+              <span>ไม่มียอดต้องผ่อนชำระ — โปรโมชั่นครอบคลุมเต็มจำนวน</span>
+            </div>
+          ) : (
+            <div className="flex justify-between text-zinc-500">
+              <span>
+                ผ่อนชำระ {doc.installmentCount} งวด · งวดละ ฿
+                {fmt(
+                  repairDeduct + pmDeduct > 0 && doc.installmentCount > 0
+                    ? Math.round((driverOwes / doc.installmentCount) * 100) / 100
+                    : doc.monthlyInstallment
+                )}
+                {repairDeduct + pmDeduct > 0 && doc.installmentCount > 0 && (
+                  <span className="text-[10px] text-zinc-400"> (คำนวณใหม่หลังหักโปรโมชั่น)</span>
+                )}
+              </span>
+              <span>เริ่ม {thaiDate(doc.startDate)} — สิ้นสุด {thaiDate(doc.endDate)}</span>
+            </div>
+          )}
           {promo && (
             <div className="flex justify-between text-[10px] text-zinc-400 pt-1">
               <span>วงเงินโปรฯ คงเหลือหลังหัก: ซ่อม ฿{fmt(repairAfter)} · PM ฿{fmt(pmAfter)}</span>
