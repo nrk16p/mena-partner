@@ -6,7 +6,9 @@ import { useSession } from "next-auth/react"
 import { Search, X, ChevronDown, Tag, Upload, Trash2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { Driver, Vehicle } from "@/types"
+import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { missingDocFields } from "@/lib/contract-doc"
+import type { Contract, Driver, Vehicle } from "@/types"
 
 // ─── types ─────────────────────────────────────────────────────────────────────
 
@@ -223,6 +225,7 @@ export default function NewContractPage() {
   const [drivers,  setDrivers]  = useState<Driver[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [prices,   setPrices]   = useState<PriceRow[]>([])
+  const [promoList, setPromoList] = useState<PromoMaster[]>([])
   const [selectedDriver,  setSelectedDriver]  = useState<Driver  | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [saving,       setSaving]       = useState(false)
@@ -249,6 +252,9 @@ export default function NewContractPage() {
     fetch("/api/price-list")
       .then((r) => r.ok ? r.json() : [])
       .then(setPrices)
+    fetch("/api/promotions/master")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setPromoList)
   }, [set])
 
   // Auto-fill price whenever licensePlate changes (vehicle selection OR manual input)
@@ -374,8 +380,18 @@ export default function NewContractPage() {
   const isAdmin = session?.user?.role === "admin"
   const priceRow = prices.find((p) => p.licensePlate === form.licensePlate.trim())
 
+  // ── live preview: ใช้เกณฑ์/เอกสารชุดเดียวกับหน้าแก้ไขสัญญา ──
+  const previewContract = form as unknown as Contract
+  const previewPromo =
+    promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null
+  const missingDoc = missingDocFields(previewContract)
+
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-[1500px]">
+      {/* ── ซ้าย: ฟอร์ม | ขวา: preview สัญญาสด (เหมือนหน้าแก้ไขสัญญา) ── */}
+      <div className="flex gap-6 items-start">
+        <div className="w-full xl:max-w-2xl min-w-0 shrink-0 xl:w-[42rem]">
+
       <div className="mb-6">
         <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">เพิ่มสัญญาเช่าซื้อ</h1>
         <p className="text-sm text-zinc-400 mt-0.5">กรอกข้อมูลสัญญา เลือกผู้เช่าซื้อ และเลือกรถ</p>
@@ -757,6 +773,31 @@ export default function NewContractPage() {
           <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
         </div>
       </form>
+        </div>
+
+        {/* ── Preview เอกสารสัญญา (อัปเดตทันทีตามที่กรอก) ── */}
+        <div className="hidden xl:block flex-1 min-w-0 sticky top-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+              ตัวอย่างเอกสารสัญญา — อัปเดตตามที่กรอกทันที
+            </span>
+            {missingDoc.length > 0 ? (
+              <span className="text-[11px] font-semibold text-amber-600">
+                ข้อมูลเอกสารยังขาดอีก {missingDoc.length} รายการ
+              </span>
+            ) : (
+              <span className="text-[11px] font-semibold text-emerald-600">
+                ✓ ข้อมูลเอกสารครบถ้วน
+              </span>
+            )}
+          </div>
+          <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
+            <div style={{ zoom: 0.58 }}>
+              <ContractDocument contract={previewContract} promo={previewPromo} />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
