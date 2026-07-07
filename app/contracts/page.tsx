@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { PlusCircle, Search, AlertTriangle, Download, FileText } from "lucide-react"
+import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatMoney } from "@/lib/utils"
+import { missingDocFields } from "@/lib/contract-doc"
 import type { Contract } from "@/types"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -25,12 +26,46 @@ const STATUS_TABS = [
   { key: "terminated", label: "ยกเลิก" },
 ]
 
+// เอกสารแนบ 3 ไฟล์ต่อสัญญา (ชุดเดียวกับหน้าเพิ่มสัญญา)
+const ATTACH_DOCS = [
+  { field: "saleContractUrl",      label: "ซื้อขาย",   full: "สัญญาซื้อขาย" },
+  { field: "hireContractUrl",      label: "ว่าจ้าง",   full: "สัญญาว่าจ้าง" },
+  { field: "guaranteeContractUrl", label: "ค้ำประกัน", full: "สัญญาค้ำประกัน" },
+] as const
+type AttachField = (typeof ATTACH_DOCS)[number]["field"]
+
 export default function ContractsPage() {
   const { data: session } = useSession()
   const [items, setItems]   = useState<Contract[]>([])
   const [q, setQ]           = useState("")
   const [statusFilter, setStatusFilter] = useState("active")
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState<string | null>(null)   // `${contractId}:${field}`
+  const isAdmin = session?.user?.role === "admin"
+
+  async function uploadAttachment(c: Contract, field: AttachField, file: File) {
+    const key = `${c._id}:${field}`
+    setUploading(key)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "contracts")
+      const up = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!up.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
+      const { url } = await up.json()
+      const put = await fetch(`/api/contracts/${c._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: url }),
+      })
+      if (!put.ok) throw new Error("บันทึกไฟล์แนบไม่สำเร็จ")
+      setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: url } : x)))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setUploading(null)
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -56,15 +91,21 @@ export default function ContractsPage() {
     const headers = [
       "รหัส","ชื่อผู้เช่าซื้อ","ทะเบียน","เบอร์รถ","ยี่ห้อ","รุ่น",
       "วันที่ทำสัญญา","วันที่เริ่ม","ราคารถ","เงินดาวน์","ค่างวด/เดือน","จำนวนงวด",
-      "บริษัทประกัน","วันต่อภาษี","วันหมดอายุ","สถานะ",
+      "บริษัทประกัน","วันต่อภาษี","วันหมดอายุ","สถานะ","ข้อมูลครบ","เอกสารแนบ",
     ]
-    const rows = items.map((c) => [
-      c.contractCode, c.buyerName, c.licensePlate, c.truckNumber,
-      c.vehicleBrand, c.vehicleModel ?? "",
-      c.contractDate?.slice(0, 10) ?? "", c.startDate?.slice(0, 10) ?? "",
-      c.totalPrice, c.downPayment, c.monthlyInstallment, c.totalInstallments,
-      c.insurer ?? "", c.taxRenewalDate ?? "", c.taxExpiryDate ?? "", c.status,
-    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
+    const rows = items.map((c) => {
+      const missing = missingDocFields(c)
+      const attached = ATTACH_DOCS.filter(({ field }) => c[field]).length
+      return [
+        c.contractCode, c.buyerName, c.licensePlate, c.truckNumber,
+        c.vehicleBrand, c.vehicleModel ?? "",
+        c.contractDate?.slice(0, 10) ?? "", c.startDate?.slice(0, 10) ?? "",
+        c.totalPrice, c.downPayment, c.monthlyInstallment, c.totalInstallments,
+        c.insurer ?? "", c.taxRenewalDate ?? "", c.taxExpiryDate ?? "", c.status,
+        missing.length === 0 ? "ครบ" : `ขาด ${missing.length}`,
+        `${attached}/${ATTACH_DOCS.length}`,
+      ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")
+    })
     const csv = [headers.join(","), ...rows].join("\n")
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -155,17 +196,19 @@ export default function ContractsPage() {
               <th className="px-4 py-3 text-right font-semibold">ค่างวด/เดือน</th>
               <th className="px-4 py-3 text-center font-semibold">ประกัน</th>
               <th className="px-4 py-3 text-center font-semibold">สถานะ</th>
-              <th className="px-4 py-3 text-center font-semibold">เอกสาร</th>
+              <th className="px-4 py-3 text-center font-semibold">ข้อมูลครบ</th>
+              <th className="px-4 py-3 text-left font-semibold">เอกสารแนบ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : items.map((c) => {
               const insExpired  = c.taxExpiryDate && c.taxExpiryDate < today
               const insExpiring = !insExpired && c.taxExpiryDate && c.taxExpiryDate <= in60
+              const missing     = missingDocFields(c)
               return (
                 <tr key={c._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <td className="px-4 py-3">
@@ -218,14 +261,87 @@ export default function ContractsPage() {
                       {STATUS_LABEL[c.status]}
                     </span>
                   </td>
+                  {/* ── ความครบถ้วนของข้อมูลเอกสารสัญญา (เกณฑ์เดียวกับหน้าแก้ไข/หน้าพิมพ์) ── */}
                   <td className="px-4 py-3 text-center">
-                    <Link
-                      href={`/contracts/${c._id}/document`}
-                      title="เอกสารสัญญา (PDF)"
-                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                    >
-                      <FileText className="w-4 h-4" />
-                    </Link>
+                    {missing.length === 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> ครบ
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/contracts/${c._id}`}
+                        title={`ขาด: ${missing.map((f) => f.label).join(", ")}`}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded-full hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                      >
+                        <AlertTriangle className="w-3 h-3" /> ขาด {missing.length}
+                      </Link>
+                    )}
+                  </td>
+                  {/* ── เอกสารแนบ: ดูไฟล์ที่แนบแล้ว / แอดมินแนบไฟล์ได้จากหน้านี้ ── */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Link
+                        href={`/contracts/${c._id}/document`}
+                        title="เอกสารสัญญา (PDF)"
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 shrink-0"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Link>
+                      {ATTACH_DOCS.map(({ field, label, full }) => {
+                        const url  = c[field]
+                        const busy = uploading === `${c._id}:${field}`
+                        if (url) return (
+                          <a
+                            key={field}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`เปิด${full}`}
+                            className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                          >
+                            <FileText className="w-2.5 h-2.5" /> {label}
+                          </a>
+                        )
+                        if (!isAdmin) return (
+                          <span
+                            key={field}
+                            title={`ยังไม่ได้แนบ${full}`}
+                            className="inline-flex items-center text-[10px] text-zinc-300 dark:text-zinc-600 border border-dashed border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded"
+                          >
+                            {label}
+                          </span>
+                        )
+                        return (
+                          <label
+                            key={field}
+                            title={`แนบ${full} (PDF/รูปภาพ สูงสุด 20 MB)`}
+                            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-dashed cursor-pointer transition-colors
+                              ${busy
+                                ? "border-blue-300 bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:border-blue-700"
+                                : "border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:border-emerald-600 dark:hover:text-emerald-400"
+                              }`}
+                          >
+                            {busy ? (
+                              <div className="w-2.5 h-2.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Upload className="w-2.5 h-2.5" />
+                            )}
+                            {label}
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              disabled={!!uploading}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0]
+                                if (f) uploadAttachment(c, field, f)
+                                e.target.value = ""
+                              }}
+                            />
+                          </label>
+                        )
+                      })}
+                    </div>
                   </td>
                 </tr>
               )
