@@ -127,7 +127,7 @@ export default function ContractsPage() {
         <div>
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
             <FileText className="w-5 h-5 text-emerald-500" />
-            สัญญาเช่าซื้อ
+            สัญญา
           </h1>
           <p className="text-sm text-zinc-400 mt-0.5">
             {items.length} สัญญา

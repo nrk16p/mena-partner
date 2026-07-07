@@ -38,6 +38,25 @@ export const DOC_REQUIRED: DocField[] = [
   { key: "totalInstallments",       label: "จำนวนงวดรวม" },
 ]
 
+/** Fields used by the printed hire contract (สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า). */
+export const HIRE_DOC_REQUIRED: DocField[] = [
+  { key: "contractDate",  label: "วันที่ทำสัญญา" },
+  { key: "buyerName",     label: "ชื่อผู้รับจ้าง" },
+  { key: "nationalId",    label: "เลขบัตรประชาชน" },
+  { key: "driverAddress", label: "ที่อยู่ผู้รับจ้าง" },
+  { key: "bankName",      label: "ธนาคาร" },
+  { key: "accountNumber", label: "เลขที่บัญชี" },
+]
+
+/** Fields still missing for the printed hire contract. */
+export function missingHireDocFields(c: Partial<Contract> | null | undefined): DocField[] {
+  if (!c) return HIRE_DOC_REQUIRED
+  return HIRE_DOC_REQUIRED.filter(({ key }) => {
+    const v = c[key]
+    return v === undefined || v === null || v === "" || v === 0
+  })
+}
+
 /** Fields still missing for the printed contract (0/empty count as missing). */
 export function missingDocFields(c: Partial<Contract> | null | undefined): DocField[] {
   if (!c) return DOC_REQUIRED

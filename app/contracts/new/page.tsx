@@ -7,7 +7,8 @@ import { Search, X, ChevronDown, Tag, Upload, Trash2, FileText } from "lucide-re
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
-import { missingDocFields } from "@/lib/contract-doc"
+import { HireContractDocument } from "@/components/hire-contract-document"
+import { missingDocFields, missingHireDocFields } from "@/lib/contract-doc"
 import type { Contract, Driver, Vehicle } from "@/types"
 
 // ─── types ─────────────────────────────────────────────────────────────────────
@@ -226,6 +227,7 @@ export default function NewContractPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [prices,   setPrices]   = useState<PriceRow[]>([])
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
+  const [docTab, setDocTab] = useState<"sale" | "hire">("sale")
   const [selectedDriver,  setSelectedDriver]  = useState<Driver  | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [saving,       setSaving]       = useState(false)
@@ -384,7 +386,8 @@ export default function NewContractPage() {
   const previewContract = form as unknown as Contract
   const previewPromo =
     promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null
-  const missingDoc = missingDocFields(previewContract)
+  const missingDoc =
+    docTab === "sale" ? missingDocFields(previewContract) : missingHireDocFields(previewContract)
 
   return (
     <div className="max-w-[1500px]">
@@ -393,7 +396,7 @@ export default function NewContractPage() {
         <div className="w-full xl:max-w-2xl min-w-0 shrink-0 xl:w-[42rem]">
 
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">เพิ่มสัญญาเช่าซื้อ</h1>
+        <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">เพิ่มสัญญา</h1>
         <p className="text-sm text-zinc-400 mt-0.5">กรอกข้อมูลสัญญา เลือกผู้เช่าซื้อ และเลือกรถ</p>
       </div>
 
@@ -777,10 +780,26 @@ export default function NewContractPage() {
 
         {/* ── Preview เอกสารสัญญา (อัปเดตทันทีตามที่กรอก) ── */}
         <div className="hidden xl:block flex-1 min-w-0 sticky top-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-              ตัวอย่างเอกสารสัญญา — อัปเดตตามที่กรอกทันที
-            </span>
+          <div className="flex items-center justify-between mb-2 gap-3">
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+              {([
+                { key: "sale", label: "สัญญาซื้อขาย" },
+                { key: "hire", label: "สัญญาว่าจ้าง" },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setDocTab(key)}
+                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                    docTab === key
+                      ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {missingDoc.length > 0 ? (
               <span className="text-[11px] font-semibold text-amber-600">
                 ข้อมูลเอกสารยังขาดอีก {missingDoc.length} รายการ
@@ -793,7 +812,11 @@ export default function NewContractPage() {
           </div>
           <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
             <div style={{ zoom: 0.58 }}>
-              <ContractDocument contract={previewContract} promo={previewPromo} />
+              {docTab === "sale" ? (
+                <ContractDocument contract={previewContract} promo={previewPromo} />
+              ) : (
+                <HireContractDocument contract={previewContract} />
+              )}
             </div>
           </div>
         </div>

@@ -460,7 +460,7 @@ export default function DriverDetailPage() {
 
           {/* สัญญา / รถ ที่ผูกอยู่ */}
           {(contract || driver.contractCode || driver.licensePlate) && (
-            <Card title="สัญญาเช่าซื้อ / รถ">
+            <Card title="สัญญา / รถ">
               <div className="space-y-3">
                 {(contract || driver.contractCode) && (
                   contract?._id ? (

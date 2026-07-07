@@ -25,7 +25,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
   },
   {
     title: "สัญญา",
-    items: [{ href: "/contracts", label: "สัญญาเช่าซื้อ", icon: FileText }],
+    items: [{ href: "/contracts", label: "สัญญา", icon: FileText }],
   },
   {
     title: "งานประจำวัน",

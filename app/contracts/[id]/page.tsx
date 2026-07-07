@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react"
 import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { missingDocFields } from "@/lib/contract-doc"
 import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { HireContractDocument } from "@/components/hire-contract-document"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -66,6 +67,7 @@ export default function ContractDetailPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError]  = useState("")
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
+  const [docTab, setDocTab] = useState<"sale" | "hire">("sale")
 
   useEffect(() => {
     fetch(`/api/contracts/${id}`)
@@ -159,7 +161,13 @@ export default function ContractDetailPage() {
             href={`/contracts/${id}/document`}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
-            <FileText className="w-3.5 h-3.5" /> เอกสารสัญญา (PDF)
+            <FileText className="w-3.5 h-3.5" /> สัญญาซื้อขาย (PDF)
+          </Link>
+          <Link
+            href={`/contracts/${id}/hire-document`}
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" /> สัญญาว่าจ้าง (PDF)
           </Link>
         </div>
       </div>
@@ -442,20 +450,43 @@ export default function ContractDetailPage() {
 
         {/* ── Preview เอกสารสัญญา (อัปเดตทันทีตามที่กรอก) ── */}
         <div className="hidden xl:block flex-1 min-w-0 sticky top-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-              ตัวอย่างเอกสารสัญญา — อัปเดตตามที่กรอกทันที
-            </span>
-            <Link href={`/contracts/${id}/document`} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline">
+          <div className="flex items-center justify-between mb-2 gap-3">
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+              {([
+                { key: "sale", label: "สัญญาซื้อขาย" },
+                { key: "hire", label: "สัญญาว่าจ้าง" },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setDocTab(key)}
+                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                    docTab === key
+                      ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Link
+              href={`/contracts/${id}/${docTab === "sale" ? "document" : "hire-document"}`}
+              className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline whitespace-nowrap"
+            >
               เปิดหน้าพิมพ์ / PDF →
             </Link>
           </div>
           <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
             <div style={{ zoom: 0.58 }}>
-              <ContractDocument
-                contract={form}
-                promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null}
-              />
+              {docTab === "sale" ? (
+                <ContractDocument
+                  contract={form}
+                  promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null}
+                />
+              ) : (
+                <HireContractDocument contract={form} />
+              )}
             </div>
           </div>
         </div>

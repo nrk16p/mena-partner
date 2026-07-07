@@ -1,38 +1,34 @@
 "use client"
 
 /**
- * หน้าพิมพ์เอกสารสัญญาซื้อขาย — Print → browser "Save as PDF"
- * ตัวเนื้อเอกสารอยู่ใน components/contract-document.tsx (ใช้ร่วมกับ preview)
+ * หน้าพิมพ์สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า — Print → browser "Save as PDF"
+ * ตัวเนื้อเอกสารอยู่ใน components/hire-contract-document.tsx (ใช้ร่วมกับ preview)
  */
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { Printer, ArrowLeft, AlertTriangle } from "lucide-react"
 import type { Contract } from "@/types"
-import { missingDocFields } from "@/lib/contract-doc"
-import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { missingHireDocFields } from "@/lib/contract-doc"
+import { normPlate } from "@/components/contract-document"
+import { HireContractDocument } from "@/components/hire-contract-document"
 
-export default function ContractDocumentPage() {
+export default function HireContractDocumentPage() {
   const { id } = useParams<{ id: string }>()
   const [contract, setContract] = useState<Contract | null>(null)
-  const [promo, setPromo] = useState<PromoMaster | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
     async function load() {
       try {
-        const cRes = await fetch(`/api/contracts/${id}`)
-        if (!cRes.ok) throw new Error("ไม่พบข้อมูลสัญญา")
-        const c: Contract = await cRes.json()
+        const res = await fetch(`/api/contracts/${id}`)
+        if (!res.ok) throw new Error("ไม่พบข้อมูลสัญญา")
+        const c: Contract = await res.json()
         setContract(c)
         // browser Save-as-PDF uses the tab title as the default filename
-        document.title = `สัญญาซื้อขาย-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
-        const pRes = await fetch("/api/promotions/master")
-        if (pRes.ok) {
-          const all: PromoMaster[] = await pRes.json()
-          setPromo(all.find((p) => normPlate(p.licensePlate) === normPlate(c.licensePlate)) ?? null)
-        }
+        document.title = `สัญญาว่าจ้าง-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
       } catch (e) {
         setError(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ")
       } finally {
@@ -47,9 +43,7 @@ export default function ContractDocumentPage() {
   if (error || !contract)
     return <div className="p-10 text-sm text-red-600">{error || "ไม่พบข้อมูลสัญญา"}</div>
 
-  // ── เช็คความครบถ้วน (เกณฑ์เดียวกับหน้าแก้ไขสัญญา) — ทุกข้อมูลในสัญญาจำเป็น ──
-  const missing = missingDocFields(contract).map((f) => f.label)
-  if (!promo) missing.push("ข้อมูลโปรโมชั่น (promotion_master)")
+  const missing = missingHireDocFields(contract).map((f) => f.label)
 
   function handlePrint() {
     if (
@@ -76,12 +70,12 @@ export default function ContractDocumentPage() {
         >
           <Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึกเป็น PDF
         </button>
-        <a
-          href={`/contracts/${id}/hire-document`}
+        <Link
+          href={`/contracts/${id}/document`}
           className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"
         >
-          สัญญาว่าจ้าง →
-        </a>
+          สัญญาซื้อขาย →
+        </Link>
         <span className="text-[11px] text-zinc-600">
           เลือกเครื่องพิมพ์ “Save as PDF” และปิด Headers/Footers ในหน้าต่างพิมพ์
         </span>
@@ -101,7 +95,6 @@ export default function ContractDocumentPage() {
           <a href={`/contracts/${id}`} className="underline font-semibold hover:text-amber-900">
             → ไปกรอกข้อมูลที่หน้าแก้ไขสัญญา
           </a>
-          {!promo && <span className="ml-2 text-amber-700">(โปรโมชั่น: เพิ่มข้อมูลทะเบียน {contract.licensePlate} ใน promotion_master)</span>}
         </div>
       ) : (
         <div className="print-hide w-[210mm] mx-auto mb-3 text-[11px] bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg px-3 py-2 font-semibold">
@@ -109,7 +102,7 @@ export default function ContractDocumentPage() {
         </div>
       )}
 
-      <ContractDocument contract={contract} promo={promo} />
+      <HireContractDocument contract={contract} />
     </div>
   )
 }

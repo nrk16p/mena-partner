@@ -73,7 +73,7 @@ const GUIDES: {
 }[] = [
   {
     icon: <FileText className="w-3.5 h-3.5" />,
-    title: "สัญญาเช่าซื้อ + พิมพ์ PDF",
+    title: "สัญญา + พิมพ์ PDF",
     href: "/contracts",
     steps: [
       "สร้างสัญญา: เลือกคนขับ + รถ → ราคา/งวด ดึงจาก price-list อัตโนมัติ",
