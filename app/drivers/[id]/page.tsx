@@ -55,6 +55,7 @@ interface DriverForm {
   nationalId:    string
   address:       string
   staffCode:     string
+  contractCode:  string
   phone:         string
   bankName:      string
   accountNumber: string
@@ -79,6 +80,7 @@ function toForm(d: Driver): DriverForm {
     nationalId:    d.nationalId    ?? "",
     address:       d.address       ?? "",
     staffCode:     d.staffCode     ?? "",
+    contractCode:  d.contractCode  ?? "",
     phone:         d.phone         ?? "",
     bankName:      d.bankName      ?? "",
     accountNumber: d.accountNumber ?? "",
@@ -585,6 +587,9 @@ export default function DriverDetailPage() {
                 <EditField label="รหัสพนักงาน">
                   <Input value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className={inputCls} placeholder="EMP-001" />
                 </EditField>
+                <EditField label="รหัสสัญญา" hint="ซ้ำกับพนักงานคนอื่นได้">
+                  <Input value={form.contractCode} onChange={(e) => set("contractCode", e.target.value)} className={`${inputCls} font-mono`} placeholder="MTM145" />
+                </EditField>
                 <EditField label="เริ่มงานวันที่">
                   <Input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className={inputCls} />
                 </EditField>
@@ -601,6 +606,7 @@ export default function DriverDetailPage() {
             ) : (
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                 <Field label="รหัสพนักงาน" value={driver.staffCode} mono />
+                <Field label="รหัสสัญญา" value={driver.contractCode} mono />
                 <Field label="เริ่มงานวันที่" value={driver.startDate ? formatThaiDate(driver.startDate) : undefined} />
                 <Field label="สิ้นสุดวันที่" value={driver.endDate ? formatThaiDate(driver.endDate) : undefined} />
                 <Field label="ธนาคาร" value={driver.bankName} />

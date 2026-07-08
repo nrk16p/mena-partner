@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     birthDate?:    string
     nationalId?:   string
     address?:      string
+    contractCode?: string
     staffCode?:     string
     phone?:         string
     bankName?:      string
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
     nationalId:   body.nationalId?.trim() ?? null,
     address:      body.address?.trim()    ?? null,
     staffCode:     body.staffCode?.trim()     ?? null,
+    contractCode:  body.contractCode?.trim()  ?? null,   // ซ้ำกันได้ — ไม่เช็ค unique
     phone:         body.phone?.trim()         ?? null,
     bankName:      body.bankName?.trim()      ?? null,
     accountNumber: body.accountNumber?.trim() ?? null,

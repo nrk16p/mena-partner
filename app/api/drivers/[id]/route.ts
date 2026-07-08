@@ -25,6 +25,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     nationalId?:    string | null
     address?:       string | null
     staffCode?:      string | null
+    contractCode?:   string | null
     phone?:          string | null
     bankName?:       string | null
     accountNumber?:  string | null
@@ -48,6 +49,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.nationalId   !== undefined) $set.nationalId   = body.nationalId?.trim() ?? null
   if (body.address      !== undefined) $set.address      = body.address?.trim() ?? null
   if (body.staffCode    !== undefined) $set.staffCode    = body.staffCode?.trim() ?? null
+  // รหัสสัญญาซ้ำกันได้ (หลายคนอยู่ใต้สัญญาเดียวกัน) — ไม่เช็ค unique
+  if (body.contractCode !== undefined) $set.contractCode = body.contractCode?.trim() ?? null
   if (body.phone         !== undefined) $set.phone         = body.phone?.trim()         ?? null
   if (body.bankName      !== undefined) $set.bankName      = body.bankName?.trim()      ?? null
   if (body.accountNumber !== undefined) $set.accountNumber = body.accountNumber?.trim() ?? null

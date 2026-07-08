@@ -47,6 +47,7 @@ interface FormData {
   nationalId:   string
   address:      string
   staffCode:     string
+  contractCode:  string
   phone:         string
   bankName:      string
   accountNumber: string
@@ -65,7 +66,7 @@ interface FormData {
 
 const EMPTY_FORM: FormData = {
   firstName: "", lastName: "", birthDate: "",
-  nationalId: "", address: "", staffCode: "", phone: "",
+  nationalId: "", address: "", staffCode: "", contractCode: "", phone: "",
   bankName: "", accountNumber: "",
   isTruckOwner: false, isDriver: true,
   startDate: "", endDate: "", status: "active",
@@ -95,6 +96,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
         nationalId:   driver.nationalId   ?? "",
         address:      driver.address      ?? "",
         staffCode:    driver.staffCode    ?? "",
+        contractCode: driver.contractCode ?? "",
         phone:         driver.phone         ?? "",
         bankName:      driver.bankName      ?? "",
         accountNumber: driver.accountNumber ?? "",
@@ -243,6 +245,10 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">รหัสพนักงาน</label>
               <Input placeholder="EMP-001" value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1.5">รหัสสัญญา</label>
+              <Input placeholder="MTM145 (ซ้ำกับคนอื่นได้)" value={form.contractCode} onChange={(e) => set("contractCode", e.target.value)} className="h-9 text-sm font-mono" />
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">เบอร์โทรศัพท์</label>
@@ -481,7 +487,8 @@ type StatusFilter = "" | "active" | "inactive"
 
 const COLS = [
   { key: "name",      label: "ชื่อ - นามสกุล",  w: "w-48" },
-  { key: "staffCode", label: "รหัส",             w: "w-24" },
+  { key: "staffCode", label: "รหัสพนักงาน",      w: "w-24" },
+  { key: "contractCode", label: "รหัสสัญญา",       w: "w-28" },
   { key: "age",       label: "อายุ",             w: "w-16" },
   { key: "phone",     label: "โทรศัพท์",         w: "w-32" },
   { key: "startDate", label: "เริ่มงาน",         w: "w-28" },
@@ -515,7 +522,8 @@ export default function DriversPage() {
     return items.filter((d) =>
       `${d.firstName} ${d.lastName}`.toLowerCase().includes(lq) ||
       (d.nationalId ?? "").includes(q) ||
-      (d.staffCode  ?? "").toLowerCase().includes(lq) ||
+      (d.staffCode    ?? "").toLowerCase().includes(lq) ||
+      (d.contractCode ?? "").toLowerCase().includes(lq) ||
       (d.phone      ?? "").includes(q) ||
       (d.address    ?? "").toLowerCase().includes(lq)
     )
@@ -657,6 +665,13 @@ export default function DriversPage() {
                       {/* Staff code */}
                       <td className="px-3 py-2.5">
                         <span className="font-mono text-zinc-500">{d.staffCode || "—"}</span>
+                      </td>
+
+                      {/* Contract code (ซ้ำกันได้) */}
+                      <td className="px-3 py-2.5">
+                        {d.contractCode
+                          ? <span className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">{d.contractCode}</span>
+                          : <span className="text-zinc-300">—</span>}
                       </td>
 
                       {/* Age */}
