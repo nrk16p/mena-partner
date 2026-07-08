@@ -57,7 +57,11 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           font-size: 16pt; line-height: normal;
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
-        .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid; }
+        /* ย่อหน้าข้อสัญญาแบบ hanging indent ตามต้นฉบับ Word (ind left=720 hanging=720):
+           "ข้อ N." ชิดซ้าย เนื้อหาต่อท้าย บรรทัดที่ตัดขึ้นใหม่ตรงระดับ 36pt */
+        .clause { margin-top: 12pt; padding-left: 42pt; text-indent: -42pt; }
+        .clause-no { font-weight: 700; display: inline-block; min-width: 42pt; }
+        .cont { margin-left: 42pt; }
         .indent { text-indent: 36pt; }
         .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 2; widows: 2; }
         .sig-table { width: 100%; margin-top: 18px; }
@@ -94,8 +98,7 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ขาย” โดยมีข้อความดังต่อไปนี้
         </p>
 
-        <p className="clause-h">ข้อ 1.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 1.</span>
           ตามที่ <V w={200}>{c.buyerName}</V> ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ซื้อ”
           ได้ทำสัญญาซื้อขายรถยนต์บรรทุก (แบบผ่อนชำระราคา) ฉบับลงวันที่{" "}
           <V w={30}>{dateParts?.day}</V> <V w={80}>{dateParts?.monthName}</V> พ.ศ.{" "}
@@ -106,8 +109,7 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           จนกว่าผู้ขายจะได้รับชำระหนี้หรือได้รับชดใช้จนสิ้นเชิงครบถ้วนสมบูรณ์
         </p>
 
-        <p className="clause-h">ข้อ 2.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 2.</span>
           เมื่อผู้ซื้อตกเป็นผู้ผิดนัดไม่ชำระหนี้ตามสัญญาซื้อขายที่ระบุในข้อ 1.
           หรือผู้ซื้อถูกศาลสั่งพิทักษ์ทรัพย์ หรือศาลมีคำสั่งรับคำร้องขอฟื้นฟูกิจการผู้ซื้อ
           หรือผู้ซื้อถึงแก่ความตาย หรือตกเป็นผู้ไร้ความสามารถ หรือผู้เสมือนไร้ความสามารถ
@@ -118,22 +120,19 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           แต่ไม่ตัดสิทธิผู้ค้ำประกันที่จะชำระหนี้เมื่อถึงกำหนดชำระ
         </p>
 
-        <p className="clause-h">ข้อ 3.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 3.</span>
           ในกรณีที่ผู้ขายผ่อนเวลาส่งเงินงวดชำระหนี้ตามที่กำหนดไว้ให้แก่ผู้ซื้อ
           หากผู้ขายได้ส่งคำบอกกล่าวให้ผู้ค้ำประกันทราบโดยชอบแล้ว
           ผู้ค้ำประกันตกลงจะให้ความยินยอมกับการผ่อนเวลานั้นทุกครั้ง
         </p>
 
-        <p className="clause-h">ข้อ 4.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 4.</span>
           ผู้ค้ำประกันจะไม่เพิกถอนการค้ำประกันนี้ หรือทำให้ผู้ขายเสียสิทธิใด ๆ ตามสัญญานี้
           จนกว่าผู้ซื้อจะได้ชำระหนี้ตามสัญญาซื้อขายหรือความรับผิดใด ๆ
           ที่มีอยู่ต่อผู้ขายครบถ้วนสมบูรณ์แล้ว
         </p>
 
-        <p className="clause-h">ข้อ 5.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 5.</span>
           แม้จะปรากฏว่า การกระทำอย่างใดอย่างหนึ่งของผู้ขาย
           เป็นเหตุให้ผู้ค้ำประกันไม่อาจเข้ารับช่วงได้ทั้งหมดหรือแต่เพียงบางส่วนในสิทธิใด ๆ
           ไม่ว่าจะเป็น จำนอง จำนำ และบุริมสิทธิอื่นใด
@@ -141,30 +140,26 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           ผู้ค้ำประกันไม่หลุดพ้นจากความรับผิดตามความในสัญญาฉบับนี้ไม่ว่าจะทั้งหมดหรือแต่เพียงบางส่วนก็ตาม
         </p>
 
-        <p className="clause-h">ข้อ 6.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 6.</span>
           หากเงินที่ผู้ขายได้รับชำระหนี้ไว้จากผู้ซื้อ และ/หรือผู้ค้ำประกัน
           ถูกเพิกถอนการชำระหนี้ตามกฎหมายแพ่งหรือกฎหมายล้มละลาย หรือเหตุอื่นใดตามกฎหมาย
           ผู้ค้ำประกันยินยอมชดใช้เงินที่ผู้ขายต้องเสียไปดังกล่าวคืนแก่ผู้ขายทันทีที่ได้รับหนังสือทวงถามจากผู้ขาย
         </p>
 
-        <p className="clause-h">ข้อ 7.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 7.</span>
           ในระหว่างที่สัญญาค้ำประกันนี้ยังมีผลใช้บังคับอยู่ หากผู้ค้ำประกันเป็นเจ้าหนี้ของผู้ซื้อ
           ผู้ค้ำประกันยินยอมให้หนี้ของตนเป็นหนี้ลำดับรองจากหนี้ของผู้ขาย
           และหากได้รับเงินหรือทรัพย์สินอื่นใด ๆ จากผู้ซื้อไว้เพื่อชำระคืนหนี้ของตน
           ผู้ค้ำประกันตกลงส่งมอบเงินหรือทรัพย์สินนั้นให้แก่ผู้ขายทันทีที่ได้รับหนังสือทวงถามจากผู้ขาย
         </p>
 
-        <p className="clause-h">ข้อ 8.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 8.</span>
           สัญญาค้ำประกันฉบับนี้ให้มีผลผูกพันต่อบรรดาผู้สืบสิทธิ ผู้รับโอน ผู้จัดการมรดก
           และผู้แทนของผู้ค้ำประกัน
           แต่ผู้ค้ำประกันจะโอนหน้าที่ตามสัญญาค้ำประกันนี้ให้แก่บุคคลอื่นโดยปราศจากความยินยอมเป็นลายลักษณ์อักษรของผู้ขายก่อนหาได้ไม่
         </p>
 
-        <p className="clause-h">ข้อ 9.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 9.</span>
           ผู้ค้ำประกันตกลงและให้ความยินยอมโดยไม่มีการเพิกถอนให้ผู้ขายเก็บ รวบรวม ใช้
           เปิดเผยข้อมูลเกี่ยวกับผู้ค้ำประกันที่มีอยู่กับผู้ขายให้แก่ผู้ถือหุ้นรายใหญ่
           หรือบริษัทในกลุ่มซึ่งมีผู้ถือหุ้นรายใหญ่รายเดียวกัน
@@ -174,16 +169,14 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           แม้ว่าการค้ำประกันนั้นสิ้นสุดไปแล้วก็ตาม
         </p>
 
-        <p className="clause-h">ข้อ 10.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 10.</span>
           ผู้ค้ำประกันรับรองว่า ผู้ขายมีสิทธิโดยชอบและสมบูรณ์ที่จะขาย โอน มอบ จำนำ ก่อภาระผูกพัน
           นำไปเป็นหลักประกัน
           หรือจำหน่ายโดยประการอื่นซึ่งส่วนหนึ่งส่วนใดหรือทั้งหมดของสิทธิ
           กรรมสิทธิ์และผลประโยชน์ของผู้ขายตามสัญญาซื้อขายและสัญญาค้ำประกันนี้
         </p>
 
-        <p className="clause-h">ข้อ 11.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 11.</span>
           การแจ้งไปยังผู้ค้ำประกันให้ทราบภาระการชำระหนี้
           หรือส่งคำบอกกล่าวเป็นหนังสือบอกกล่าวทวงถาม
           หรือหนังสืออื่นใดที่จะส่งให้แก่ผู้ค้ำประกันโดยไปรษณีย์ลงทะเบียนหรือไม่ลงทะเบียน
@@ -193,15 +186,13 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
           การส่งหนังสือต่าง ๆ ที่ได้ส่งไปแล้ว ให้ถือว่าชอบด้วยกฎหมาย
         </p>
 
-        <p className="clause-h">ข้อ 12.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 12.</span>
           ผู้ค้ำประกันสัญญาว่า ถ้าผู้ค้ำประกันเปลี่ยนแปลงที่อยู่ไปจากที่ระบุไว้ในสัญญาค้ำประกันนี้
           ผู้ค้ำประกันจะมีหนังสือแจ้งที่อยู่ใหม่ให้ผู้ขายทราบภายใน 7 วัน
           นับตั้งแต่ที่มีการเปลี่ยนแปลง
         </p>
 
-        <p className="clause-h">ข้อ 13.</p>
-        <p className="indent">
+        <p className="clause"><span className="clause-no">ข้อ 13.</span>
           ข้อกำหนดและเงื่อนไขในข้อสัญญาแต่ละข้อของสัญญาฉบับนี้
           ต่างมีผลบังคับใช้แยกต่างหากจากกัน กล่าวคือ
           ความสมบูรณ์และการมีผลบังคับใช้ของข้อสัญญาอื่น ๆ
