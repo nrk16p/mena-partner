@@ -11,6 +11,7 @@ import { ContractDocument, normPlate, type PromoMaster } from "@/components/cont
 import { HireContractDocument } from "@/components/hire-contract-document"
 import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
 import { VendorDocDocument } from "@/components/vendor-doc-document"
+import { useDebounced } from "@/lib/use-debounced"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -298,6 +299,9 @@ export default function ContractDetailPage() {
   }
 
   if (!form) return <div className="text-zinc-400 text-sm">กำลังโหลด...</div>
+
+  // debounce เอกสาร A4 ในพรีวิว — พิมพ์แล้วไม่ re-render ทุกตัวอักษร
+  const previewData = useDebounced(form, 200)
 
   const today = new Date().toISOString().slice(0, 10)
   const paid = form.totalPrice && form.downPayment && form.totalInstallments && form.monthlyInstallment
@@ -859,15 +863,15 @@ export default function ContractDetailPage() {
             <div style={{ zoom: 0.58 }}>
               {docTab === "sale" ? (
                 <ContractDocument
-                  contract={form}
-                  promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null}
+                  contract={previewData}
+                  promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(previewData.licensePlate)) ?? null}
                 />
               ) : docTab === "hire" ? (
-                <HireContractDocument contract={form} />
+                <HireContractDocument contract={previewData} />
               ) : docTab === "guarantee" ? (
-                <GuaranteeContractDocument contract={form} />
+                <GuaranteeContractDocument contract={previewData} />
               ) : (
-                <VendorDocDocument contract={form} />
+                <VendorDocDocument contract={previewData} />
               )}
             </div>
           </div>

@@ -1,5 +1,7 @@
 "use client"
 
+import { memo } from "react"
+
 /**
  * สัญญาค้ำประกัน — เนื้อเอกสาร A4
  * ถอดแบบจากไฟล์ Word ต้นฉบับ (สัญญาค้ำประกัน ขวัญชัย แสนกันยา 71-2820)
@@ -35,7 +37,7 @@ function V({ children, w }: { children?: React.ReactNode; w?: number }) {
   return <b>{children}</b>
 }
 
-export function GuaranteeContractDocument({ contract }: { contract: Contract }) {
+function GuaranteeContractDocumentImpl({ contract }: { contract: Contract }) {
   const c = contract
   const dateParts = thaiDateParts(c.contractDate)
 
@@ -234,3 +236,5 @@ export function GuaranteeContractDocument({ contract }: { contract: Contract }) 
     </div>
   )
 }
+
+export const GuaranteeContractDocument = memo(GuaranteeContractDocumentImpl)

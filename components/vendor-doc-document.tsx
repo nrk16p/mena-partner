@@ -1,5 +1,7 @@
 "use client"
 
+import { memo } from "react"
+
 /**
  * เอกสารเปิดเจ้าหนี้รายใหม่ (vendor onboarding pack) — 3 ส่วน / 4 หน้า A4
  * ถอดแบบจากไฟล์ PDF ต้นฉบับ "เอกสารเปิดเจ้าหนี้รายใหม่ vender.pdf":
@@ -55,7 +57,7 @@ function CB({ on = false }: { on?: boolean }) {
   )
 }
 
-export function VendorDocDocument({ contract }: { contract: Contract }) {
+function VendorDocDocumentImpl({ contract }: { contract: Contract }) {
   const c = contract
 
   return (
@@ -406,3 +408,5 @@ export function VendorDocDocument({ contract }: { contract: Contract }) {
     </div>
   )
 }
+
+export const VendorDocDocument = memo(VendorDocDocumentImpl)

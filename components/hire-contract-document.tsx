@@ -1,5 +1,7 @@
 "use client"
 
+import { memo } from "react"
+
 /**
  * สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า — เนื้อเอกสาร A4
  * ถอดแบบจากไฟล์ Word ต้นฉบับ (สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า MTM145)
@@ -41,7 +43,7 @@ function V({ children, w }: { children?: React.ReactNode; w?: number }) {
 
 const DOTS = "…………………………………………"
 
-export function HireContractDocument({ contract }: { contract: Contract }) {
+function HireContractDocumentImpl({ contract }: { contract: Contract }) {
   const c = contract
   const dateParts = thaiDateParts(c.contractDate)
 
@@ -435,3 +437,5 @@ export function HireContractDocument({ contract }: { contract: Contract }) {
     </div>
   )
 }
+
+export const HireContractDocument = memo(HireContractDocumentImpl)

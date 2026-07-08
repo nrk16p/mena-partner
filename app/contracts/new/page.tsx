@@ -12,6 +12,7 @@ import { HireContractDocument } from "@/components/hire-contract-document"
 import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
 import { VendorDocDocument } from "@/components/vendor-doc-document"
 import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
+import { useDebounced } from "@/lib/use-debounced"
 import type { Contract, Driver, Vehicle } from "@/types"
 
 // ─── types ─────────────────────────────────────────────────────────────────────
@@ -339,6 +340,8 @@ export default function NewContractPage() {
 
   // ── live preview: ใช้เกณฑ์/เอกสารชุดเดียวกับหน้าแก้ไขสัญญา ──
   const previewContract = form as unknown as Contract
+  // debounce ค่าที่ส่งเข้าเอกสาร A4 — พิมพ์รัว ๆ ไม่ re-render เอกสารทุกตัวอักษร
+  const previewData = useDebounced(previewContract, 200)
   const previewPromo =
     promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null
   const missingDoc =
@@ -934,13 +937,13 @@ export default function NewContractPage() {
           <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
             <div style={{ zoom: 0.58 }}>
               {docTab === "sale" ? (
-                <ContractDocument contract={previewContract} promo={previewPromo} />
+                <ContractDocument contract={previewData} promo={previewPromo} />
               ) : docTab === "hire" ? (
-                <HireContractDocument contract={previewContract} />
+                <HireContractDocument contract={previewData} />
               ) : docTab === "guarantee" ? (
-                <GuaranteeContractDocument contract={previewContract} />
+                <GuaranteeContractDocument contract={previewData} />
               ) : (
-                <VendorDocDocument contract={previewContract} />
+                <VendorDocDocument contract={previewData} />
               )}
             </div>
           </div>

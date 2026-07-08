@@ -1,5 +1,7 @@
 "use client"
 
+import { memo } from "react"
+
 /**
  * สัญญาซื้อขายรถยนต์บรรทุก (แบบผ่อนชำระราคา) — เนื้อเอกสาร A4 2 ส่วน
  * (สัญญาหลัก + เอกสารแนบท้ายโปรโมชั่น) ใช้ร่วมกันระหว่าง:
@@ -63,7 +65,7 @@ function V({ children, w }: { children?: React.ReactNode; w?: number }) {
   return <b>{children}</b>
 }
 
-export function ContractDocument({
+function ContractDocumentImpl({
   contract,
   promo,
 }: {
@@ -561,3 +563,5 @@ export function ContractDocument({
     </div>
   )
 }
+
+export const ContractDocument = memo(ContractDocumentImpl)
