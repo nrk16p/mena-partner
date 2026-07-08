@@ -12,11 +12,23 @@ declare global {
 }
 
 async function connect(): Promise<MongoClient> {
-  client = new MongoClient(uri)
+  client = new MongoClient(uri, {
+    // เปิด connection ให้เร็วขึ้นบน serverless / cross-region (DigitalOcean ↔ Vercel)
+    maxPoolSize: 10,
+    minPoolSize: 0,
+    serverSelectionTimeoutMS: 8000,
+    compressors: ["zlib"],
+  })
   await client.connect()
-  // Create indexes in the background — idempotent (safe to call repeatedly)
+  // สร้าง index แบบ fire-and-forget — ไม่ block request แรกหลัง cold start
+  // (index มีอยู่แล้วในฐานข้อมูล การรอ 25 round-trips ต่อ cold start คือ latency เปล่า)
+  void ensureIndexes(client)
+  return client
+}
+
+function ensureIndexes(client: MongoClient): Promise<unknown> {
   const db = client.db(DB)
-  await Promise.all([
+  return Promise.all([
     db.collection("trips").createIndex({ contractCode: 1, date: 1 }),
     db.collection("trips").createIndex({ date: 1 }),
     db.collection("trips").createIndex({ ldtNumber: 1 }),
@@ -42,7 +54,6 @@ async function connect(): Promise<MongoClient> {
     db.collection("monthly_adjustments").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
     db.collection("month_status").createIndex({ month: 1 }, { unique: true }),
   ]).catch(() => { /* non-fatal: index creation errors don't block the app */ })
-  return client
 }
 
 if (!global._mongoClientPromise) {

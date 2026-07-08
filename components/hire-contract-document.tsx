@@ -9,15 +9,10 @@
  * ระบบตัวอักษร/หน้ากระดาษชุดเดียวกับ components/contract-document.tsx
  */
 
-import { Sarabun } from "next/font/google"
 import type { Contract } from "@/types"
+import { sarabun } from "@/lib/fonts"
 import { thaiDate, thaiDateParts, formatNationalId } from "@/lib/thai-format"
 
-const sarabun = Sarabun({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["thai", "latin"],
-  display: "swap",
-})
 
 /* ── Company / signatory constants (ชุดเดียวกับสัญญาซื้อขาย) ── */
 const COMPANY = {

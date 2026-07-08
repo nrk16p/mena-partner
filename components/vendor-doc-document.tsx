@@ -9,15 +9,10 @@
  * ใช้ร่วมกันระหว่างหน้าพิมพ์ /contracts/[id]/vendor-document และ live preview
  */
 
-import { Sarabun } from "next/font/google"
 import type { Contract } from "@/types"
+import { sarabun } from "@/lib/fonts"
 import { thaiDate, formatNationalId } from "@/lib/thai-format"
 
-const sarabun = Sarabun({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["thai", "latin"],
-  display: "swap",
-})
 
 const COMPANY = {
   name: "บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน)",

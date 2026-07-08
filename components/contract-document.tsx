@@ -8,8 +8,8 @@
  * อ้างอิงรูปแบบจากไฟล์ Word ต้นฉบับ (Cordia New 16pt, single spacing)
  */
 
-import { Sarabun } from "next/font/google"
 import type { Contract } from "@/types"
+import { sarabun } from "@/lib/fonts"
 import {
   bahtText,
   money,
@@ -20,11 +20,6 @@ import {
   formatNationalId,
 } from "@/lib/thai-format"
 
-const sarabun = Sarabun({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["thai", "latin"],
-  display: "swap",
-})
 
 /* ── Company / signatory constants (edit here when signatories change) ── */
 const COMPANY = {
