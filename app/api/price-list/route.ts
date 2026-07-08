@@ -25,6 +25,10 @@ export async function GET() {
       return {
         licensePlate:         plate,
         status,
+        // สถานะความพร้อมขาย + ช่วงซ่อม (แก้ได้จากหน้า price-list)
+        saleStatus:           d.saleStatus  ?? null,
+        repairStart:          d.repairStart ?? null,
+        repairEnd:            d.repairEnd   ?? null,
         downPayment:          d.downPayment,
         cashDown:             d.cashDown,
         remainingInstallment: d.remainingInstallment,

@@ -1,12 +1,19 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { Car, CreditCard, Banknote, Search, BarChart3 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { usePagination, PaginationBar } from "@/components/pagination"
+
+type SaleStatus = "ready" | "repair15" | "repair30" | "review"
 
 interface PriceRow {
   licensePlate:         string
   status:               "contract" | "active" | "inactive"
+  saleStatus:           SaleStatus | null
+  repairStart:          string | null
+  repairEnd:            string | null
   downPayment:          number
   cashDown:             number
   remainingInstallment: number
@@ -20,6 +27,146 @@ interface PriceRow {
 
 function fmt(n: number) {
   return n.toLocaleString("th-TH")
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function addDays(iso: string, days: number) {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** จำนวนวันจนถึงกำหนด (ติดลบ = เลยกำหนดแล้ว) */
+function daysUntil(iso: string) {
+  return Math.ceil((new Date(iso).getTime() - new Date(todayISO()).getTime()) / 86400000)
+}
+
+function thaiShortDate(iso?: string | null) {
+  if (!iso) return ""
+  const [y, m, d] = iso.slice(0, 10).split("-")
+  const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
+  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${parseInt(y) + 543 - 2500}`
+}
+
+// ── สถานะความพร้อมขาย ──
+const SALE_STATUS_CONFIG: Record<SaleStatus, { label: string; cls: string; days?: number }> = {
+  ready:    { label: "พร้อมขาย",      cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" },
+  repair15: { label: "รอซ่อม 15 วัน", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", days: 15 },
+  repair30: { label: "รอซ่อม 30 วัน", cls: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400", days: 30 },
+  review:   { label: "ยังไม่ได้เริ่มดำเนินการ",     cls: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400" },
+}
+
+// ── inline editor: ตั้งสถานะความพร้อมขาย + ช่วงซ่อม ──
+function SaleStatusEditor({ row, onSaved, onClose }: {
+  row: PriceRow
+  onSaved: (patch: Pick<PriceRow, "saleStatus" | "repairStart" | "repairEnd">) => void
+  onClose: () => void
+}) {
+  const [status, setStatus] = useState<SaleStatus | "">(row.saleStatus ?? "")
+  const [start, setStart]   = useState(row.repairStart ?? todayISO())
+  const [end, setEnd]       = useState(row.repairEnd ?? "")
+  const [saving, setSaving] = useState(false)
+  const isRepair = status === "repair15" || status === "repair30"
+
+  function pick(s: SaleStatus | "") {
+    setStatus(s)
+    if (s === "repair15" || s === "repair30") {
+      const st = start || todayISO()
+      setStart(st)
+      setEnd(addDays(st, SALE_STATUS_CONFIG[s].days!))
+    }
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      const res = await fetch("/api/price-list/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          licensePlate: row.licensePlate,
+          saleStatus:   status || null,
+          repairStart:  isRepair ? start : null,
+          repairEnd:    isRepair ? end : null,
+        }),
+      })
+      if (!res.ok) { alert("บันทึกไม่สำเร็จ"); return }
+      onSaved({
+        saleStatus:  (status || null) as SaleStatus | null,
+        repairStart: isRepair ? start : null,
+        repairEnd:   isRepair ? end : null,
+      })
+      onClose()
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="absolute right-0 top-full mt-1 z-50 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl p-3 text-left">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">ความพร้อมขาย · {row.licensePlate}</span>
+        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700"><X className="w-3.5 h-3.5" /></button>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 mb-2">
+        {(Object.entries(SALE_STATUS_CONFIG) as [SaleStatus, typeof SALE_STATUS_CONFIG[SaleStatus]][]).map(([key, cfg]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => pick(key)}
+            className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
+              status === key
+                ? `${cfg.cls} border-transparent ring-1 ring-current`
+                : "bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+            }`}
+          >
+            {cfg.label}
+          </button>
+        ))}
+      </div>
+      {isRepair && (
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label className="block text-[10px] text-zinc-400 mb-0.5">วันเริ่มซ่อม</label>
+            <input
+              type="date" value={start}
+              onChange={(e) => {
+                setStart(e.target.value)
+                if (e.target.value) setEnd(addDays(e.target.value, SALE_STATUS_CONFIG[status as SaleStatus].days!))
+              }}
+              className="w-full h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent px-2 text-xs"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-zinc-400 mb-0.5">กำหนดเสร็จ</label>
+            <input
+              type="date" value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              className="w-full h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent px-2 text-xs"
+            />
+          </div>
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => pick("")}
+          className={`text-[10px] underline ${status === "" ? "text-zinc-700 font-semibold" : "text-zinc-400 hover:text-zinc-600"}`}
+        >
+          ล้างสถานะ
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || (isRepair && (!start || !end))}
+          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold disabled:opacity-50"
+        >
+          {saving ? "กำลังบันทึก..." : "บันทึก"}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function PayBar({ down, finance }: { down: number; finance: number }) {
@@ -48,11 +195,16 @@ const STATUS_TABS = [
 ]
 
 export default function PriceListPage() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "admin"
+
   const [rows,    setRows]    = useState<PriceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [q,       setQ]       = useState("")
   const [installFilter, setInstallFilter] = useState<number | null>(null)
   const [statusFilter,  setStatusFilter]  = useState("")
+  const [saleFilter,    setSaleFilter]    = useState("")
+  const [editingPlate,  setEditingPlate]  = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/price-list")
@@ -70,10 +222,19 @@ export default function PriceListPage() {
   const filtered = useMemo(() => {
     let res = rows
     if (statusFilter)        res = res.filter((r) => r.status === statusFilter)
+    if (saleFilter)          res = res.filter((r) => saleFilter === "none" ? !r.saleStatus : r.saleStatus === saleFilter)
     if (installFilter !== null) res = res.filter((r) => r.financeInstallments === installFilter)
     if (q) res = res.filter((r) => r.licensePlate.toLowerCase().includes(q.toLowerCase()))
     return res
-  }, [rows, q, installFilter, statusFilter])
+  }, [rows, q, installFilter, statusFilter, saleFilter])
+
+  // ── แจ้งเตือนรถรอซ่อมถึง/ใกล้ถึงกำหนด ──
+  const repairRows = useMemo(() =>
+    rows.filter((r) => (r.saleStatus === "repair15" || r.saleStatus === "repair30") && r.repairEnd),
+    [rows]
+  )
+  const overdueRepairs = repairRows.filter((r) => daysUntil(r.repairEnd!) <= 0)
+  const dueSoonRepairs = repairRows.filter((r) => { const d = daysUntil(r.repairEnd!); return d > 0 && d <= 3 })
 
   const totalFleetValue = rows.reduce((s, r) => s + r.totalSalePrice, 0)
   const totalFinance    = rows.reduce((s, r) => s + r.financeAmount, 0)
@@ -84,6 +245,8 @@ export default function PriceListPage() {
   const sumFinance  = filtered.reduce((s, r) => s + r.financeAmount, 0)
   const sumDown     = filtered.reduce((s, r) => s + r.downPayment, 0)
   const avgMonthlyF = filtered.length ? Math.round(filtered.reduce((s, r) => s + r.monthlyPayment, 0) / filtered.length) : 0
+
+  const pg = usePagination(filtered, 50, [q, installFilter, statusFilter, saleFilter])
 
   const contractCount  = rows.filter((r) => r.status === "contract").length
   const availableCount = rows.filter((r) => r.status === "active").length
@@ -109,6 +272,51 @@ export default function PriceListPage() {
           <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" />ไฟแนนซ์</span>
         </div>
       </div>
+
+      {/* ── แจ้งเตือนรถรอซ่อมถึงกำหนด ── */}
+      {(overdueRepairs.length > 0 || dueSoonRepairs.length > 0) && (
+        <div className="space-y-2">
+          {overdueRepairs.length > 0 && (
+            <div className="rounded-xl border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-bold text-sm mb-1.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                ถึงกำหนดซ่อมเสร็จแล้ว {overdueRepairs.length} คัน — ตรวจสอบและอัปเดตสถานะ
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {overdueRepairs.map((r) => (
+                  <button
+                    key={r.licensePlate}
+                    onClick={() => isAdmin && setEditingPlate(r.licensePlate)}
+                    className="text-[11px] font-mono font-semibold bg-white dark:bg-zinc-900 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 rounded-full px-2.5 py-0.5 hover:bg-red-100 dark:hover:bg-red-950/50"
+                    title={`กำหนดเสร็จ ${thaiShortDate(r.repairEnd)} (เลยมา ${Math.abs(daysUntil(r.repairEnd!))} วัน)`}
+                  >
+                    {r.licensePlate} · เลยกำหนด {Math.abs(daysUntil(r.repairEnd!))} วัน
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {dueSoonRepairs.length > 0 && (
+            <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold text-sm mb-1.5">
+                <Wrench className="w-4 h-4 shrink-0" />
+                ใกล้ถึงกำหนดซ่อมเสร็จ (ภายใน 3 วัน) {dueSoonRepairs.length} คัน
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {dueSoonRepairs.map((r) => (
+                  <button
+                    key={r.licensePlate}
+                    onClick={() => isAdmin && setEditingPlate(r.licensePlate)}
+                    className="text-[11px] font-mono font-semibold bg-white dark:bg-zinc-900 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded-full px-2.5 py-0.5 hover:bg-amber-100 dark:hover:bg-amber-950/50"
+                  >
+                    {r.licensePlate} · อีก {daysUntil(r.repairEnd!)} วัน ({thaiShortDate(r.repairEnd)})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── KPI strip ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -167,6 +375,38 @@ export default function PriceListPage() {
               {tab.label}
               <span className="ml-1 text-[10px] opacity-60">
                 ({tab.key === "" ? rows.length : rows.filter((r) => r.status === tab.key).length})
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Sale-readiness filter pills ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ความพร้อมขาย</span>
+        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1 flex-wrap">
+          {[
+            { key: "",         label: "ทั้งหมด" },
+            { key: "ready",    label: "พร้อมขาย" },
+            { key: "repair15", label: "รอซ่อม 15 วัน" },
+            { key: "repair30", label: "รอซ่อม 30 วัน" },
+            { key: "review",   label: "ยังไม่ได้เริ่มดำเนินการ" },
+            { key: "none",     label: "ยังไม่ระบุ" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setSaleFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                saleFilter === tab.key
+                  ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-1 text-[10px] opacity-60">
+                ({tab.key === "" ? rows.length
+                  : tab.key === "none" ? rows.filter((r) => !r.saleStatus).length
+                  : rows.filter((r) => r.saleStatus === tab.key).length})
               </span>
             </button>
           ))}
@@ -243,7 +483,7 @@ export default function PriceListPage() {
               >
                 ไฟแนนซ์
               </th>
-              <th className="px-4 py-1.5 border-l border-zinc-200 dark:border-zinc-700" colSpan={2} />
+              <th className="px-4 py-1.5 border-l border-zinc-200 dark:border-zinc-700" colSpan={3} />
             </tr>
             {/* Sub-header row */}
             <tr className="border-b border-zinc-100 dark:border-zinc-800">
@@ -260,11 +500,12 @@ export default function PriceListPage() {
               <th className="px-3 py-2 text-right text-[10px] font-semibold text-blue-500 uppercase tracking-wider">ยอดจัด</th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700">รวมราคาขาย</th>
               <th className="px-3 py-2 text-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700">สถานะ</th>
+              <th className="px-3 py-2 text-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700 min-w-[130px]">ความพร้อมขาย</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/60">
-            {filtered.map((r) => {
+            {pg.paged.map((r) => {
               const downPct = r.totalSalePrice ? Math.round((r.downPayment / r.totalSalePrice) * 100) : 0
               const sc = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.active
               return (
@@ -325,6 +566,50 @@ export default function PriceListPage() {
                       {sc.label}
                     </span>
                   </td>
+
+                  {/* Sale readiness */}
+                  <td className="px-3 py-2 text-center border-l border-zinc-50 dark:border-zinc-800/60 relative">
+                    {(() => {
+                      const ss = r.saleStatus ? SALE_STATUS_CONFIG[r.saleStatus] : null
+                      const isRepair = r.saleStatus === "repair15" || r.saleStatus === "repair30"
+                      const dLeft = isRepair && r.repairEnd ? daysUntil(r.repairEnd) : null
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!isAdmin}
+                            onClick={() => setEditingPlate(editingPlate === r.licensePlate ? null : r.licensePlate)}
+                            title={isAdmin ? "คลิกเพื่อตั้งสถานะความพร้อมขาย" : undefined}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold transition-shadow ${
+                              ss ? ss.cls : "bg-zinc-50 text-zinc-300 dark:bg-zinc-800/60 dark:text-zinc-600 border border-dashed border-zinc-200 dark:border-zinc-700"
+                            } ${isAdmin ? "cursor-pointer hover:ring-1 hover:ring-zinc-300 dark:hover:ring-zinc-600" : "cursor-default"}`}
+                          >
+                            {ss ? ss.label : "＋ ระบุ"}
+                          </button>
+                          {isRepair && r.repairEnd && dLeft !== null && (
+                            <div
+                              className={`text-[9px] font-semibold mt-0.5 tabular-nums ${
+                                dLeft <= 0 ? "text-red-500" : dLeft <= 3 ? "text-amber-500" : "text-zinc-400"
+                              }`}
+                              title={`${thaiShortDate(r.repairStart)} — ${thaiShortDate(r.repairEnd)}`}
+                            >
+                              {dLeft <= 0 ? `เลยกำหนด ${Math.abs(dLeft)} วัน` : `อีก ${dLeft} วัน (${thaiShortDate(r.repairEnd)})`}
+                            </div>
+                          )}
+                          {editingPlate === r.licensePlate && (
+                            <SaleStatusEditor
+                              row={r}
+                              onClose={() => setEditingPlate(null)}
+                              onSaved={(patch) =>
+                                setRows((prev) => prev.map((x) =>
+                                  x.licensePlate === r.licensePlate ? { ...x, ...patch } : x))
+                              }
+                            />
+                          )}
+                        </>
+                      )
+                    })()}
+                  </td>
                 </tr>
               )
             })}
@@ -353,10 +638,12 @@ export default function PriceListPage() {
                   {fmt(sumTotal)}
                 </td>
                 <td className="border-l border-zinc-200 dark:border-zinc-700" />
+                <td className="border-l border-zinc-200 dark:border-zinc-700" />
               </tr>
             </tfoot>
           )}
         </table>
+        <PaginationBar {...pg} unit="ทะเบียน" />
       </div>
     </div>
   )

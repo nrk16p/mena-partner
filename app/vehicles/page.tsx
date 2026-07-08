@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import type { Vehicle } from "@/types"
 
@@ -368,6 +369,23 @@ export default function VehiclesPage() {
 
   useEffect(() => { load() }, [load])
 
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState("")
+
+  async function syncFromAtms() {
+    setSyncing(true); setSyncResult("")
+    try {
+      const res = await fetch("/api/vehicles/sync-atms", { method: "POST" })
+      if (!res.ok) { setSyncResult("ดึงข้อมูลไม่สำเร็จ"); return }
+      const r = await res.json()
+      setSyncResult(
+        `✓ ดึงข้อมูลจาก ATMS สำเร็จ — ตรงกัน ${r.matched}/${r.total} คัน · อัปเดต ${r.updated} คัน · เติม ${r.fieldsFilled} ช่อง` +
+        (r.unmatched?.length ? ` · ไม่พบใน ATMS: ${r.unmatched.length} คัน` : "")
+      )
+      await load()
+    } finally { setSyncing(false) }
+  }
+
   const filtered = useMemo(() => {
     if (!q) return items
     const lq = q.toLowerCase()
@@ -377,6 +395,9 @@ export default function VehiclesPage() {
         .some((f) => (f ?? "").toLowerCase().includes(lq))
     )
   }, [items, q])
+
+  // ── pagination: สูงสุด 50 คัน/หน้า ──
+  const pg = usePagination(filtered, 50, [q, statusFilter])
 
   const activeCount   = items.filter((v) => v.status === "active").length
   const inactiveCount = items.filter((v) => v.status !== "active").length
@@ -393,13 +414,34 @@ export default function VehiclesPage() {
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">ทะเบียนรถ</h1>
           <p className="text-xs text-zinc-400 mt-0.5">{activeCount} ใช้งาน · {inactiveCount} ไม่ใช้งาน</p>
         </div>
-        <Button
-          className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
-          onClick={() => setPanel("new")}
-        >
-          <Plus className="w-4 h-4" />เพิ่มรถ
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-9 text-sm gap-1.5"
+            disabled={syncing}
+            onClick={syncFromAtms}
+            title="เติมข้อมูลรถจาก ATMS vehiclemaster (เติมเฉพาะช่องที่ยังว่าง)"
+          >
+            {syncing ? (
+              <><div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />กำลังดึง...</>
+            ) : (
+              <>⟳ ดึงข้อมูลจาก ATMS</>
+            )}
+          </Button>
+          <Button
+            className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
+            onClick={() => setPanel("new")}
+          >
+            <Plus className="w-4 h-4" />เพิ่มรถ
+          </Button>
+        </div>
       </div>
+
+      {syncResult && (
+        <div className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+          {syncResult}
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -464,7 +506,7 @@ export default function VehiclesPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((v) => (
+                pg.paged.map((v) => (
                   <tr key={v._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
                     {/* เบอร์รถ */}
                     <td className="px-3 py-2.5">
@@ -557,12 +599,8 @@ export default function VehiclesPage() {
           </table>
         </div>
 
-        {!loading && filtered.length > 0 && (
-          <div className="px-4 py-2.5 border-t border-zinc-50 dark:border-zinc-800">
-            <p className="text-[11px] text-zinc-400">
-              {q ? `แสดง ${filtered.length} จาก ${items.length} คัน` : `ทั้งหมด ${filtered.length} คัน`}
-            </p>
-          </div>
+        {!loading && (
+          <PaginationBar {...pg} unit="คัน" note={q ? `(ค้นหาจากทั้งหมด ${items.length} คัน)` : undefined} />
         )}
       </div>
 

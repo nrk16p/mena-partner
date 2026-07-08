@@ -7,6 +7,7 @@ import {
   Plus, Power, PowerOff, Trash2, Search, X, Check, Car, ExternalLink,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -566,6 +567,8 @@ export default function PromotionsPage() {
     return true
   }), [plates, data, q, statusFilter])
 
+  const pg = usePagination(filteredPlates, 50, [q, statusFilter])
+
   const totalEntries    = plates.reduce((s, p) => s + (data[p] ?? []).length, 0)
   const activeEntries   = plates.reduce((s, p) => s + (data[p] ?? []).filter((e) => e.active).length, 0)
   const disabledEntries = totalEntries - activeEntries
@@ -679,7 +682,7 @@ export default function PromotionsPage() {
 
       {/* Plate list */}
       <div className="space-y-1.5">
-        {filteredPlates.map((plate) => {
+        {pg.paged.map((plate) => {
           const entries      = data[plate] ?? []
           const isOpen       = expanded.has(plate)
           const isAdding     = addingTo === plate
@@ -774,6 +777,8 @@ export default function PromotionsPage() {
             </div>
           )
         })}
+
+        <PaginationBar {...pg} unit="คัน" />
 
         {filteredPlates.length === 0 && !loading && (
           <div className="flex flex-col items-center gap-3 py-16 text-zinc-300 dark:text-zinc-700">

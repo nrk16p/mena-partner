@@ -6,6 +6,7 @@ import Link from "next/link"
 import { PlusCircle, Search, Upload, Trash2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { usePagination, PaginationBar } from "@/components/pagination"
 import { formatMoney, formatMonth } from "@/lib/utils"
 import type { Trip } from "@/types"
 
@@ -73,6 +74,8 @@ export default function TripsPage() {
       alert("เกิดข้อผิดพลาด กรุณาลองใหม่")
     }
   }
+
+  const pg = usePagination(items, 50, [month, q, plant])
 
   function handleExportCSV() {
     if (items.length === 0) return
@@ -246,7 +249,7 @@ export default function TripsPage() {
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
-            ) : items.map((t) => (
+            ) : pg.paged.map((t) => (
               <tr key={t._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                 <td className="px-4 py-3 text-zinc-500 text-xs">{t.date?.slice(0, 10)}</td>
                 <td className="px-4 py-3 font-medium">{t.contractCode}</td>
@@ -267,6 +270,7 @@ export default function TripsPage() {
             ))}
           </tbody>
         </table>
+        <PaginationBar {...pg} unit="เที่ยว" note="(API จำกัด 500 รายการล่าสุด)" />
       </div>
     </div>
   )

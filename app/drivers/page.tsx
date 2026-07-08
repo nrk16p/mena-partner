@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import type { Driver } from "@/types"
 
@@ -520,6 +521,8 @@ export default function DriversPage() {
     )
   }, [items, q])
 
+  const pg = usePagination(filtered, 50, [q, statusFilter])
+
   const activeCount   = items.filter((d) => d.status === "active").length
   const inactiveCount = items.filter((d) => d.status !== "active").length
   const showPanel     = panelDriver !== null
@@ -626,7 +629,7 @@ export default function DriversPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((d) => {
+                pg.paged.map((d) => {
                   const fullName = `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim()
                   const initial  = (d.firstName ?? "?")[0]?.toUpperCase() ?? "?"
                   const age      = calcAge(d.birthDate)
@@ -717,13 +720,8 @@ export default function DriversPage() {
           </table>
         </div>
 
-        {/* Footer count */}
-        {!loading && filtered.length > 0 && (
-          <div className="px-4 py-2.5 border-t border-zinc-50 dark:border-zinc-800 flex items-center justify-between">
-            <p className="text-[11px] text-zinc-400">
-              {q ? `แสดง ${filtered.length} จาก ${items.length} คน` : `ทั้งหมด ${filtered.length} คน`}
-            </p>
-          </div>
+        {!loading && (
+          <PaginationBar {...pg} unit="คน" note={q ? `(ค้นหาจากทั้งหมด ${items.length} คน)` : undefined} />
         )}
       </div>
 

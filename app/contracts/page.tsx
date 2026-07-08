@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { usePagination, PaginationBar } from "@/components/pagination"
 import { formatMoney } from "@/lib/utils"
 import { missingDocFields } from "@/lib/contract-doc"
 import type { Contract } from "@/types"
@@ -114,6 +115,8 @@ export default function ContractsPage() {
     URL.revokeObjectURL(url)
   }
 
+  const pg = usePagination(items, 50, [q, statusFilter])
+
   const counts = {
     active:     items.filter((c) => c.status === "active").length,
     completed:  items.filter((c) => c.status === "completed").length,
@@ -205,7 +208,7 @@ export default function ContractsPage() {
               <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
-            ) : items.map((c) => {
+            ) : pg.paged.map((c) => {
               const insExpired  = c.taxExpiryDate && c.taxExpiryDate < today
               const insExpiring = !insExpired && c.taxExpiryDate && c.taxExpiryDate <= in60
               const missing     = missingDocFields(c)
@@ -348,6 +351,7 @@ export default function ContractsPage() {
             })}
           </tbody>
         </table>
+        <PaginationBar {...pg} unit="สัญญา" />
       </div>
     </div>
   )
