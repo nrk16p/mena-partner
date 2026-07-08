@@ -71,12 +71,12 @@ export function VendorDocDocument({ contract }: { contract: Contract }) {
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
-          padding: 15mm 16mm 14mm 20mm;
+          padding: 12.5mm 16mm 10mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
           font-size: 15pt; line-height: 1.35;
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 17pt; }
-        .sheet p { margin: 0; text-align: left; orphans: 2; widows: 2; }
+        .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 2; widows: 2; }
         .indent { text-indent: 36pt; }
         .attach-sheet { break-before: page; page-break-before: always; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }
@@ -87,7 +87,7 @@ export function VendorDocDocument({ contract }: { contract: Contract }) {
         .mena-logo { background: #c1121f; color: #fff; font-weight: 800; font-style: italic;
                      border-radius: 999px; padding: 2px 16px; font-size: 16pt; }
 
-        @page { size: A4 portrait; margin: 15mm 16mm 14mm 20mm; }
+        @page { size: A4 portrait; margin: 12.5mm 16mm 10mm 20mm; }
         @media print {
           html, body { display: block !important; height: auto !important; overflow: visible !important;
                        background: #fff !important; }

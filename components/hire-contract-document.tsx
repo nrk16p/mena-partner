@@ -58,7 +58,7 @@ export function HireContractDocument({ contract }: { contract: Contract }) {
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
-          padding: 15mm 16mm 14mm 20mm;
+          padding: 12.5mm 16mm 10mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
           font-size: 16pt; line-height: normal;
         }
@@ -66,7 +66,7 @@ export function HireContractDocument({ contract }: { contract: Contract }) {
         .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid; }
         .indent { text-indent: 36pt; }
         .sub { margin-left: 28pt; }
-        .sheet p { margin: 0; text-align: left; orphans: 2; widows: 2; }
+        .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 2; widows: 2; }
         .sig-table { width: 100%; margin-top: 18px; }
         .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }
@@ -74,7 +74,7 @@ export function HireContractDocument({ contract }: { contract: Contract }) {
         .rate-table th, .rate-table td { border: 1px solid #000; padding: 2pt 8pt; text-align: center; font-weight: 400; }
         .rate-table th { font-weight: 700; }
 
-        @page { size: A4 portrait; margin: 15mm 16mm 14mm 20mm; }
+        @page { size: A4 portrait; margin: 12.5mm 16mm 10mm 20mm; }
         @media print {
           html, body { display: block !important; height: auto !important; overflow: visible !important;
                        background: #fff !important; }

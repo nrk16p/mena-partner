@@ -100,26 +100,29 @@ export function ContractDocument({
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
-          padding: 15mm 16mm 14mm 20mm;
+          padding: 12.5mm 16mm 10mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
           font-size: 16pt; line-height: normal;
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
-        .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid; }
-        /* หัวข้อ ข้อ 1.–ข้อ 6. ในต้นฉบับขีดเส้นใต้ทั้งบรรทัด */
+        .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid;
+                    text-align: left !important; }
+        /* ต้นฉบับ: "ข้อ 1." ขีดเส้นใต้ + เว้น tab (ไม่ขีด) + ชื่อหัวข้อขีดเส้นใต้ */
         .clause-u { text-decoration: underline; text-underline-offset: 3px; }
+        .clause-tab { display: inline-block; width: 30pt; }
         .indent { text-indent: 36pt; }
         .sub { margin-left: 28pt; }
-        /* ชิดซ้าย — justify ทำให้เบราว์เซอร์ยืดวรรคภาษาไทยเป็นช่องห่างแปลก ๆ */
-        .sheet p { margin: 0; text-align: left; orphans: 2; widows: 2; }
+        /* ต้นฉบับ Word ใช้ thaiDistribute — เทียบเท่า justify + inter-character บน Chromium */
+        .sheet p { margin: 0; text-align: justify; text-justify: inter-character;
+                   orphans: 2; widows: 2; }
         .sig-table { width: 100%; margin-top: 18px; }
         .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
         .attach-sheet { break-before: page; page-break-before: always; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }
 
-        /* Real A4 margins applied by the printer on EVERY page (มาตรฐานเอกสาร:
-           บน 15mm ขวา 16mm ล่าง 14mm ซ้าย 20mm — ตามต้นฉบับ Word) */
-        @page { size: A4 portrait; margin: 15mm 16mm 14mm 20mm; }
+        /* Real A4 margins applied by the printer on EVERY page
+           (ตามต้นฉบับ Word: บน 12.5mm ขวา 16mm ล่าง 10mm ซ้าย 20mm) */
+        @page { size: A4 portrait; margin: 12.5mm 16mm 10mm 20mm; }
         @media print {
           html, body { display: block !important; height: auto !important; overflow: visible !important;
                        background: #fff !important; }
@@ -160,7 +163,7 @@ export function ContractDocument({
         <p className="indent">คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญากันโดยมีเงื่อนไขและรายละเอียดดังต่อไปนี้</p>
 
         {/* ── ข้อ 1 ── */}
-        <p className="clause-h clause-u">ข้อ 1. ข้อตกลงการซื้อขาย</p>
+        <p className="clause-h"><span className="clause-u">ข้อ 1.</span><span className="clause-tab" /><span className="clause-u">ข้อตกลงการซื้อขาย</span></p>
         <p className="indent">
           ผู้ขายตกลงขาย และผู้ซื้อตกลงซื้อรถยนต์บรรทุกใช้แล้ว ประเภท{" "}
           <V w={130}>{c.vehicleType}</V> ลักษณะ/มาตรฐาน <V w={150}>{c.vehicleCharacteristic}</V>{" "}
@@ -179,7 +182,7 @@ export function ContractDocument({
         <p className="indent">ในวันทำสัญญาฉบับนี้ ผู้ซื้อตกลงจะเข้าทำสัญญารับจ้างขับรถกับผู้ขายอีกฉบับหนึ่งด้วย</p>
 
         {/* ── ข้อ 2 ── */}
-        <p className="clause-h clause-u">ข้อ 2. ราคาซื้อขายและการชำระราคา</p>
+        <p className="clause-h"><span className="clause-u">ข้อ 2.</span><span className="clause-tab" /><span className="clause-u">ราคาซื้อขายและการชำระราคา</span></p>
         <p className="indent">
           ผู้ซื้อตกลงซื้อและผู้ขายตกลงขายทรัพย์สิน ในราคา <V w={90}>{money(c.totalPrice)}</V> บาท
           (<V w={220}>{c.totalPrice ? bahtText(c.totalPrice) : undefined}</V>) โดยไม่รวมภาษีมูลค่าเพิ่ม
@@ -230,7 +233,7 @@ export function ContractDocument({
         </p>
 
         {/* ── ข้อ 3 ── */}
-        <p className="clause-h clause-u">ข้อ 3. หน้าที่ผู้ซื้อ</p>
+        <p className="clause-h"><span className="clause-u">ข้อ 3.</span><span className="clause-tab" /><span className="clause-u">หน้าที่ผู้ซื้อ</span></p>
         <p className="indent">
           ตลอดระยะเวลาที่ผู้ซื้อยังชำระราคาซื้อขายตามสัญญาฉบับนี้ให้แก่ผู้ขายยังไม่ครบถ้วนเสร็จสิ้น
           และผู้ซื้อยังไม่ได้รับโอนกรรมสิทธิ์ในทรัพย์สิน ผู้ซื้อตกลงจะปฏิบัติดังต่อไปนี้
@@ -286,7 +289,7 @@ export function ContractDocument({
         </p>
 
         {/* ── ข้อ 4 ── */}
-        <p className="clause-h clause-u">ข้อ 4. กรรมสิทธิ์ในทรัพย์สิน</p>
+        <p className="clause-h"><span className="clause-u">ข้อ 4.</span><span className="clause-tab" /><span className="clause-u">กรรมสิทธิ์ในทรัพย์สิน</span></p>
         <p className="sub">
           4.1 คู่สัญญาทั้งสองฝ่ายรับทราบและตกลงว่า กรรมสิทธิ์ในทรัพย์สินตามสัญญานี้
           จะยังไม่โอนไปเป็นของผู้ซื้อจนกว่าผู้ขายจะได้รับชำระราคาซื้อขายทรัพย์สินและได้ปฏิบัติตามสัญญาฉบับนี้ครบถ้วนแล้ว
@@ -306,7 +309,7 @@ export function ContractDocument({
         </p>
 
         {/* ── ข้อ 5 ── */}
-        <p className="clause-h clause-u">ข้อ 5. การผิดนัด การบอกเลิกสัญญา การเรียกค่าเสียหาย</p>
+        <p className="clause-h"><span className="clause-u">ข้อ 5.</span><span className="clause-tab" /><span className="clause-u">การผิดนัด การบอกเลิกสัญญา การเรียกค่าเสียหาย</span></p>
         <p className="sub">
           5.1 เมื่อมีเหตุการณ์ใดเหตุการณ์หนึ่งดังต่อไปนี้ ให้ถือว่าผู้ซื้อผิดนัดผิดสัญญาฉบับนี้
           และผู้ขายมีสิทธิบอกเลิกสัญญาได้ทันที
@@ -366,7 +369,7 @@ export function ContractDocument({
         </p>
 
         {/* ── ข้อ 6 ── */}
-        <p className="clause-h clause-u">ข้อ 6. ข้อตกลงอื่นๆ</p>
+        <p className="clause-h"><span className="clause-u">ข้อ 6.</span><span className="clause-tab" /><span className="clause-u">ข้อตกลงอื่นๆ</span></p>
         <p className="sub">
           6.1 การโอนสิทธิ หรือผลประโยชน์ใด ๆ
           ตามสัญญานี้จะกระทำได้ต่อเมื่อได้รับความยินยอมเป็นหนังสือจากคู่สัญญาอีกฝ่ายหนึ่ง
