@@ -99,6 +99,17 @@ export interface Contract {
   saleContractUrl?:      string  // สัญญาซื้อขาย
   hireContractUrl?:      string  // สัญญาว่าจ้าง
   guaranteeContractUrl?: string  // สัญญาค้ำประกัน
+  // ผู้ค้ำประกัน — ใช้ในเอกสารสัญญาค้ำประกัน
+  guarantorName?:       string
+  guarantorNationalId?: string
+  guarantorAddress?:    string
+  // ข้อมูลเปิดเจ้าหนี้ — ใช้ในเอกสารเปิดเจ้าหนี้รายใหม่
+  buyerNameEn?:        string  // ชื่อเจ้าหนี้ (ภาษาอังกฤษ)
+  email?:              string  // Email ผู้ติดต่อ
+  bankAccountType?:    string  // ประเภทบัญชี (ออมทรัพย์/กระแสรายวัน)
+  bankBranch?:         string  // สาขาธนาคาร
+  vendorCodeWinspeed?: string  // รหัสเจ้าหนี้ Winspeed (บัญชีกำหนดหลังเปิด)
+  vendorCodeAtms?:     string  // รหัสเจ้าหนี้ ATMS
   attachments?: string[]        // public URLs of uploaded files (legacy)
   createdAt?: string
   updatedAt?: string

@@ -57,6 +57,46 @@ export function missingHireDocFields(c: Partial<Contract> | null | undefined): D
   })
 }
 
+/** Fields used by the printed guarantee contract (สัญญาค้ำประกัน). */
+export const GUARANTEE_DOC_REQUIRED: DocField[] = [
+  { key: "contractDate",        label: "วันที่ทำสัญญา" },
+  { key: "buyerName",           label: "ชื่อผู้ซื้อ" },
+  { key: "guarantorName",       label: "ชื่อผู้ค้ำประกัน" },
+  { key: "guarantorNationalId", label: "เลขบัตรผู้ค้ำประกัน" },
+  { key: "guarantorAddress",    label: "ที่อยู่ผู้ค้ำประกัน" },
+]
+
+/** Fields still missing for the printed guarantee contract. */
+export function missingGuaranteeDocFields(c: Partial<Contract> | null | undefined): DocField[] {
+  if (!c) return GUARANTEE_DOC_REQUIRED
+  return GUARANTEE_DOC_REQUIRED.filter(({ key }) => {
+    const v = c[key]
+    return v === undefined || v === null || v === "" || v === 0
+  })
+}
+
+/** Fields used by the printed vendor onboarding pack (เอกสารเปิดเจ้าหนี้รายใหม่). */
+export const VENDOR_DOC_REQUIRED: DocField[] = [
+  { key: "contractDate",    label: "วันที่" },
+  { key: "buyerName",       label: "ชื่อเจ้าหนี้" },
+  { key: "nationalId",      label: "เลขบัตรประชาชน" },
+  { key: "driverAddress",   label: "ที่อยู่" },
+  { key: "phone",           label: "เบอร์โทร" },
+  { key: "bankName",        label: "ธนาคาร" },
+  { key: "accountNumber",   label: "เลขที่บัญชี" },
+  { key: "bankAccountType", label: "ประเภทบัญชี" },
+  { key: "bankBranch",      label: "สาขาธนาคาร" },
+]
+
+/** Fields still missing for the printed vendor onboarding pack. */
+export function missingVendorDocFields(c: Partial<Contract> | null | undefined): DocField[] {
+  if (!c) return VENDOR_DOC_REQUIRED
+  return VENDOR_DOC_REQUIRED.filter(({ key }) => {
+    const v = c[key]
+    return v === undefined || v === null || v === "" || v === 0
+  })
+}
+
 /** Fields still missing for the printed contract (0/empty count as missing). */
 export function missingDocFields(c: Partial<Contract> | null | undefined): DocField[] {
   if (!c) return DOC_REQUIRED

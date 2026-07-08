@@ -5,14 +5,17 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2 } from "lucide-react"
-import { missingDocFields } from "@/lib/contract-doc"
+import { SearchCombobox } from "@/components/search-combobox"
+import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
 import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
+import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
+import { VendorDocDocument } from "@/components/vendor-doc-document"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatMoney, formatDate } from "@/lib/utils"
-import type { Contract } from "@/types"
+import type { Contract, Driver, Vehicle } from "@/types"
 
 type FieldSpec = { key: keyof Contract; label: string; type?: string; readOnly?: boolean }
 
@@ -43,6 +46,22 @@ const NUM_FIELDS: FieldSpec[] = [
   { key: "totalInstallments",   label: "จำนวนงวดรวม" },
 ]
 
+// ข้อมูลเปิดเจ้าหนี้ — ใช้ในเอกสารเปิดเจ้าหนี้รายใหม่
+const VENDOR_FIELDS: FieldSpec[] = [
+  { key: "buyerNameEn",        label: "ชื่อเจ้าหนี้ (ภาษาอังกฤษ)" },
+  { key: "email",              label: "Email ผู้ติดต่อ" },
+  { key: "bankBranch",         label: "สาขาธนาคาร" },
+  { key: "vendorCodeWinspeed", label: "รหัสเจ้าหนี้ Winspeed" },
+  { key: "vendorCodeAtms",     label: "รหัสเจ้าหนี้ ATMS" },
+]
+
+// ผู้ค้ำประกัน — ใช้ในเอกสารสัญญาค้ำประกัน (เว้นว่างได้ถ้าไม่มีผู้ค้ำ)
+const GUARANTOR_FIELDS: FieldSpec[] = [
+  { key: "guarantorName",       label: "ชื่อ – นามสกุล ผู้ค้ำประกัน" },
+  { key: "guarantorNationalId", label: "เลขบัตรประชาชนผู้ค้ำประกัน" },
+  { key: "guarantorAddress",    label: "ที่อยู่ผู้ค้ำประกัน" },
+]
+
 // ข้อมูลที่ใช้ในเอกสารสัญญาซื้อขาย (PDF) — กรอกให้ครบเพื่อให้เอกสารไม่มีช่องว่าง
 const DOC_FIELDS: FieldSpec[] = [
   { key: "birthDate",               label: "วันเกิดผู้ซื้อ (คำนวณอายุ)", type: "date" },
@@ -58,6 +77,15 @@ const DOC_FIELDS: FieldSpec[] = [
   { key: "engineSize",              label: "ขนาดกำลังเครื่องยนต์" },
 ]
 
+// ขั้นตอนแก้ไข — โครงเดียวกับหน้าเพิ่มสัญญา
+const WIZARD_STEPS = [
+  { title: "ข้อมูลหลัก",      desc: "สัญญา + ประกัน/ภาษี" },
+  { title: "สัญญาซื้อขาย",    desc: "ผู้ซื้อ/รถ + การเงิน" },
+  { title: "สัญญาค้ำประกัน",  desc: "ผู้ค้ำประกัน" },
+  { title: "เปิดเจ้าหนี้",    desc: "ข้อมูลผู้ขาย/บัญชี" },
+  { title: "สรุป & บันทึก",   desc: "หมายเหตุ + ตรวจสอบ" },
+]
+
 export default function ContractDetailPage() {
   const { id }             = useParams<{ id: string }>()
   const router             = useRouter()
@@ -67,7 +95,143 @@ export default function ContractDetailPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError]  = useState("")
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
-  const [docTab, setDocTab] = useState<"sale" | "hire">("sale")
+  const [docTab, setDocTab] = useState<"sale" | "hire" | "guarantee" | "vendor">("sale")
+  const [step, setStep] = useState(0)
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [pullDriverId, setPullDriverId] = useState("")
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [pullVehicleId, setPullVehicleId] = useState("")
+
+  // เปลี่ยน step → สลับ preview ไปเอกสารที่เกี่ยวข้อง
+  useEffect(() => {
+    setDocTab(step === 2 ? "guarantee" : step === 3 ? "vendor" : "sale")
+  }, [step])
+
+  // ทะเบียนพนักงาน (/drivers) + ทะเบียนรถ (/vehicles) — ใช้ดึงข้อมูลมาเติมในสัญญา
+  useEffect(() => {
+    fetch("/api/drivers?status=active")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setDrivers)
+    fetch("/api/vehicles")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setVehicles)
+  }, [])
+
+  // merge ข้อมูลพนักงานเข้าฟอร์ม — overwrite=false เติมเฉพาะช่องที่ยังว่าง
+  function mergeDriver(d: Driver, overwrite: boolean) {
+    const pick = (master?: string, current?: string) =>
+      overwrite ? (master || current || "") : (current || master || "")
+    setForm((p) => p ? {
+      ...p,
+      driverId:      d._id ?? p.driverId,
+      birthDate:     pick(d.birthDate,     p.birthDate),
+      nationalId:    pick(d.nationalId,    p.nationalId),
+      driverAddress: pick(d.address,       p.driverAddress),
+      phone:         pick(d.phone,         p.phone),
+      bankName:      pick(d.bankName,      p.bankName),
+      accountNumber: pick(d.accountNumber, p.accountNumber),
+    } : p)
+  }
+
+  // เดาพนักงานที่ตรงกับสัญญานี้ (driverId ก่อน แล้วค่อยเทียบชื่อ) → เติมช่องว่างให้อัตโนมัติ
+  const buyerNameInForm = form?.buyerName ?? ""
+  const driverIdInForm  = form?.driverId ?? ""
+  useEffect(() => {
+    if (!drivers.length || pullDriverId) return
+    const match =
+      (driverIdInForm && drivers.find((d) => d._id === driverIdInForm)) ||
+      drivers.find((d) => `${d.firstName} ${d.lastName}`.trim() === buyerNameInForm.trim())
+    if (match?._id) {
+      setPullDriverId(match._id)
+      mergeDriver(match, false)   // ดึงอัตโนมัติ: เติมเฉพาะช่องที่ยังว่าง
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drivers, buyerNameInForm, driverIdInForm, pullDriverId])
+
+  // merge ข้อมูลรถเข้าฟอร์ม — overwrite=false เติมเฉพาะช่องที่ยังว่าง
+  function mergeVehicle(v: Vehicle, overwrite: boolean) {
+    const pick = (master?: string, current?: string) =>
+      overwrite ? (master || current || "") : (current || master || "")
+    setForm((p) => p ? {
+      ...p,
+      vehicleId:               v._id ?? p.vehicleId,
+      licensePlate:            pick(v.licensePlate,     p.licensePlate),
+      truckNumber:             pick(v.truckNumber,      p.truckNumber),
+      vehicleType:             pick(v.vehicleType,      p.vehicleType),
+      vehicleCharacteristic:   pick(v.characteristic,   p.vehicleCharacteristic),
+      vehicleBrand:            pick(v.brand,            p.vehicleBrand),
+      vehicleModel:            pick(v.model,            p.vehicleModel),
+      vehicleRegistrationDate: pick(v.registrationDate, p.vehicleRegistrationDate),
+      vehicleColor:            pick(v.color,            p.vehicleColor),
+      chassisNumber:           pick(v.chassisNumber,    p.chassisNumber),
+      engineNumber:            pick(v.engineNumber,     p.engineNumber),
+      engineSize:              pick(v.engineSize,       p.engineSize),
+    } : p)
+  }
+
+  // เดารถที่ตรงกับสัญญานี้ (vehicleId ก่อน แล้วค่อยเทียบทะเบียน) → เติมช่องว่างให้อัตโนมัติ
+  const plateInForm     = form?.licensePlate ?? ""
+  const vehicleIdInForm = form?.vehicleId ?? ""
+  useEffect(() => {
+    if (!vehicles.length || pullVehicleId) return
+    const match =
+      (vehicleIdInForm && vehicles.find((v) => v._id === vehicleIdInForm)) ||
+      vehicles.find((v) => (v.licensePlate ?? "").trim() === plateInForm.trim())
+    if (match?._id) {
+      setPullVehicleId(match._id)
+      mergeVehicle(match, false)   // ดึงอัตโนมัติ: เติมเฉพาะช่องที่ยังว่าง
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicles, plateInForm, vehicleIdInForm, pullVehicleId])
+
+  // เลือกพนักงาน/รถจาก combobox ในฟอร์ม → เติมข้อมูลทับทันที
+  function handlePickDriver(d: Driver | null) {
+    if (!d) {
+      setPullDriverId("")
+      setForm((p) => p ? { ...p, driverId: "", buyerName: "", driverName: "" } : p)
+      return
+    }
+    if (d._id) setPullDriverId(d._id)
+    const name = `${d.firstName} ${d.lastName}`.trim()
+    setForm((p) => p ? { ...p, driverId: d._id ?? "", buyerName: name, driverName: name } : p)
+    mergeDriver(d, true)
+  }
+
+  function handlePickVehicle(v: Vehicle | null) {
+    if (!v) {
+      setPullVehicleId("")
+      setForm((p) => p ? { ...p, vehicleId: "", licensePlate: "" } : p)
+      return
+    }
+    if (v._id) setPullVehicleId(v._id)
+    mergeVehicle(v, true)
+  }
+
+  // ข้อมูลที่ยังขาดในตัว master เอง → ชี้ให้ไปแก้ที่ต้นทางได้เลย
+  const pulledDriver  = drivers.find((d) => d._id === pullDriverId)
+  const pulledVehicle = vehicles.find((v) => v._id === pullVehicleId)
+  const driverMasterMissing = pulledDriver
+    ? ([
+        [!pulledDriver.birthDate,  "วันเกิด"],
+        [!pulledDriver.nationalId, "เลขบัตรประชาชน"],
+        [!pulledDriver.address,    "ที่อยู่"],
+        [!pulledDriver.phone,      "เบอร์โทร"],
+        [!(pulledDriver.bankName && pulledDriver.accountNumber), "บัญชีธนาคาร"],
+      ] as [boolean, string][]).filter(([miss]) => miss).map(([, label]) => label)
+    : []
+  const vehicleMasterMissing = pulledVehicle
+    ? ([
+        [!pulledVehicle.vehicleType,      "ประเภทรถ"],
+        [!pulledVehicle.characteristic,   "ลักษณะ"],
+        [!pulledVehicle.brand,            "ยี่ห้อ"],
+        [!pulledVehicle.model,            "รุ่น"],
+        [!pulledVehicle.registrationDate, "วันจดทะเบียน"],
+        [!pulledVehicle.color,            "สีรถ"],
+        [!pulledVehicle.chassisNumber,    "เลขตัวถัง"],
+        [!pulledVehicle.engineNumber,     "เลขเครื่อง"],
+        [!pulledVehicle.engineSize,       "ขนาดเครื่องยนต์"],
+      ] as [boolean, string][]).filter(([miss]) => miss).map(([, label]) => label)
+    : []
 
   useEffect(() => {
     fetch(`/api/contracts/${id}`)
@@ -80,6 +244,13 @@ export default function ContractDetailPage() {
 
   // ทุกข้อมูลที่ปรากฏในเอกสารสัญญา = จำเป็นต้องกรอก → ไฮไลต์ช่องที่ยังขาด
   const missingDoc  = missingDocFields(form)
+  // จำนวนข้อมูลที่ยังขาดของแต่ละเอกสาร — ใช้ในสรุปขั้นตอนสุดท้าย
+  const missCounts = {
+    sale:      missingDocFields(form).length,
+    hire:      missingHireDocFields(form).length,
+    guarantee: missingGuaranteeDocFields(form).length,
+    vendor:    missingVendorDocFields(form).length,
+  }
   const missingKeys = new Set(missingDoc.map((f) => f.key))
   const missingCls = (key: keyof Contract) =>
     missingKeys.has(key)
@@ -169,6 +340,18 @@ export default function ContractDetailPage() {
           >
             <FileText className="w-3.5 h-3.5" /> สัญญาว่าจ้าง (PDF)
           </Link>
+          <Link
+            href={`/contracts/${id}/guarantee-document`}
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" /> สัญญาค้ำประกัน (PDF)
+          </Link>
+          <Link
+            href={`/contracts/${id}/vendor-document`}
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" /> เปิดเจ้าหนี้ (PDF)
+          </Link>
         </div>
       </div>
 
@@ -200,8 +383,36 @@ export default function ContractDetailPage() {
       <div className="flex gap-6 items-start">
         <div className="w-full xl:max-w-2xl min-w-0 shrink-0 xl:w-[42rem]">
 
+      {/* ── Stepper: 4 ขั้นตอนตามเอกสารสัญญา ── */}
+      <div className="mb-6 flex items-center">
+        {WIZARD_STEPS.map((s, i) => (
+          <div key={s.title} className={`flex items-center ${i < WIZARD_STEPS.length - 1 ? "flex-1" : ""}`}>
+            <button type="button" onClick={() => setStep(i)} className="flex items-center gap-2 group">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+                i === step
+                  ? "bg-emerald-600 text-white"
+                  : i < step
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+                    : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700"
+              }`}>
+                {i < step ? "✓" : i + 1}
+              </span>
+              <span className="text-left hidden sm:block">
+                <span className={`block text-xs font-semibold leading-tight ${
+                  i === step ? "text-zinc-800 dark:text-zinc-100" : "text-zinc-400"
+                }`}>{s.title}</span>
+                <span className="block text-[10px] text-zinc-400 leading-tight">{s.desc}</span>
+              </span>
+            </button>
+            {i < WIZARD_STEPS.length - 1 && (
+              <div className={`flex-1 h-px mx-3 ${i < step ? "bg-emerald-300 dark:bg-emerald-800" : "bg-zinc-200 dark:bg-zinc-700"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* Installment summary card */}
-      {form.totalPrice > 0 && (
+      {step === 0 && form.totalPrice > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
@@ -242,7 +453,7 @@ export default function ContractDetailPage() {
       )}
 
       {/* Tax/Insurance cost summary — seeded from Excel, read-only */}
-      {form.taxInsuranceTotalCost ? (
+      {step === 0 && form.taxInsuranceTotalCost ? (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ค่าใช้จ่าย ภาษี + ประกัน + พรบ</h2>
@@ -271,7 +482,7 @@ export default function ContractDetailPage() {
       ) : null}
 
       {/* Insurance info card — editable for admins */}
-      {(form.insurer || isAdmin) && (
+      {step === 0 && (form.insurer || isAdmin) && (
         <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${
           form.taxExpiryDate && form.taxExpiryDate < today
             ? "border-red-300 dark:border-red-800"
@@ -371,13 +582,70 @@ export default function ContractDetailPage() {
       {error && <div className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</div>}
 
       <form onSubmit={handleSave} className="space-y-6">
+        {step === 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">ข้อมูลสัญญา</h2>
           <div className="grid grid-cols-2 gap-4">
             {TEXT_FIELDS.map(({ key, label, type, readOnly }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-xs">{label}</Label>
-                <Input {...strField(key, type ?? "text", readOnly)} />
+                {key === "buyerName" && isAdmin ? (
+                  <>
+                    <SearchCombobox<Driver>
+                      items={drivers}
+                      selected={
+                        pulledDriver ??
+                        (form.buyerName
+                          ? ({ _id: "__current__", firstName: form.buyerName, lastName: "", status: "active" } as Driver)
+                          : null)
+                      }
+                      onSelect={handlePickDriver}
+                      getLabel={(d) => `${d.firstName} ${d.lastName}`.trim()}
+                      getSub={(d) => d.staffCode ?? ""}
+                      placeholder="พิมพ์ชื่อ นามสกุล หรือรหัสพนักงาน..."
+                      searchKeys={(d) => [d.firstName, d.lastName, d.staffCode ?? "", d.nationalId ?? "", d.phone ?? ""]}
+                    />
+                    {pulledDriver && driverMasterMissing.length > 0 && (
+                      <Link
+                        href={`/drivers/${pullDriverId}`}
+                        target="_blank"
+                        className="flex items-start gap-1 text-[10px] text-amber-600 hover:text-amber-700 hover:underline"
+                      >
+                        <AlertTriangle className="w-3 h-3 shrink-0 mt-px" />
+                        <span>ทะเบียนพนักงานยังขาด: {driverMasterMissing.join(", ")} — คลิกไปกรอก →</span>
+                      </Link>
+                    )}
+                  </>
+                ) : key === "licensePlate" && isAdmin ? (
+                  <>
+                    <SearchCombobox<Vehicle>
+                      items={vehicles}
+                      selected={
+                        pulledVehicle ??
+                        (form.licensePlate
+                          ? ({ _id: "__current__", licensePlate: form.licensePlate } as Vehicle)
+                          : null)
+                      }
+                      onSelect={handlePickVehicle}
+                      getLabel={(v) => v.licensePlate ?? ""}
+                      getSub={(v) => [v.truckNumber, v.brand].filter(Boolean).join(" · ")}
+                      placeholder="พิมพ์ทะเบียน เบอร์รถ หรือยี่ห้อ..."
+                      searchKeys={(v) => [v.licensePlate ?? "", v.truckNumber ?? "", v.brand ?? "", v.model ?? "", v.chassisNumber ?? ""]}
+                    />
+                    {pulledVehicle && vehicleMasterMissing.length > 0 && (
+                      <Link
+                        href="/vehicles"
+                        target="_blank"
+                        className="flex items-start gap-1 text-[10px] text-amber-600 hover:text-amber-700 hover:underline"
+                      >
+                        <AlertTriangle className="w-3 h-3 shrink-0 mt-px" />
+                        <span>ทะเบียนรถยังขาด: {vehicleMasterMissing.join(", ")} — คลิกไปกรอก →</span>
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <Input {...strField(key, type ?? "text", readOnly)} />
+                )}
               </div>
             ))}
             <div className="space-y-1">
@@ -395,10 +663,43 @@ export default function ContractDetailPage() {
             </div>
           </div>
         </div>
+        )}
 
+        {step === 3 && (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ข้อมูลเปิดเจ้าหนี้ (สำหรับเอกสารเปิดเจ้าหนี้รายใหม่)</h2>
+          <p className="text-xs text-zinc-400 mb-4">ประเภทบัญชี + สาขาธนาคาร จำเป็นสำหรับแบบฟอร์มลงทะเบียนผู้ขาย — รหัสเจ้าหนี้เว้นว่างได้ (บัญชีกำหนดหลังเปิด)</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label className="text-xs">ประเภทบัญชี</Label>
+              <select
+                value={String(form.bankAccountType ?? "")}
+                disabled={!isAdmin}
+                onChange={(e) => setForm((p) => p ? { ...p, bankAccountType: e.target.value } : p)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm disabled:opacity-50"
+              >
+                <option value="">— เลือก —</option>
+                <option value="ออมทรัพย์">ออมทรัพย์</option>
+                <option value="กระแสรายวัน">กระแสรายวัน</option>
+                <option value="ประจำ">ประจำ</option>
+              </select>
+            </div>
+            {VENDOR_FIELDS.map(({ key, label }) => (
+              <div key={key} className="space-y-1">
+                <Label className="text-xs">{label}</Label>
+                <Input {...strField(key)} />
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {step === 1 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ข้อมูลผู้ซื้อ / รถ (สำหรับเอกสารสัญญา)</h2>
           <p className="text-xs text-zinc-400 mb-4">กรอกให้ครบเพื่อให้เอกสารสัญญา (PDF) ไม่มีช่องว่างให้เติมมือ</p>
+
+          {/* เลือกพนักงาน/ทะเบียนรถได้จากช่อง "ชื่อผู้เช่าซื้อ" และ "ทะเบียนรถ" ใน ข้อมูลสัญญา (ขั้นตอนที่ 1) */}
           <div className="grid grid-cols-2 gap-4">
             {DOC_FIELDS.map(({ key, label, type, readOnly }) => (
               <div key={key} className="space-y-1">
@@ -412,7 +713,24 @@ export default function ContractDetailPage() {
             </div>
           </div>
         </div>
+        )}
 
+        {step === 2 && (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ผู้ค้ำประกัน (สำหรับสัญญาค้ำประกัน)</h2>
+          <p className="text-xs text-zinc-400 mb-4">เว้นว่างได้ถ้าไม่มีผู้ค้ำประกัน — เอกสารจะพิมพ์เป็นเส้นประให้เติมมือ</p>
+          <div className="grid grid-cols-2 gap-4">
+            {GUARANTOR_FIELDS.map(({ key, label }) => (
+              <div key={key} className={`space-y-1 ${key === "guarantorAddress" ? "col-span-2" : ""}`}>
+                <Label className="text-xs">{label}</Label>
+                <Input {...strField(key)} />
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {step === 1 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">ข้อมูลการเงิน</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -424,7 +742,9 @@ export default function ContractDetailPage() {
             ))}
           </div>
         </div>
+        )}
 
+        {step === 4 && (<>
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">หมายเหตุ</h2>
           <textarea
@@ -437,14 +757,70 @@ export default function ContractDetailPage() {
           />
         </div>
 
-        {isAdmin && (
-          <div className="flex gap-3">
-            <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+        {/* ── สรุปความครบถ้วนของเอกสารทั้ง 3 ฉบับ ── */}
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">ความครบถ้วนของเอกสาร</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {([
+              { key: "sale",      label: "สัญญาซื้อขาย",   href: `/contracts/${id}/document` },
+              { key: "hire",      label: "สัญญาว่าจ้าง",   href: `/contracts/${id}/hire-document` },
+              { key: "guarantee", label: "สัญญาค้ำประกัน", href: `/contracts/${id}/guarantee-document` },
+              { key: "vendor",    label: "เปิดเจ้าหนี้",   href: `/contracts/${id}/vendor-document` },
+            ] as const).map(({ key, label, href }) => {
+              const miss = missCounts[key]
+              return (
+                <div
+                  key={key}
+                  className={`rounded-lg border px-3 py-2.5 ${
+                    miss === 0
+                      ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
+                      : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"
+                  }`}
+                >
+                  <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">{label}</div>
+                  <div className={`text-[11px] font-semibold mt-0.5 ${miss === 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                    {miss === 0 ? "✓ ข้อมูลครบ" : `ขาด ${miss} รายการ`}
+                  </div>
+                  <div className="flex gap-2 mt-1.5">
+                    <button type="button" onClick={() => setDocTab(key)} className="text-[10px] text-zinc-500 underline hover:text-zinc-700">
+                      ดูตัวอย่าง
+                    </button>
+                    <Link href={href} className="text-[10px] text-emerald-600 underline hover:text-emerald-700">
+                      พิมพ์ PDF
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        </>)}
+
+        <div className="flex gap-3 items-center">
+          {step > 0 && (
+            <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+              ← ย้อนกลับ
+            </Button>
+          )}
+          {step < WIZARD_STEPS.length - 1 && (
+            <Button type="button" onClick={() => setStep(step + 1)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              ถัดไป: {WIZARD_STEPS[step + 1].title} →
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              type="submit"
+              disabled={saving}
+              className={step === WIZARD_STEPS.length - 1
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                : ""}
+              variant={step === WIZARD_STEPS.length - 1 ? "default" : "outline"}
+            >
               {saving ? "กำลังบันทึก..." : "บันทึก"}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
-          </div>
-        )}
+          )}
+          <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
+        </div>
       </form>
         </div>
 
@@ -455,6 +831,8 @@ export default function ContractDetailPage() {
               {([
                 { key: "sale", label: "สัญญาซื้อขาย" },
                 { key: "hire", label: "สัญญาว่าจ้าง" },
+                { key: "guarantee", label: "สัญญาค้ำประกัน" },
+                { key: "vendor", label: "เปิดเจ้าหนี้" },
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
@@ -471,7 +849,7 @@ export default function ContractDetailPage() {
               ))}
             </div>
             <Link
-              href={`/contracts/${id}/${docTab === "sale" ? "document" : "hire-document"}`}
+              href={`/contracts/${id}/${docTab === "sale" ? "document" : docTab === "hire" ? "hire-document" : docTab === "guarantee" ? "guarantee-document" : "vendor-document"}`}
               className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline whitespace-nowrap"
             >
               เปิดหน้าพิมพ์ / PDF →
@@ -484,8 +862,12 @@ export default function ContractDetailPage() {
                   contract={form}
                   promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null}
                 />
-              ) : (
+              ) : docTab === "hire" ? (
                 <HireContractDocument contract={form} />
+              ) : docTab === "guarantee" ? (
+                <GuaranteeContractDocument contract={form} />
+              ) : (
+                <VendorDocDocument contract={form} />
               )}
             </div>
           </div>

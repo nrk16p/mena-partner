@@ -6,9 +6,12 @@ import { useSession } from "next-auth/react"
 import { Search, X, ChevronDown, Tag, Upload, Trash2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { SearchCombobox } from "@/components/search-combobox"
 import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
-import { missingDocFields, missingHireDocFields } from "@/lib/contract-doc"
+import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
+import { VendorDocDocument } from "@/components/vendor-doc-document"
+import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
 import type { Contract, Driver, Vehicle } from "@/types"
 
 // ─── types ─────────────────────────────────────────────────────────────────────
@@ -47,85 +50,6 @@ function thaiDate(iso?: string | null): string {
 function fmt(n?: number | null): string {
   if (!n) return "—"
   return n.toLocaleString("th-TH")
-}
-
-// ─── combobox ─────────────────────────────────────────────────────────────────
-
-interface ComboProps<T> {
-  items:       T[]
-  selected:    T | null
-  onSelect:    (item: T | null) => void
-  getLabel:    (item: T) => string
-  getSub?:     (item: T) => string
-  placeholder: string
-  searchKeys:  (item: T) => string[]
-}
-
-function Combobox<T extends { _id?: string }>({
-  items, selected, onSelect, getLabel, getSub, placeholder, searchKeys,
-}: ComboProps<T>) {
-  const [open, setOpen] = useState(false)
-  const [q,    setQ]    = useState("")
-  const ref             = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
-
-  const filtered = items.filter((item) =>
-    !q || searchKeys(item).some((k) => k.toLowerCase().includes(q.toLowerCase()))
-  )
-
-  return (
-    <div ref={ref} className="relative">
-      {selected ? (
-        <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-zinc-200 dark:border-zinc-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-sm">
-          <span className="flex-1 truncate font-medium text-zinc-800 dark:text-zinc-100">{getLabel(selected)}</span>
-          {getSub && <span className="text-xs text-zinc-400">{getSub(selected)}</span>}
-          <button type="button" onClick={() => { onSelect(null); setQ("") }} className="text-zinc-400 hover:text-zinc-700 shrink-0">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      ) : (
-        <div
-          className="flex items-center gap-2 h-9 px-3 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 cursor-text"
-          onClick={() => setOpen(true)}
-        >
-          <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <input
-            className="flex-1 text-sm bg-transparent outline-none placeholder:text-zinc-400"
-            placeholder={placeholder}
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setOpen(true) }}
-            onFocus={() => setOpen(true)}
-          />
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-        </div>
-      )}
-
-      {open && !selected && (
-        <div className="absolute z-50 top-full mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg">
-          {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-zinc-400">ไม่พบข้อมูล</div>
-          ) : filtered.slice(0, 60).map((item) => (
-            <button
-              key={item._id}
-              type="button"
-              className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-between"
-              onMouseDown={(e) => { e.preventDefault(); onSelect(item); setOpen(false); setQ("") }}
-            >
-              <span className="font-medium">{getLabel(item)}</span>
-              {getSub && <span className="text-xs text-zinc-400">{getSub(item)}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ─── section wrapper ───────────────────────────────────────────────────────────
@@ -199,6 +123,16 @@ interface FormState {
   saleContractUrl:         string
   hireContractUrl:         string
   guaranteeContractUrl:    string
+  guarantorName:           string
+  guarantorNationalId:     string
+  guarantorAddress:        string
+  // ข้อมูลเปิดเจ้าหนี้
+  buyerNameEn:             string
+  email:                   string
+  bankAccountType:         string
+  bankBranch:              string
+  vendorCodeWinspeed:      string
+  vendorCodeAtms:          string
   notes:                   string
 }
 
@@ -213,8 +147,21 @@ const EMPTY: FormState = {
   downInstallmentCount: 0, downInstallmentAmt: 0, financeAmount: 0,
   monthlyInstallment: 0, totalInstallments: 0,
   startDate: "", plant: "", status: "active", payEveryLastDay: false,
-  saleContractUrl: "", hireContractUrl: "", guaranteeContractUrl: "", notes: "",
+  saleContractUrl: "", hireContractUrl: "", guaranteeContractUrl: "",
+  guarantorName: "", guarantorNationalId: "", guarantorAddress: "",
+  buyerNameEn: "", email: "", bankAccountType: "ออมทรัพย์", bankBranch: "",
+  vendorCodeWinspeed: "", vendorCodeAtms: "", notes: "",
 }
+
+// ─── wizard steps ─────────────────────────────────────────────────────────────
+
+const WIZARD_STEPS = [
+  { title: "ข้อมูลหลัก",      desc: "สัญญา + ผู้เช่าซื้อ" },
+  { title: "สัญญาซื้อขาย",    desc: "รถ + ราคา/งวด" },
+  { title: "สัญญาค้ำประกัน",  desc: "ผู้ค้ำประกัน" },
+  { title: "เปิดเจ้าหนี้",    desc: "ข้อมูลผู้ขาย/บัญชี" },
+  { title: "เอกสาร & บันทึก", desc: "ไฟล์แนบ + ตรวจสอบ" },
+]
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 
@@ -227,7 +174,13 @@ export default function NewContractPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [prices,   setPrices]   = useState<PriceRow[]>([])
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
-  const [docTab, setDocTab] = useState<"sale" | "hire">("sale")
+  const [docTab, setDocTab] = useState<"sale" | "hire" | "guarantee" | "vendor">("sale")
+  const [step, setStep] = useState(0)
+
+  // เปลี่ยน step → สลับ preview ไปเอกสารที่เกี่ยวข้อง
+  useEffect(() => {
+    setDocTab(step === 2 ? "guarantee" : step === 3 ? "vendor" : "sale")
+  }, [step])
   const [selectedDriver,  setSelectedDriver]  = useState<Driver  | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [saving,       setSaving]       = useState(false)
@@ -360,8 +313,10 @@ export default function NewContractPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (session?.user?.role !== "admin") return
-    if (!form.contractCode.trim()) { setError("กรุณากรอกรหัสสัญญา"); return }
-    if (!form.buyerName.trim())    { setError("กรุณาเลือกหรือกรอกชื่อผู้เช่าซื้อ"); return }
+    // Enter บนขั้นตอนก่อนสุดท้าย = ถัดไป (กันบันทึกโดยไม่ตั้งใจ)
+    if (step < WIZARD_STEPS.length - 1) { setStep(step + 1); return }
+    if (!form.contractCode.trim()) { setError("กรุณากรอกรหัสสัญญา"); setStep(0); return }
+    if (!form.buyerName.trim())    { setError("กรุณาเลือกหรือกรอกชื่อผู้เช่าซื้อ"); setStep(0); return }
     setSaving(true); setError("")
     try {
       const res = await fetch("/api/contracts", {
@@ -387,7 +342,18 @@ export default function NewContractPage() {
   const previewPromo =
     promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null
   const missingDoc =
-    docTab === "sale" ? missingDocFields(previewContract) : missingHireDocFields(previewContract)
+    docTab === "sale" ? missingDocFields(previewContract)
+    : docTab === "hire" ? missingHireDocFields(previewContract)
+    : docTab === "guarantee" ? missingGuaranteeDocFields(previewContract)
+    : missingVendorDocFields(previewContract)
+
+  // จำนวนข้อมูลที่ยังขาดของแต่ละเอกสาร — ใช้ในสรุปก่อนบันทึก
+  const missCounts = {
+    sale:      missingDocFields(previewContract).length,
+    hire:      missingHireDocFields(previewContract).length,
+    guarantee: missingGuaranteeDocFields(previewContract).length,
+    vendor:    missingVendorDocFields(previewContract).length,
+  }
 
   return (
     <div className="max-w-[1500px]">
@@ -395,9 +361,41 @@ export default function NewContractPage() {
       <div className="flex gap-6 items-start">
         <div className="w-full xl:max-w-2xl min-w-0 shrink-0 xl:w-[42rem]">
 
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">เพิ่มสัญญา</h1>
         <p className="text-sm text-zinc-400 mt-0.5">กรอกข้อมูลสัญญา เลือกผู้เช่าซื้อ และเลือกรถ</p>
+      </div>
+
+      {/* ── Stepper: 4 ขั้นตอนตามเอกสารสัญญา ── */}
+      <div className="mb-6 flex items-center">
+        {WIZARD_STEPS.map((s, i) => (
+          <div key={s.title} className={`flex items-center ${i < WIZARD_STEPS.length - 1 ? "flex-1" : ""}`}>
+            <button
+              type="button"
+              onClick={() => setStep(i)}
+              className="flex items-center gap-2 group"
+            >
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+                i === step
+                  ? "bg-emerald-600 text-white"
+                  : i < step
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+                    : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700"
+              }`}>
+                {i < step ? "✓" : i + 1}
+              </span>
+              <span className="text-left hidden sm:block">
+                <span className={`block text-xs font-semibold leading-tight ${
+                  i === step ? "text-zinc-800 dark:text-zinc-100" : "text-zinc-400"
+                }`}>{s.title}</span>
+                <span className="block text-[10px] text-zinc-400 leading-tight">{s.desc}</span>
+              </span>
+            </button>
+            {i < WIZARD_STEPS.length - 1 && (
+              <div className={`flex-1 h-px mx-3 ${i < step ? "bg-emerald-300 dark:bg-emerald-800" : "bg-zinc-200 dark:bg-zinc-700"}`} />
+            )}
+          </div>
+        ))}
       </div>
 
       {error && (
@@ -408,6 +406,7 @@ export default function NewContractPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
+        {step === 0 && <>
         {/* ── 1. ข้อมูลสัญญา ── */}
         <Section title="ข้อมูลสัญญา">
           <div className="grid grid-cols-2 gap-4">
@@ -460,7 +459,7 @@ export default function NewContractPage() {
         <Section title="ข้อมูลส่วนบุคคล" badge="พนักงานขับรถ">
           <div className="mb-4">
             <label className="block text-xs text-zinc-400 mb-1">ค้นหาผู้เช่าซื้อ / พนักงานขับรถ</label>
-            <Combobox<Driver>
+            <SearchCombobox<Driver>
               items={drivers}
               selected={selectedDriver}
               onSelect={handleDriverSelect}
@@ -537,12 +536,83 @@ export default function NewContractPage() {
             </div>
           )}
         </Section>
+        </>}
 
+        {step === 3 && <>
+        {/* ── ข้อมูลเปิดเจ้าหนี้ (ใช้ในเอกสารเปิดเจ้าหนี้รายใหม่) ── */}
+        <Section title="ข้อมูลเปิดเจ้าหนี้" badge="Vendor">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">ชื่อเจ้าหนี้ (ภาษาอังกฤษ)</label>
+              <Input value={form.buyerNameEn} onChange={(e) => set("buyerNameEn", e.target.value)} className="h-9 text-sm" placeholder="Mr. ..." />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">Email ผู้ติดต่อ</label>
+              <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className="h-9 text-sm" placeholder="example@mail.com" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">ประเภทบัญชี <span className="text-red-400">*</span></label>
+              <select
+                value={form.bankAccountType}
+                onChange={(e) => set("bankAccountType", e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+              >
+                <option value="ออมทรัพย์">ออมทรัพย์</option>
+                <option value="กระแสรายวัน">กระแสรายวัน</option>
+                <option value="ประจำ">ประจำ</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">สาขาธนาคาร <span className="text-red-400">*</span></label>
+              <Input value={form.bankBranch} onChange={(e) => set("bankBranch", e.target.value)} className="h-9 text-sm" placeholder="เช่น สาขาแก่งคอย" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">รหัสเจ้าหนี้ Winspeed</label>
+              <Input value={form.vendorCodeWinspeed} onChange={(e) => set("vendorCodeWinspeed", e.target.value)} className="h-9 text-sm font-mono" placeholder="เว้นว่างได้ — บัญชีกำหนดหลังเปิด" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">รหัสเจ้าหนี้ ATMS</label>
+              <Input value={form.vendorCodeAtms} onChange={(e) => set("vendorCodeAtms", e.target.value)} className="h-9 text-sm font-mono" placeholder="เว้นว่างได้ — บัญชีกำหนดหลังเปิด" />
+            </div>
+          </div>
+        </Section>
+        </>}
+
+        {step === 2 && <>
+        {/* ── ผู้ค้ำประกัน (ใช้ในสัญญาค้ำประกัน) ── */}
+        <Section title="ผู้ค้ำประกัน" badge={form.guarantorName ? undefined : "เว้นว่างได้"}>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">ชื่อ – นามสกุล ผู้ค้ำประกัน</label>
+              <Input value={form.guarantorName} onChange={(e) => set("guarantorName", e.target.value)} className="h-9 text-sm" placeholder="นาย/นาง/นางสาว ..." />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">เลขบัตรประชาชนผู้ค้ำประกัน</label>
+              <Input
+                value={form.guarantorNationalId}
+                onChange={(e) => set("guarantorNationalId", e.target.value.replace(/\D/g, "").slice(0, 13))}
+                className="h-9 text-sm font-mono tracking-widest"
+                placeholder="0000000000000"
+                maxLength={13}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-zinc-400 mb-1">ที่อยู่ผู้ค้ำประกัน</label>
+              <Input value={form.guarantorAddress} onChange={(e) => set("guarantorAddress", e.target.value)} className="h-9 text-sm" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด" />
+            </div>
+          </div>
+          <p className="text-[11px] text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg px-3 py-2 mt-4">
+            ใช้ในเอกสารสัญญาค้ำประกันเท่านั้น — สัญญาว่าจ้างใช้ข้อมูลผู้เช่าซื้อ/บัญชีธนาคารจากขั้นตอนที่ 1
+          </p>
+        </Section>
+        </>}
+
+        {step === 1 && <>
         {/* ── 3. ข้อมูลรถ ── */}
         <Section title="ข้อมูลรถ" badge="ทะเบียนรถ">
           <div className="mb-4">
             <label className="block text-xs text-zinc-400 mb-1">ค้นหาทะเบียนรถ / เบอร์รถ</label>
-            <Combobox<Vehicle>
+            <SearchCombobox<Vehicle>
               items={vehicles.filter((v) => prices.some((p) => p.licensePlate === v.licensePlate))}
               selected={selectedVehicle}
               onSelect={handleVehicleSelect}
@@ -686,7 +756,9 @@ export default function NewContractPage() {
             </div>
           )}
         </Section>
+        </>}
 
+        {step === 4 && <>
         {/* ── เอกสารแนบ ── */}
         {(() => {
           const docs = [
@@ -769,10 +841,57 @@ export default function NewContractPage() {
           />
         </Section>
 
-        <div className="flex gap-3 pb-10">
-          <Button type="submit" disabled={saving || !isAdmin} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            {saving ? "กำลังบันทึก..." : "บันทึกสัญญา"}
-          </Button>
+        {/* ── สรุปความครบถ้วนของเอกสารทั้ง 3 ฉบับก่อนบันทึก ── */}
+        <Section title="ตรวจสอบก่อนบันทึก">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {([
+              { key: "sale",      label: "สัญญาซื้อขาย" },
+              { key: "hire",      label: "สัญญาว่าจ้าง" },
+              { key: "guarantee", label: "สัญญาค้ำประกัน" },
+              { key: "vendor",    label: "เปิดเจ้าหนี้" },
+            ] as const).map(({ key, label }) => {
+              const miss = missCounts[key]
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setDocTab(key)}
+                  className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    miss === 0
+                      ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20"
+                      : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"
+                  } ${docTab === key ? "ring-2 ring-emerald-400" : ""}`}
+                >
+                  <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">{label}</div>
+                  <div className={`text-[11px] font-semibold mt-0.5 ${miss === 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                    {miss === 0 ? "✓ ข้อมูลครบ" : `ขาด ${miss} รายการ`}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-zinc-400 mt-3">
+            ช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ — บันทึกได้เลยแล้วมากรอกเพิ่มทีหลังที่หน้าแก้ไขสัญญา
+          </p>
+        </Section>
+        </>}
+
+        {/* ── Wizard navigation ── */}
+        <div className="flex gap-3 pb-10 items-center">
+          {step > 0 && (
+            <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+              ← ย้อนกลับ
+            </Button>
+          )}
+          {step < WIZARD_STEPS.length - 1 ? (
+            <Button type="button" onClick={() => setStep(step + 1)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              ถัดไป: {WIZARD_STEPS[step + 1].title} →
+            </Button>
+          ) : (
+            <Button type="submit" disabled={saving || !isAdmin} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {saving ? "กำลังบันทึก..." : "บันทึกสัญญา"}
+            </Button>
+          )}
           <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
         </div>
       </form>
@@ -785,6 +904,8 @@ export default function NewContractPage() {
               {([
                 { key: "sale", label: "สัญญาซื้อขาย" },
                 { key: "hire", label: "สัญญาว่าจ้าง" },
+                { key: "guarantee", label: "สัญญาค้ำประกัน" },
+                { key: "vendor", label: "เปิดเจ้าหนี้" },
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
@@ -814,8 +935,12 @@ export default function NewContractPage() {
             <div style={{ zoom: 0.58 }}>
               {docTab === "sale" ? (
                 <ContractDocument contract={previewContract} promo={previewPromo} />
-              ) : (
+              ) : docTab === "hire" ? (
                 <HireContractDocument contract={previewContract} />
+              ) : docTab === "guarantee" ? (
+                <GuaranteeContractDocument contract={previewContract} />
+              ) : (
+                <VendorDocDocument contract={previewContract} />
               )}
             </div>
           </div>
