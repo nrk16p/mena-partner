@@ -354,6 +354,9 @@ export default function NewContractPage() {
   // จำนวนข้อมูลที่ยังขาดของแต่ละเอกสาร — ใช้ในสรุปก่อนบันทึก
   const missCounts = {
     sale:      missingDocFields(previewContract).length,
+    promo:     previewPromo
+      ? [previewPromo.pro1TotalValue, previewPromo.pro2RepairBudget, previewPromo.pro3AnnualPm].filter((v) => v == null).length
+      : 3,
     hire:      missingHireDocFields(previewContract).length,
     guarantee: missingGuaranteeDocFields(previewContract).length,
     vendor:    missingVendorDocFields(previewContract).length,
@@ -847,9 +850,10 @@ export default function NewContractPage() {
 
         {/* ── สรุปความครบถ้วนของเอกสารทั้ง 3 ฉบับก่อนบันทึก ── */}
         <Section title="ตรวจสอบก่อนบันทึก">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {([
               { key: "sale",      label: "สัญญาซื้อขาย" },
+              { key: "promo",     label: "แนบท้ายโปรโมชั่น" },
               { key: "hire",      label: "สัญญาว่าจ้าง" },
               { key: "guarantee", label: "สัญญาค้ำประกัน" },
               { key: "vendor",    label: "เปิดเจ้าหนี้" },

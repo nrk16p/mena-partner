@@ -269,6 +269,11 @@ export default function ContractDetailPage() {
   // จำนวนข้อมูลที่ยังขาดของแต่ละเอกสาร — ใช้ในสรุปขั้นตอนสุดท้าย
   const missCounts = {
     sale:      missingDocFields(form).length,
+    // แนบท้ายโปรโมชั่น: นับจาก promotion_master (ไม่มี record = ขาด 3, มี = นับ pro1/2/3 ที่ว่าง)
+    promo:     (() => {
+      const mp = promoList.find((p) => normPlate(p.licensePlate) === normPlate(form?.licensePlate ?? "")) ?? null
+      return mp ? [mp.pro1TotalValue, mp.pro2RepairBudget, mp.pro3AnnualPm].filter((v) => v == null).length : 3
+    })(),
     hire:      missingHireDocFields(form).length,
     guarantee: missingGuaranteeDocFields(form).length,
     vendor:    missingVendorDocFields(form).length,
@@ -677,7 +682,7 @@ export default function ContractDetailPage() {
                     />
                     {pulledVehicle && vehicleMasterMissing.length > 0 && (
                       <Link
-                        href="/vehicles"
+                        href={`/vehicles?edit=${pullVehicleId}`}
                         target="_blank"
                         className="flex items-start gap-1 text-[10px] text-amber-600 hover:text-amber-700 hover:underline"
                       >
@@ -803,9 +808,10 @@ export default function ContractDetailPage() {
         {/* ── สรุปความครบถ้วนของเอกสารทั้ง 3 ฉบับ ── */}
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">ความครบถ้วนของเอกสาร</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {([
               { key: "sale",      label: "สัญญาซื้อขาย",   href: `/contracts/${id}/document` },
+              { key: "promo",     label: "แนบท้ายโปรโมชั่น", href: `/contracts/${id}/promotion-document` },
               { key: "hire",      label: "สัญญาว่าจ้าง",   href: `/contracts/${id}/hire-document` },
               { key: "guarantee", label: "สัญญาค้ำประกัน", href: `/contracts/${id}/guarantee-document` },
               { key: "vendor",    label: "เปิดเจ้าหนี้",   href: `/contracts/${id}/vendor-document` },

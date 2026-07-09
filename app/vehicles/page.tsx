@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
@@ -368,6 +368,17 @@ export default function VehiclesPage() {
   }, [statusFilter])
 
   useEffect(() => { load() }, [load])
+
+  // deep-link: /vehicles?edit=<id> → เปิด panel แก้ไขรถคันนั้นอัตโนมัติ
+  // (มาจากลิงก์ "ทะเบียนรถยังขาด … คลิกไปกรอก" ในหน้าสัญญา)
+  const deepLinked = useRef(false)
+  useEffect(() => {
+    if (deepLinked.current || items.length === 0) return
+    const editId = new URLSearchParams(window.location.search).get("edit")
+    if (!editId) return
+    const v = items.find((x) => x._id === editId)
+    if (v) { deepLinked.current = true; setPanel(v); setQ(v.licensePlate ?? "") }
+  }, [items])
 
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState("")
