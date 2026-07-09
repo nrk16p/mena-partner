@@ -2,10 +2,13 @@
 
 /**
  * Searchable combobox — พิมพ์ค้นหาแล้วเลือกจากรายการ
- * ใช้ร่วมกันระหว่างหน้าเพิ่มสัญญา (/contracts/new) และหน้าแก้ไขสัญญา (/contracts/[id])
+ * ใช้ร่วมกันหลายหน้า (สัญญา, ที่อยู่พนักงาน ฯลฯ)
+ * เมนูตัวเลือก render ผ่าน portal (position: fixed) เพื่อไม่ให้โดน overflow-hidden
+ * ของการ์ดแม่บัง (bug: dropdown ตำบล/แขวง โดนบังในหน้าแก้ไขพนักงาน)
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { Search, X, ChevronDown } from "lucide-react"
 
 export interface SearchComboboxProps<T> {
@@ -24,14 +27,37 @@ export function SearchCombobox<T extends { _id?: string }>({
   const [open, setOpen] = useState(false)
   const [q,    setQ]    = useState("")
   const ref             = useRef<HTMLDivElement>(null)
+  const menuRef         = useRef<HTMLDivElement>(null)
+  const [pos, setPos]   = useState<{ top: number; left: number; width: number } | null>(null)
 
+  const updatePos = useCallback(() => {
+    const r = ref.current?.getBoundingClientRect()
+    if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+  }, [])
+
+  // ปิดเมื่อคลิกนอก (นับทั้งช่องค้นหาและเมนู portal)
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (ref.current?.contains(t) || menuRef.current?.contains(t)) return
+      setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [])
+
+  // จัดตำแหน่งเมนูตอนเปิด + ตามหน้าจอเลื่อน/ปรับขนาด
+  useEffect(() => {
+    if (!open) return
+    updatePos()
+    const on = () => updatePos()
+    window.addEventListener("scroll", on, true)
+    window.addEventListener("resize", on)
+    return () => {
+      window.removeEventListener("scroll", on, true)
+      window.removeEventListener("resize", on)
+    }
+  }, [open, updatePos])
 
   const filtered = items.filter((item) =>
     !q || searchKeys(item).some((k) => k.toLowerCase().includes(q.toLowerCase()))
@@ -64,8 +90,12 @@ export function SearchCombobox<T extends { _id?: string }>({
         </div>
       )}
 
-      {open && !selected && (
-        <div className="absolute z-50 top-full mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg">
+      {open && !selected && pos && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+          className="max-h-60 overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg"
+        >
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-xs text-zinc-400">ไม่พบข้อมูล</div>
           ) : filtered.slice(0, 60).map((item) => (
@@ -79,7 +109,8 @@ export function SearchCombobox<T extends { _id?: string }>({
               {getSub && <span className="text-xs text-zinc-400">{getSub(item)}</span>}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
