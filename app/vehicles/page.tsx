@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
-import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink } from "lucide-react"
+import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink, Hash, Wrench } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
@@ -130,137 +130,116 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
     } finally { setDeleting(false) }
   }
 
-  // Group fields by section
-  const sections = Array.from(new Set(FORM_FIELDS.map((f) => f.section)))
+  // ปิดด้วยปุ่ม Esc
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onEsc)
+    return () => window.removeEventListener("keydown", onEsc)
+  }, [onClose])
 
-  const Div = ({ label }: { label: string }) => (
-    <div className="flex items-center gap-3 pt-1">
-      <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest whitespace-nowrap">{label}</p>
-      <div className="flex-1 h-px bg-zinc-100 dark:bg-zinc-800" />
-    </div>
+  // ความครบถ้วน — นับช่องที่กรอกแล้วจากทั้งหมด
+  const total  = FORM_FIELDS.length
+  const filled = FORM_FIELDS.filter((f) => String(form[f.key as keyof typeof form] ?? "").trim()).length
+  const pct    = Math.round((filled / total) * 100)
+  const complete = filled === total
+
+  const field = (f: (typeof FORM_FIELDS)[number]) => {
+    const empty = !String(form[f.key as keyof typeof form] ?? "").trim()
+    return (
+      <div key={f.key}>
+        <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 mb-1.5">
+          {f.label}
+          {empty && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" title="ยังไม่กรอก" />}
+        </label>
+        <Input
+          type={f.type ?? "text"}
+          placeholder={f.placeholder}
+          value={String(form[f.key as keyof typeof form] ?? "")}
+          onChange={(e) => set(f.key as keyof typeof EMPTY_FORM, e.target.value)}
+          className={`h-10 text-sm ${empty ? "border-amber-300 dark:border-amber-800/70 bg-amber-50/40 dark:bg-amber-950/10 focus-visible:ring-amber-400" : ""}`}
+        />
+      </div>
+    )
+  }
+
+  const SectionCard = ({ icon: Icon, title, children }: { icon: typeof Car; title: string; children: React.ReactNode }) => (
+    <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+          <Icon className="w-4 h-4" />
+        </span>
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{title}</h3>
+      </div>
+      {children}
+    </section>
   )
 
   return (
-    <div className="fixed inset-0 z-50 bg-zinc-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <style>{`
+        @keyframes vehDrawerIn { from { transform: translateX(28px); opacity: 0 } to { transform: none; opacity: 1 } }
+        @media (prefers-reduced-motion: reduce) { .veh-drawer { animation: none !important } }
+      `}</style>
 
-      {/* ── Sticky header ── */}
-      <div className="shrink-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-6 py-4 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">ข้อมูลรถ</p>
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 mt-0.5">
-            {isEdit ? (vehicle!.truckNumber || vehicle!.licensePlate || "แก้ไขข้อมูล") : "เพิ่มรถใหม่"}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {isEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="h-8 px-3 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />ลบรถ
-            </Button>
-          )}
-          <Button
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? "กำลังบันทึก..." : <><Check className="w-3.5 h-3.5" />{isEdit ? "บันทึกการแก้ไข" : "เพิ่มรถ"}</>}
-          </Button>
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* drawer */}
+      <div className="veh-drawer relative w-full max-w-2xl h-full bg-zinc-50 dark:bg-zinc-950 shadow-2xl flex flex-col overflow-hidden"
+           style={{ animation: "vehDrawerIn .22s ease-out" }}>
+
+        {/* ── header bar ── */}
+        <div className="shrink-0 flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 backdrop-blur">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+            {isEdit ? "แก้ไขข้อมูลรถ" : "เพิ่มรถใหม่"}
+          </p>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-      </div>
 
-      {/* ── Scrollable body ── */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+        {/* ── scrollable body ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
-          {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 px-4 py-3 rounded-xl border border-red-100 dark:border-red-900/40">{error}</p>}
-
-          {/* ── ข้อมูลทั่วไป ── */}
-          <div>
-            <Div label="ข้อมูลทั่วไป" />
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-              {FORM_FIELDS.filter((f) => f.section === "ข้อมูลทั่วไป").map((f) => (
-                <div key={f.key}>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1.5">{f.label}</label>
-                  <Input
-                    type={f.type ?? "text"}
-                    placeholder={f.placeholder}
-                    value={String(form[f.key as keyof typeof form] ?? "")}
-                    onChange={(e) => set(f.key as keyof typeof EMPTY_FORM, e.target.value)}
-                    className="h-10 text-sm"
-                  />
+          {/* ── hero: identity + status + completeness ── */}
+          <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* license-plate motif */}
+                <div className="shrink-0 rounded-md border-2 border-zinc-800 bg-white px-3 py-1.5 text-center shadow-sm">
+                  <div className="text-[7px] font-semibold text-zinc-400 leading-none mb-1 tracking-[0.15em]">ทะเบียนรถ</div>
+                  <div className="text-lg font-bold text-zinc-900 tracking-wider leading-none whitespace-nowrap">
+                    {form.licensePlate || "— — —"}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── ทะเบียน ── */}
-          <div>
-            <Div label="ทะเบียน" />
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-              {FORM_FIELDS.filter((f) => f.section === "ทะเบียน").map((f) => (
-                <div key={f.key}>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1.5">{f.label}</label>
-                  <Input
-                    type={f.type ?? "text"}
-                    placeholder={f.placeholder}
-                    value={String(form[f.key as keyof typeof form] ?? "")}
-                    onChange={(e) => set(f.key as keyof typeof EMPTY_FORM, e.target.value)}
-                    className="h-10 text-sm"
-                  />
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 truncate">
+                    {form.truckNumber || (isEdit ? "รถไม่มีเบอร์" : "รถใหม่")}
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                    {[form.brand, form.vehicleType, form.characteristic].filter(Boolean).join(" · ") || "ยังไม่มีรายละเอียดรถ"}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── ตัวถัง / เครื่องยนต์ ── */}
-          <div>
-            <Div label="ตัวถัง / เครื่องยนต์" />
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-              {FORM_FIELDS.filter((f) => f.section === "ตัวถัง / เครื่องยนต์").map((f) => (
-                <div key={f.key}>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1.5">{f.label}</label>
-                  <Input
-                    type={f.type ?? "text"}
-                    placeholder={f.placeholder}
-                    value={String(form[f.key as keyof typeof form] ?? "")}
-                    onChange={(e) => set(f.key as keyof typeof EMPTY_FORM, e.target.value)}
-                    className="h-10 text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── สถานะ + เอกสารแนบ ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-            {/* สถานะ */}
-            <div>
-              <Div label="สถานะ" />
-              <div className="flex gap-2 mt-4">
+              </div>
+              {/* status toggle */}
+              <div className="shrink-0 flex items-center gap-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5">
                 {[
-                  { value: "active",   label: "ใช้งาน",    cls: "bg-emerald-600 text-white" },
-                  { value: "inactive", label: "ไม่ใช้งาน", cls: "bg-zinc-500 text-white" },
+                  { value: "active",   label: "ใช้งาน" },
+                  { value: "inactive", label: "ไม่ใช้งาน" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => set("status", opt.value)}
-                    className={`px-5 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
                       form.status === opt.value
-                        ? opt.cls + " border-transparent"
-                        : "bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                        ? opt.value === "active"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-zinc-500 text-white shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                     }`}
                   >
                     {opt.label}
@@ -269,62 +248,123 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
               </div>
             </div>
 
-            {/* เอกสารแนบ */}
-            <div>
-              <Div label="เอกสารแนบ" />
-              <div className="mt-4">
-                {form.registrationDocUrl ? (
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
-                    <FileText className="w-5 h-5 text-zinc-400 shrink-0" />
-                    <a
-                      href={form.registrationDocUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 text-sm text-emerald-600 hover:underline flex items-center gap-1.5"
-                    >
-                      สำเนาทะเบียนรถ <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => set("registrationDocUrl" as keyof typeof EMPTY_FORM, "")}
-                      className="text-zinc-300 hover:text-red-500 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className={`flex items-center gap-3 px-4 py-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors
-                    ${uploading
-                      ? "border-blue-300 bg-blue-50/40 dark:bg-blue-950/10 dark:border-blue-700"
-                      : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"
-                    }`}>
-                    {uploading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                        <span className="text-sm text-blue-600 font-medium">กำลังอัปโหลด...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5 text-zinc-400 shrink-0" />
-                        <div>
-                          <p className="text-sm text-zinc-600 dark:text-zinc-300 font-medium">แนบสำเนาทะเบียนรถ</p>
-                          <p className="text-xs text-zinc-400 mt-0.5">PDF หรือรูปภาพ • สูงสุด 20 MB</p>
-                        </div>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="hidden"
-                      disabled={uploading}
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDoc(f); e.target.value = "" }}
-                    />
-                  </label>
-                )}
+            {/* completeness meter */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-[11px] mb-1.5">
+                <span className="text-zinc-500">กรอกข้อมูลแล้ว {filled}/{total} ช่อง</span>
+                <span className={complete ? "text-emerald-600 font-semibold" : "text-amber-600 font-semibold"}>
+                  {complete ? "✓ ครบถ้วน" : `ยังขาด ${total - filled} ช่อง`}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${complete ? "bg-emerald-500" : "bg-amber-400"}`}
+                  style={{ width: `${pct}%` }}
+                />
               </div>
             </div>
           </div>
 
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 px-4 py-3 rounded-xl border border-red-100 dark:border-red-900/40">
+              {error}
+            </p>
+          )}
+
+          <SectionCard icon={Car} title="ข้อมูลทั่วไป">
+            <div className="grid grid-cols-2 gap-4">
+              {FORM_FIELDS.filter((f) => f.section === "ข้อมูลทั่วไป").map(field)}
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={Hash} title="ทะเบียน">
+            <div className="grid grid-cols-2 gap-4">
+              {FORM_FIELDS.filter((f) => f.section === "ทะเบียน").map(field)}
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={Wrench} title="ตัวถัง / เครื่องยนต์">
+            <div className="grid grid-cols-2 gap-4">
+              {FORM_FIELDS.filter((f) => f.section === "ตัวถัง / เครื่องยนต์").map(field)}
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={FileText} title="เอกสารแนบ">
+            {form.registrationDocUrl ? (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+                <FileText className="w-5 h-5 text-zinc-400 shrink-0" />
+                <a
+                  href={form.registrationDocUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 text-sm text-emerald-600 hover:underline flex items-center gap-1.5"
+                >
+                  สำเนาทะเบียนรถ <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => set("registrationDocUrl" as keyof typeof EMPTY_FORM, "")}
+                  className="text-zinc-300 hover:text-red-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className={`flex items-center gap-3 px-4 py-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors
+                ${uploading
+                  ? "border-blue-300 bg-blue-50/40 dark:bg-blue-950/10 dark:border-blue-700"
+                  : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"
+                }`}>
+                {uploading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span className="text-sm text-blue-600 font-medium">กำลังอัปโหลด...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-5 h-5 text-zinc-400 shrink-0" />
+                    <div>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-300 font-medium">แนบสำเนาทะเบียนรถ</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">PDF หรือรูปภาพ • สูงสุด 20 MB</p>
+                    </div>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDoc(f); e.target.value = "" }}
+                />
+              </label>
+            )}
+          </SectionCard>
+
+        </div>
+
+        {/* ── sticky footer ── */}
+        <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur">
+          {isEdit ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-9 px-3 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />{deleting ? "กำลังลบ..." : "ลบรถ"}
+            </Button>
+          ) : <span />}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-9 text-sm text-zinc-500">ยกเลิก</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? "กำลังบันทึก..." : <><Check className="w-3.5 h-3.5" />{isEdit ? "บันทึกการแก้ไข" : "เพิ่มรถ"}</>}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
