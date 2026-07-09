@@ -298,10 +298,15 @@ export default function ContractDetailPage() {
     } finally { setSaving(false) }
   }
 
+  // debounce เอกสาร A4 ในพรีวิว — พิมพ์แล้วไม่ re-render ทุกตัวอักษร
+  // ต้องเรียก hook ก่อน early-return เสมอ (Rules of Hooks): ถ้าเรียกหลัง `if (!form) return`
+  // จำนวน hook จะไม่คงที่ระหว่าง render (form: null → โหลดเสร็จ) → React crash ทั้งหน้า
+  const debouncedForm = useDebounced(form, 200)
+
   if (!form) return <div className="text-zinc-400 text-sm">กำลังโหลด...</div>
 
-  // debounce เอกสาร A4 ในพรีวิว — พิมพ์แล้วไม่ re-render ทุกตัวอักษร
-  const previewData = useDebounced(form, 200)
+  // ผ่าน guard แล้ว form ไม่เป็น null; debounce อาจ lag ชั่วครู่ตอนโหลดครั้งแรก → fallback เป็น form
+  const previewData = debouncedForm ?? form
 
   const today = new Date().toISOString().slice(0, 10)
   const paid = form.totalPrice && form.downPayment && form.totalInstallments && form.monthlyInstallment
