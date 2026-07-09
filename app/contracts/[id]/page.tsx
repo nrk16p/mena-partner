@@ -94,6 +94,7 @@ export default function ContractDetailPage() {
   const isAdmin            = session?.user?.role === "admin"
   const [form, setForm]    = useState<Contract | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved]  = useState(false)
   const [error, setError]  = useState("")
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
   const [docTab, setDocTab] = useState<"sale" | "hire" | "guarantee" | "vendor">("sale")
@@ -294,7 +295,9 @@ export default function ContractDetailPage() {
         body: JSON.stringify(form),
       })
       if (!res.ok) { const d = await res.json(); setError(d.error ?? "เกิดข้อผิดพลาด"); return }
-      router.push("/contracts")
+      // อยู่หน้าเดิมหลังบันทึก — โชว์สถานะ "บันทึกแล้ว" ชั่วครู่แทนการเด้งกลับหน้ารายการ
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
     } finally { setSaving(false) }
   }
 
@@ -829,6 +832,11 @@ export default function ContractDetailPage() {
             </Button>
           )}
           <Button type="button" variant="ghost" onClick={() => router.back()}>ยกเลิก</Button>
+          {saved && (
+            <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+              <CheckCircle2 className="w-4 h-4" /> บันทึกแล้ว
+            </span>
+          )}
         </div>
       </form>
         </div>
