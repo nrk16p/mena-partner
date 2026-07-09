@@ -24,6 +24,11 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     birthDate?:     string | null
     nationalId?:    string | null
     address?:       string | null
+    addressDetail?: string | null
+    subdistrict?:   string | null
+    district?:      string | null
+    province?:      string | null
+    postalCode?:    string | null
     staffCode?:      string | null
     contractCode?:   string | null
     phone?:          string | null
@@ -48,6 +53,11 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.birthDate    !== undefined) $set.birthDate    = body.birthDate ?? null
   if (body.nationalId   !== undefined) $set.nationalId   = body.nationalId?.trim() ?? null
   if (body.address      !== undefined) $set.address      = body.address?.trim() ?? null
+  if (body.addressDetail !== undefined) $set.addressDetail = body.addressDetail?.trim() ?? null
+  if (body.subdistrict  !== undefined) $set.subdistrict  = body.subdistrict?.trim() ?? null
+  if (body.district     !== undefined) $set.district     = body.district?.trim() ?? null
+  if (body.province     !== undefined) $set.province     = body.province?.trim() ?? null
+  if (body.postalCode   !== undefined) $set.postalCode   = body.postalCode?.trim() ?? null
   if (body.staffCode    !== undefined) $set.staffCode    = body.staffCode?.trim() ?? null
   // รหัสสัญญาซ้ำกันได้ (หลายคนอยู่ใต้สัญญาเดียวกัน) — ไม่เช็ค unique
   if (body.contractCode !== undefined) $set.contractCode = body.contractCode?.trim() ?? null

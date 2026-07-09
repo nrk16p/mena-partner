@@ -7,6 +7,8 @@ import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check,
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiAddressFields } from "@/components/thai-address-fields"
+import { composeThaiAddress } from "@/lib/thai-address"
 import type { Contract, Driver } from "@/types"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -54,6 +56,11 @@ interface DriverForm {
   birthDate:     string
   nationalId:    string
   address:       string
+  addressDetail: string
+  subdistrict:   string
+  district:      string
+  province:      string
+  postalCode:    string
   staffCode:     string
   contractCode:  string
   phone:         string
@@ -79,6 +86,11 @@ function toForm(d: Driver): DriverForm {
     birthDate:     d.birthDate     ?? "",
     nationalId:    d.nationalId    ?? "",
     address:       d.address       ?? "",
+    addressDetail: d.addressDetail ?? "",
+    subdistrict:   d.subdistrict   ?? "",
+    district:      d.district      ?? "",
+    province:      d.province      ?? "",
+    postalCode:    d.postalCode    ?? "",
     staffCode:     d.staffCode     ?? "",
     contractCode:  d.contractCode  ?? "",
     phone:         d.phone         ?? "",
@@ -290,10 +302,13 @@ export default function DriverDetailPage() {
     }
     setSaving(true); setError("")
     try {
+      // ประกอบที่อยู่เต็มจาก field ย่อย (ถ้ายังไม่กรอกใหม่ ให้คงที่อยู่เดิมไว้)
+      const composed = composeThaiAddress(form)
+      const payload = { ...form, address: composed || form.address }
       const res = await fetch(`/api/drivers/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) { setError("เกิดข้อผิดพลาดในการบันทึก"); return }
       setDriver(await res.json())
@@ -551,15 +566,16 @@ export default function DriverDetailPage() {
                 <EditField label="เบอร์โทรศัพท์">
                   <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputCls} type="tel" placeholder="081-234-5678" />
                 </EditField>
-                <EditField label="ที่อยู่" className="col-span-2">
-                  <textarea
-                    value={form.address}
-                    onChange={(e) => set("address", e.target.value)}
-                    rows={2}
-                    className="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder:text-zinc-300"
-                    placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"
+                <div className="col-span-2 space-y-2">
+                  <div className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">ที่อยู่</div>
+                  <ThaiAddressFields
+                    value={form}
+                    onChange={(patch) => setForm((p) => p ? { ...p, ...patch } : p)}
                   />
-                </EditField>
+                  {form.address && !composeThaiAddress(form) && (
+                    <p className="text-[11px] text-zinc-400">ที่อยู่เดิม: {form.address}</p>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">

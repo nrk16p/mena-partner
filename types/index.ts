@@ -121,7 +121,12 @@ export interface Driver {
   lastName:       string
   birthDate?:     string   // YYYY-MM-DD
   nationalId?:    string   // 13 digits
-  address?:       string
+  address?:       string   // ที่อยู่เต็ม (ประกอบจาก field ย่อยด้านล่างตอนบันทึก)
+  addressDetail?: string   // บ้านเลขที่ / หมู่ / ซอย / ถนน
+  subdistrict?:   string   // ตำบล/แขวง
+  district?:      string   // อำเภอ/เขต
+  province?:      string   // จังหวัด
+  postalCode?:    string   // รหัสไปรษณีย์
   staffCode?:     string   // รหัสพนักงาน
   phone?:         string   // เบอร์โทรศัพท์
   bankName?:      string   // ธนาคาร
