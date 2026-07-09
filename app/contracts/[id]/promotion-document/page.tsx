@@ -1,18 +1,17 @@
 "use client"
 
 /**
- * หน้าพิมพ์เอกสารสัญญาซื้อขาย — Print → browser "Save as PDF"
- * ตัวเนื้อเอกสารอยู่ใน components/contract-document.tsx (ใช้ร่วมกับ preview)
+ * หน้าพิมพ์เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น) — Print → "Save as PDF"
+ * แยกออกมาจากสัญญาซื้อขาย (เนื้อหาอยู่ใน components/contract-document.tsx → PromotionAttachment)
  */
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Printer, ArrowLeft, AlertTriangle } from "lucide-react"
 import type { Contract } from "@/types"
-import { missingDocFields } from "@/lib/contract-doc"
-import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
 
-export default function ContractDocumentPage() {
+export default function PromotionDocumentPage() {
   const { id } = useParams<{ id: string }>()
   const [contract, setContract] = useState<Contract | null>(null)
   const [promo, setPromo] = useState<PromoMaster | null>(null)
@@ -27,7 +26,7 @@ export default function ContractDocumentPage() {
         const c: Contract = await cRes.json()
         setContract(c)
         // browser Save-as-PDF uses the tab title as the default filename
-        document.title = `สัญญาซื้อขาย-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
+        document.title = `เอกสารแนบท้าย1-โปรโมชั่น-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
         const pRes = await fetch("/api/promotions/master")
         if (pRes.ok) {
           const all: PromoMaster[] = await pRes.json()
@@ -43,18 +42,23 @@ export default function ContractDocumentPage() {
   }, [id])
 
   if (loading)
-    return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารสัญญา…</div>
+    return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารแนบท้าย…</div>
   if (error || !contract)
     return <div className="p-10 text-sm text-red-600">{error || "ไม่พบข้อมูลสัญญา"}</div>
 
-  // ── เช็คความครบถ้วน (เกณฑ์เดียวกับหน้าแก้ไขสัญญา) — ทุกข้อมูลในสัญญาจำเป็น ──
-  const missing = missingDocFields(contract).map((f) => f.label)
+  // ── เช็คความครบถ้วนของข้อมูลโปรโมชั่น ──
+  const missing: string[] = []
   if (!promo) missing.push("ข้อมูลโปรโมชั่น (promotion_master)")
+  else {
+    if (promo.pro1TotalValue == null) missing.push("โปรโมชั่น 1 (ค่าตอบแทนพิเศษ)")
+    if (promo.pro2RepairBudget == null) missing.push("โปรโมชั่น 2 (ค่าซ่อมบำรุง)")
+    if (promo.pro3AnnualPm == null) missing.push("โปรโมชั่น 3 (ค่า PM)")
+  }
 
   function handlePrint() {
     if (
       missing.length > 0 &&
-      !confirm(`ข้อมูลยังไม่ครบ ${missing.length} รายการ\nช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ\n\nต้องการพิมพ์ต่อหรือไม่?`)
+      !confirm(`ข้อมูลโปรโมชั่นยังไม่ครบ ${missing.length} รายการ\nช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ\n\nต้องการพิมพ์ต่อหรือไม่?`)
     )
       return
     window.print()
@@ -77,16 +81,10 @@ export default function ContractDocumentPage() {
           <Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึกเป็น PDF
         </button>
         <a
-          href={`/contracts/${id}/promotion-document`}
+          href={`/contracts/${id}/document`}
           className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"
         >
-          เอกสารแนบท้าย (โปรโมชั่น) →
-        </a>
-        <a
-          href={`/contracts/${id}/hire-document`}
-          className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"
-        >
-          สัญญาว่าจ้าง →
+          ← สัญญาซื้อขาย
         </a>
         <span className="text-[11px] text-zinc-600">
           เลือกเครื่องพิมพ์ “Save as PDF” และปิด Headers/Footers ในหน้าต่างพิมพ์
@@ -97,25 +95,24 @@ export default function ContractDocumentPage() {
         <div className="print-hide w-[210mm] mx-auto mb-3 text-[11px] bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-3 py-2">
           <div className="flex items-center gap-1.5 font-semibold mb-1">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            ข้อมูลยังไม่ครบ {missing.length} รายการ — ช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ
+            ข้อมูลโปรโมชั่นยังไม่ครบ {missing.length} รายการ — ช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ
           </div>
           <div className="flex flex-wrap gap-1 mb-1.5">
             {missing.map((m) => (
               <span key={m} className="bg-white border border-amber-200 rounded px-1.5 py-0.5">{m}</span>
             ))}
           </div>
-          <a href={`/contracts/${id}`} className="underline font-semibold hover:text-amber-900">
-            → ไปกรอกข้อมูลที่หน้าแก้ไขสัญญา
-          </a>
-          {!promo && <span className="ml-2 text-amber-700">(โปรโมชั่น: เพิ่มข้อมูลทะเบียน {contract.licensePlate} ใน promotion_master)</span>}
+          <span className="text-amber-700">
+            เพิ่ม/แก้ไขข้อมูลทะเบียน {contract.licensePlate} ใน promotion_master
+          </span>
         </div>
       ) : (
         <div className="print-hide w-[210mm] mx-auto mb-3 text-[11px] bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg px-3 py-2 font-semibold">
-          ✓ ข้อมูลครบถ้วน พร้อมออกเอกสารจริง
+          ✓ ข้อมูลโปรโมชั่นครบถ้วน พร้อมออกเอกสารจริง
         </div>
       )}
 
-      <ContractDocument contract={contract} promo={promo} />
+      <PromotionAttachment contract={contract} promo={promo} />
     </div>
   )
 }

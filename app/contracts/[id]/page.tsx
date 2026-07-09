@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { SearchCombobox } from "@/components/search-combobox"
 import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
-import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { ContractDocument, PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
 import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
 import { VendorDocDocument } from "@/components/vendor-doc-document"
@@ -97,7 +97,7 @@ export default function ContractDetailPage() {
   const [saved, setSaved]  = useState(false)
   const [error, setError]  = useState("")
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
-  const [docTab, setDocTab] = useState<"sale" | "hire" | "guarantee" | "vendor">("sale")
+  const [docTab, setDocTab] = useState<"sale" | "promo" | "hire" | "guarantee" | "vendor">("sale")
   const [step, setStep] = useState(0)
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [pullDriverId, setPullDriverId] = useState("")
@@ -345,6 +345,12 @@ export default function ContractDetailPage() {
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> สัญญาซื้อขาย (PDF)
+          </Link>
+          <Link
+            href={`/contracts/${id}/promotion-document`}
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" /> เอกสารแนบท้าย (PDF)
           </Link>
           <Link
             href={`/contracts/${id}/hire-document`}
@@ -847,6 +853,7 @@ export default function ContractDetailPage() {
             <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
               {([
                 { key: "sale", label: "สัญญาซื้อขาย" },
+                { key: "promo", label: "แนบท้ายโปรโมชั่น" },
                 { key: "hire", label: "สัญญาว่าจ้าง" },
                 { key: "guarantee", label: "สัญญาค้ำประกัน" },
                 { key: "vendor", label: "เปิดเจ้าหนี้" },
@@ -866,7 +873,7 @@ export default function ContractDetailPage() {
               ))}
             </div>
             <Link
-              href={`/contracts/${id}/${docTab === "sale" ? "document" : docTab === "hire" ? "hire-document" : docTab === "guarantee" ? "guarantee-document" : "vendor-document"}`}
+              href={`/contracts/${id}/${docTab === "sale" ? "document" : docTab === "promo" ? "promotion-document" : docTab === "hire" ? "hire-document" : docTab === "guarantee" ? "guarantee-document" : "vendor-document"}`}
               className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 underline whitespace-nowrap"
             >
               เปิดหน้าพิมพ์ / PDF →
@@ -875,7 +882,9 @@ export default function ContractDetailPage() {
           <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
             <div style={{ zoom: 0.58 }}>
               {docTab === "sale" ? (
-                <ContractDocument
+                <ContractDocument contract={previewData} />
+              ) : docTab === "promo" ? (
+                <PromotionAttachment
                   contract={previewData}
                   promo={promoList.find((p) => normPlate(p.licensePlate) === normPlate(previewData.licensePlate)) ?? null}
                 />

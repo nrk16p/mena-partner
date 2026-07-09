@@ -7,7 +7,7 @@ import { Search, X, ChevronDown, Tag, Upload, Trash2, FileText } from "lucide-re
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SearchCombobox } from "@/components/search-combobox"
-import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { ContractDocument, PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
 import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
 import { VendorDocDocument } from "@/components/vendor-doc-document"
@@ -175,7 +175,7 @@ export default function NewContractPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [prices,   setPrices]   = useState<PriceRow[]>([])
   const [promoList, setPromoList] = useState<PromoMaster[]>([])
-  const [docTab, setDocTab] = useState<"sale" | "hire" | "guarantee" | "vendor">("sale")
+  const [docTab, setDocTab] = useState<"sale" | "promo" | "hire" | "guarantee" | "vendor">("sale")
   const [step, setStep] = useState(0)
 
   // เปลี่ยน step → สลับ preview ไปเอกสารที่เกี่ยวข้อง
@@ -346,6 +346,7 @@ export default function NewContractPage() {
     promoList.find((p) => normPlate(p.licensePlate) === normPlate(form.licensePlate)) ?? null
   const missingDoc =
     docTab === "sale" ? missingDocFields(previewContract)
+    : docTab === "promo" ? []
     : docTab === "hire" ? missingHireDocFields(previewContract)
     : docTab === "guarantee" ? missingGuaranteeDocFields(previewContract)
     : missingVendorDocFields(previewContract)
@@ -906,6 +907,7 @@ export default function NewContractPage() {
             <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
               {([
                 { key: "sale", label: "สัญญาซื้อขาย" },
+                { key: "promo", label: "แนบท้ายโปรโมชั่น" },
                 { key: "hire", label: "สัญญาว่าจ้าง" },
                 { key: "guarantee", label: "สัญญาค้ำประกัน" },
                 { key: "vendor", label: "เปิดเจ้าหนี้" },
@@ -937,7 +939,9 @@ export default function NewContractPage() {
           <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-950 p-4">
             <div style={{ zoom: 0.58 }}>
               {docTab === "sale" ? (
-                <ContractDocument contract={previewData} promo={previewPromo} />
+                <ContractDocument contract={previewData} />
+              ) : docTab === "promo" ? (
+                <PromotionAttachment contract={previewData} promo={previewPromo} />
               ) : docTab === "hire" ? (
                 <HireContractDocument contract={previewData} />
               ) : docTab === "guarantee" ? (

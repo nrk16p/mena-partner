@@ -3,10 +3,11 @@
 import { memo } from "react"
 
 /**
- * สัญญาซื้อขายรถยนต์บรรทุก (แบบผ่อนชำระราคา) — เนื้อเอกสาร A4 2 ส่วน
- * (สัญญาหลัก + เอกสารแนบท้ายโปรโมชั่น) ใช้ร่วมกันระหว่าง:
- *  - /contracts/[id]/document  (หน้าพิมพ์ / Save as PDF)
- *  - /contracts/[id]           (live preview ระหว่างกรอกฟอร์ม)
+ * สัญญาซื้อขายรถยนต์บรรทุก (แบบผ่อนชำระราคา) + เอกสารแนบท้าย หมายเลข 1 (โปรโมชั่น)
+ * แยกเป็น 2 เอกสาร/PDF อิสระ (สัญญาหลัก vs แนบท้ายโปรโมชั่น) ใช้ร่วมกันระหว่าง:
+ *  - /contracts/[id]/document            (พิมพ์สัญญาซื้อขาย)
+ *  - /contracts/[id]/promotion-document  (พิมพ์เอกสารแนบท้ายโปรโมชั่น)
+ *  - /contracts/[id] และ /contracts/new  (live preview ระหว่างกรอกฟอร์ม)
  * อ้างอิงรูปแบบจากไฟล์ Word ต้นฉบับ (Cordia New 16pt, single spacing)
  */
 
@@ -65,12 +66,61 @@ function V({ children, w }: { children?: React.ReactNode; w?: number }) {
   return <b>{children}</b>
 }
 
+/** print/preview CSS ใช้ร่วมกันทั้งสัญญาหลักและเอกสารแนบท้าย */
+function DocStyles() {
+  return (
+    <style>{`
+      /* screen backdrop ใช้เฉพาะหน้าพิมพ์ (wrapper .contract-doc) */
+      .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
+      /* ให้เหมือนต้นฉบับ Word มากที่สุด: CordiaUPC/Cordia New 16pt, single spacing
+         (มีในเครื่อง Windows ทุกเครื่อง / Mac ที่ลง MS Office) — ถ้าไม่มีจะใช้ Sarabun แทน */
+      .sheet { font-family: "Cordia New", "CordiaUPC", ${sarabun.style.fontFamily}; }
+      .sheet {
+        width: 210mm; min-height: 297mm; margin: 0 auto 16px;
+        background: #fff; color: #000;
+        padding: 12.5mm 16mm 10mm 20mm;
+        box-shadow: 0 4px 24px rgba(0,0,0,.18);
+        font-size: 16pt; line-height: normal;
+      }
+      .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
+      .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid;
+                  text-align: left !important; }
+      /* ต้นฉบับ: "ข้อ 1." ขีดเส้นใต้ + เว้น tab (ไม่ขีด) + ชื่อหัวข้อขีดเส้นใต้ */
+      .clause-u { text-decoration: underline; text-underline-offset: 3px; }
+      .clause-tab { display: inline-block; width: 30pt; }
+      .indent { text-indent: 36pt; }
+      .sub { margin-left: 28pt; }
+      /* ต้นฉบับ Word ใช้ thaiDistribute — เทียบเท่า justify + inter-character บน Chromium */
+      .sheet p { margin: 0; text-align: justify; text-justify: inter-character;
+                 orphans: 2; widows: 2; }
+      .sig-table { width: 100%; margin-top: 18px; }
+      .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
+      .sig-block { break-inside: avoid; page-break-inside: avoid; }
+
+      /* Real A4 margins applied by the printer on EVERY page
+         (ตามต้นฉบับ Word: บน 12.5mm ขวา 16mm ล่าง 10mm ซ้าย 20mm) */
+      @page { size: A4 portrait; margin: 12.5mm 16mm 10mm 20mm; }
+      @media print {
+        html, body { display: block !important; height: auto !important; overflow: visible !important;
+                     background: #fff !important; }
+        aside, header, nav { display: none !important; }
+        main, .overflow-hidden { overflow: visible !important; height: auto !important; }
+        main { padding: 0 !important; }
+        .contract-doc { background: #fff; margin: 0; padding: 0; }
+        /* page margins come from @page — the sheet itself must have none */
+        .sheet { width: auto; min-height: 0; margin: 0; box-shadow: none; padding: 0; }
+        .print-hide { display: none !important; }
+      }
+    `}</style>
+  )
+}
+
 function ContractDocumentImpl({
   contract,
-  promo,
 }: {
   contract: Contract
-  promo: PromoMaster | null
+  // `promo` ยังรับได้เพื่อความเข้ากันได้กับผู้เรียกเดิม แต่สัญญาหลักไม่ใช้ (ย้ายไปเอกสารแนบท้ายแล้ว)
+  promo?: PromoMaster | null
 }) {
   const c = contract
   const dateParts = thaiDateParts(c.contractDate)
@@ -82,56 +132,9 @@ function ContractDocumentImpl({
     (c.downPayment != null && c.cashDown != null ? c.downPayment - c.cashDown : undefined)
   const payDueText = c.payEveryLastDay ? "วันสุดท้ายของทุกเดือน" : "วันที่ 30 ของทุกเดือน"
 
-  // Promotion 1 helper values
-  const pro1Every = promo?.pro1Condition?.match(/\d+/)?.[0] ?? "9"
-  const pro1Value = promo?.pro1InstallmentValue ?? c.monthlyInstallment
-
   return (
     <div className={sarabun.className}>
-      <style>{`
-        /* screen backdrop ใช้เฉพาะหน้าพิมพ์ (wrapper .contract-doc) */
-        .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
-        /* ให้เหมือนต้นฉบับ Word มากที่สุด: CordiaUPC/Cordia New 16pt, single spacing
-           (มีในเครื่อง Windows ทุกเครื่อง / Mac ที่ลง MS Office) — ถ้าไม่มีจะใช้ Sarabun แทน */
-        .sheet { font-family: "Cordia New", "CordiaUPC", ${sarabun.style.fontFamily}; }
-        .sheet {
-          width: 210mm; min-height: 297mm; margin: 0 auto 16px;
-          background: #fff; color: #000;
-          padding: 12.5mm 16mm 10mm 20mm;
-          box-shadow: 0 4px 24px rgba(0,0,0,.18);
-          font-size: 16pt; line-height: normal;
-        }
-        .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
-        .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid;
-                    text-align: left !important; }
-        /* ต้นฉบับ: "ข้อ 1." ขีดเส้นใต้ + เว้น tab (ไม่ขีด) + ชื่อหัวข้อขีดเส้นใต้ */
-        .clause-u { text-decoration: underline; text-underline-offset: 3px; }
-        .clause-tab { display: inline-block; width: 30pt; }
-        .indent { text-indent: 36pt; }
-        .sub { margin-left: 28pt; }
-        /* ต้นฉบับ Word ใช้ thaiDistribute — เทียบเท่า justify + inter-character บน Chromium */
-        .sheet p { margin: 0; text-align: justify; text-justify: inter-character;
-                   orphans: 2; widows: 2; }
-        .sig-table { width: 100%; margin-top: 18px; }
-        .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
-        .attach-sheet { break-before: page; page-break-before: always; }
-        .sig-block { break-inside: avoid; page-break-inside: avoid; }
-
-        /* Real A4 margins applied by the printer on EVERY page
-           (ตามต้นฉบับ Word: บน 12.5mm ขวา 16mm ล่าง 10mm ซ้าย 20mm) */
-        @page { size: A4 portrait; margin: 12.5mm 16mm 10mm 20mm; }
-        @media print {
-          html, body { display: block !important; height: auto !important; overflow: visible !important;
-                       background: #fff !important; }
-          aside, header, nav { display: none !important; }
-          main, .overflow-hidden { overflow: visible !important; height: auto !important; }
-          main { padding: 0 !important; }
-          .contract-doc { background: #fff; margin: 0; padding: 0; }
-          /* page margins come from @page — the sheet itself must have none */
-          .sheet { width: auto; min-height: 0; margin: 0; box-shadow: none; padding: 0; }
-          .print-hide { display: none !important; }
-        }
-      `}</style>
+      <DocStyles />
 
       {/* ════════ MAIN CONTRACT ════════ */}
       <div className="sheet">
@@ -455,9 +458,29 @@ function ContractDocumentImpl({
           </table>
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* ════════ ATTACHMENT 1 : PROMOTIONS ════════ */}
-      <div className="sheet attach-sheet">
+function PromotionAttachmentImpl({
+  contract,
+  promo,
+}: {
+  contract: Contract
+  promo: PromoMaster | null
+}) {
+  const c = contract
+  const dateParts = thaiDateParts(c.contractDate)
+  const plate = normPlate(c.licensePlate) || c.licensePlate
+  const pro1Every = promo?.pro1Condition?.match(/\d+/)?.[0] ?? "9"
+  const pro1Value = promo?.pro1InstallmentValue ?? c.monthlyInstallment
+
+  return (
+    <div className={sarabun.className}>
+      <DocStyles />
+
+      {/* ════════ ATTACHMENT 1 : PROMOTIONS (เอกสาร/PDF อิสระ) ════════ */}
+      <div className="sheet">
         <div className="doc-title">เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น)</div>
         <p className="indent">
           เอกสารแนบท้ายสัญญาฉบับนี้
@@ -565,3 +588,4 @@ function ContractDocumentImpl({
 }
 
 export const ContractDocument = memo(ContractDocumentImpl)
+export const PromotionAttachment = memo(PromotionAttachmentImpl)
