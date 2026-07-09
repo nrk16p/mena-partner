@@ -10,6 +10,7 @@ import { useParams } from "next/navigation"
 import { Printer, ArrowLeft, AlertTriangle } from "lucide-react"
 import type { Contract } from "@/types"
 import { PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
+import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function PromotionDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -40,6 +41,8 @@ export default function PromotionDocumentPage() {
     }
     load()
   }, [id])
+
+  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารแนบท้าย…</div>

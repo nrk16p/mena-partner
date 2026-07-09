@@ -13,6 +13,7 @@ import type { Contract } from "@/types"
 import { missingVendorDocFields } from "@/lib/contract-doc"
 import { normPlate } from "@/components/contract-document"
 import { VendorDocDocument } from "@/components/vendor-doc-document"
+import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function VendorDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -37,6 +38,8 @@ export default function VendorDocumentPage() {
     }
     load()
   }, [id])
+
+  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสาร…</div>

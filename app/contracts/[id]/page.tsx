@@ -109,6 +109,26 @@ export default function ContractDetailPage() {
     setDocTab(step === 2 ? "guarantee" : step === 3 ? "vendor" : "sale")
   }, [step])
 
+  // คีย์ลัดโหลด PDF: กด 1–5 เปิดหน้าพิมพ์ (auto-print) — ข้ามเมื่อกำลังพิมพ์ในช่องกรอก
+  useEffect(() => {
+    const routes: Record<string, string> = {
+      "1": "document", "2": "promotion-document", "3": "hire-document",
+      "4": "guarantee-document", "5": "vendor-document",
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      const el = document.activeElement as HTMLElement | null
+      const tag = el?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return
+      const route = routes[e.key]
+      if (!route) return
+      e.preventDefault()
+      router.push(`/contracts/${id}/${route}?print=1`)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [id, router])
+
   // ทะเบียนพนักงาน (/drivers) + ทะเบียนรถ (/vehicles) — ใช้ดึงข้อมูลมาเติมในสัญญา
   useEffect(() => {
     fetch("/api/drivers?status=active")
@@ -345,30 +365,35 @@ export default function ContractDetailPage() {
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> สัญญาซื้อขาย (PDF)
+            <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">1</kbd>
           </Link>
           <Link
             href={`/contracts/${id}/promotion-document`}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> เอกสารแนบท้าย (PDF)
+            <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">2</kbd>
           </Link>
           <Link
             href={`/contracts/${id}/hire-document`}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> สัญญาว่าจ้าง (PDF)
+            <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">3</kbd>
           </Link>
           <Link
             href={`/contracts/${id}/guarantee-document`}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> สัญญาค้ำประกัน (PDF)
+            <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">4</kbd>
           </Link>
           <Link
             href={`/contracts/${id}/vendor-document`}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> เปิดเจ้าหนี้ (PDF)
+            <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">5</kbd>
           </Link>
         </div>
       </div>

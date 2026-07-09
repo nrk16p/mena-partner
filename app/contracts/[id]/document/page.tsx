@@ -11,6 +11,7 @@ import { Printer, ArrowLeft, AlertTriangle } from "lucide-react"
 import type { Contract } from "@/types"
 import { missingDocFields } from "@/lib/contract-doc"
 import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function ContractDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -41,6 +42,8 @@ export default function ContractDocumentPage() {
     }
     load()
   }, [id])
+
+  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารสัญญา…</div>

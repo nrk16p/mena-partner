@@ -13,6 +13,7 @@ import type { Contract } from "@/types"
 import { missingHireDocFields } from "@/lib/contract-doc"
 import { normPlate } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
+import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function HireContractDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -37,6 +38,8 @@ export default function HireContractDocumentPage() {
     }
     load()
   }, [id])
+
+  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารสัญญา…</div>

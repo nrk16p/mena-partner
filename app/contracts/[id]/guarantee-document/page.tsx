@@ -13,6 +13,7 @@ import type { Contract } from "@/types"
 import { missingGuaranteeDocFields } from "@/lib/contract-doc"
 import { normPlate } from "@/components/contract-document"
 import { GuaranteeContractDocument } from "@/components/guarantee-contract-document"
+import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function GuaranteeContractDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -37,6 +38,8 @@ export default function GuaranteeContractDocumentPage() {
     }
     load()
   }, [id])
+
+  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารสัญญา…</div>
