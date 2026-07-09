@@ -175,18 +175,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <style>{`
-        @keyframes vehDrawerIn { from { transform: translateX(28px); opacity: 0 } to { transform: none; opacity: 1 } }
-        @media (prefers-reduced-motion: reduce) { .veh-drawer { animation: none !important } }
-      `}</style>
-
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* drawer */}
-      <div className="veh-drawer relative w-full max-w-2xl h-full bg-zinc-50 dark:bg-zinc-950 shadow-2xl flex flex-col overflow-hidden"
-           style={{ animation: "vehDrawerIn .22s ease-out" }}>
+    <div className="fixed inset-0 z-50 bg-zinc-50 dark:bg-zinc-950 flex flex-col">
 
         {/* ── header bar ── */}
         <div className="shrink-0 flex items-center justify-between px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 backdrop-blur">
@@ -202,7 +191,8 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
         </div>
 
         {/* ── scrollable body ── */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-6 py-6 space-y-4">
 
           {/* ── hero: identity + status + completeness ── */}
           <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5">
@@ -271,6 +261,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             </p>
           )}
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <SectionCard icon={Car} title="ข้อมูลทั่วไป">
             <div className="grid grid-cols-2 gap-4">
               {FORM_FIELDS.filter((f) => f.section === "ข้อมูลทั่วไป").map(field)}
@@ -339,7 +330,9 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
               </label>
             )}
           </SectionCard>
+          </div>
 
+          </div>
         </div>
 
         {/* ── sticky footer ── */}
@@ -366,7 +359,6 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             </Button>
           </div>
         </div>
-      </div>
     </div>
   )
 }
