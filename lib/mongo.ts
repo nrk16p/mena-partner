@@ -53,6 +53,7 @@ function ensureIndexes(client: MongoClient): Promise<unknown> {
     db.collection("fuel_records").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
     db.collection("monthly_adjustments").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
     db.collection("month_status").createIndex({ month: 1 }, { unique: true }),
+    db.collection("activity_log").createIndex({ entity: 1, entityId: 1, editedAt: -1 }),
   ]).catch(() => { /* non-fatal: index creation errors don't block the app */ })
 }
 

@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useSession } from "next-auth/react"
-import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X } from "lucide-react"
+import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
+import { PriceHistoryDrawer } from "@/components/price-history-drawer"
 
 type SaleStatus = "ready" | "repair15" | "repair30" | "review"
 
@@ -205,6 +206,7 @@ export default function PriceListPage() {
   const [statusFilter,  setStatusFilter]  = useState("")
   const [saleFilter,    setSaleFilter]    = useState("")
   const [editingPlate,  setEditingPlate]  = useState<string | null>(null)
+  const [historyPlate,  setHistoryPlate]  = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/price-list")
@@ -586,6 +588,14 @@ export default function PriceListPage() {
                           >
                             {ss ? ss.label : "＋ ระบุ"}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setHistoryPlate(r.licensePlate)}
+                            title="ประวัติการแก้ไข (ใคร/เมื่อไหร่)"
+                            className="ml-1 align-middle text-zinc-300 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-300"
+                          >
+                            <Clock className="w-3 h-3 inline" />
+                          </button>
                           {isRepair && r.repairEnd && dLeft !== null && (
                             <div
                               className={`text-[9px] font-semibold mt-0.5 tabular-nums ${
@@ -645,6 +655,8 @@ export default function PriceListPage() {
         </table>
         <PaginationBar {...pg} unit="ทะเบียน" />
       </div>
+
+      <PriceHistoryDrawer plate={historyPlate} onClose={() => setHistoryPlate(null)} />
     </div>
   )
 }
