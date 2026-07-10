@@ -54,6 +54,11 @@ function ensureIndexes(client: MongoClient): Promise<unknown> {
     db.collection("monthly_adjustments").createIndex({ contractCode: 1, month: 1 }, { unique: true }),
     db.collection("month_status").createIndex({ month: 1 }, { unique: true }),
     db.collection("activity_log").createIndex({ entity: 1, entityId: 1, editedAt: -1 }),
+    // stock_movements = 435k แถว — index กันการ scan เต็ม (รายงาน/promo-usage กรองตาม date/mr)
+    db.collection("stock_movements").createIndex({ date: 1 }),
+    db.collection("stock_movements").createIndex({ mr: 1 }),
+    db.collection("stock_movements").createIndex({ promoType: 1 }),
+    db.collection("debt_acceptances").createIndex({ repairOrderNo: 1 }),
   ]).catch(() => { /* non-fatal: index creation errors don't block the app */ })
 }
 
