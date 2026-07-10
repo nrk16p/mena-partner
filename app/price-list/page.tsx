@@ -572,6 +572,12 @@ export default function PriceListPage() {
                   {/* Sale readiness */}
                   <td className="px-3 py-2 text-center border-l border-zinc-50 dark:border-zinc-800/60 relative">
                     {(() => {
+                      // รถติดสัญญา = ขายไปแล้ว → โชว์ "ขายแล้ว" (ตั้งความพร้อมขายไม่ได้)
+                      if (r.status === "contract") return (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
+                          ขายแล้ว
+                        </span>
+                      )
                       const ss = r.saleStatus ? SALE_STATUS_CONFIG[r.saleStatus] : null
                       const isRepair = r.saleStatus === "repair15" || r.saleStatus === "repair30"
                       const dLeft = isRepair && r.repairEnd ? daysUntil(r.repairEnd) : null
