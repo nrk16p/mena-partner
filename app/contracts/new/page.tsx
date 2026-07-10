@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import { Search, X, ChevronDown, Tag, Upload, Trash2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { SearchCombobox } from "@/components/search-combobox"
 import { ContractDocument, PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
@@ -429,11 +430,11 @@ export default function NewContractPage() {
             </div>
             <div>
               <label className="block text-xs text-zinc-400 mb-1">วันที่ทำสัญญา <span className="text-red-400">*</span></label>
-              <Input type="date" value={form.contractDate} onChange={(e) => set("contractDate", e.target.value)} className="h-9 text-sm" required />
+              <ThaiDateInput value={form.contractDate} onChange={(iso) => set("contractDate", iso)} />
             </div>
             <div>
               <label className="block text-xs text-zinc-400 mb-1">วันที่เริ่มผ่อนงวดแรก</label>
-              <Input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className="h-9 text-sm" />
+              <ThaiDateInput value={form.startDate} onChange={(iso) => set("startDate", iso)} />
             </div>
             <div>
               <label className="block text-xs text-zinc-400 mb-1">สถานะสัญญา</label>

@@ -14,6 +14,7 @@ import { VendorDocDocument } from "@/components/vendor-doc-document"
 import { useDebounced } from "@/lib/use-debounced"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { Label } from "@/components/ui/label"
 import { formatMoney, formatDate } from "@/lib/utils"
 import type { Contract, Driver, Vehicle } from "@/types"
@@ -308,6 +309,19 @@ export default function ContractDetailPage() {
     }
   }
 
+  // วันที่ = ปฏิทิน พ.ศ. (เก็บ ค.ศ. ISO), ที่เหลือเป็น input ปกติ
+  function dateOrInput(key: keyof Contract, type = "text", readOnly = false) {
+    if (type === "date") return (
+      <ThaiDateInput
+        value={String(form?.[key] ?? "")}
+        onChange={(iso) => setForm((p) => p ? { ...p, [key]: iso } : p)}
+        disabled={!isAdmin || readOnly}
+        className={missingCls(key)}
+      />
+    )
+    return <Input {...strField(key, type, readOnly)} />
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!form || !isAdmin) return
@@ -562,18 +576,18 @@ export default function ContractDetailPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">วันต่อล่าสุด</Label>
-                <Input
-                  type="date"
+                <ThaiDateInput
                   value={String(form.taxRenewalDate ?? "")}
-                  onChange={(e) => setForm((p) => p ? { ...p, taxRenewalDate: e.target.value } : p)}
+                  onChange={(iso) => setForm((p) => p ? { ...p, taxRenewalDate: iso } : p)}
+                  disabled={!isAdmin}
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">วันหมดอายุ</Label>
-                <Input
-                  type="date"
+                <ThaiDateInput
                   value={String(form.taxExpiryDate ?? "")}
-                  onChange={(e) => setForm((p) => p ? { ...p, taxExpiryDate: e.target.value } : p)}
+                  onChange={(iso) => setForm((p) => p ? { ...p, taxExpiryDate: iso } : p)}
+                  disabled={!isAdmin}
                   className={form.taxExpiryDate && form.taxExpiryDate < today ? "border-red-400 text-red-600" : ""}
                 />
               </div>
@@ -692,7 +706,7 @@ export default function ContractDetailPage() {
                     )}
                   </>
                 ) : (
-                  <Input {...strField(key, type ?? "text", readOnly)} />
+                  dateOrInput(key, type ?? "text", readOnly)
                 )}
               </div>
             ))}
@@ -752,7 +766,7 @@ export default function ContractDetailPage() {
             {DOC_FIELDS.map(({ key, label, type, readOnly }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-xs">{label}</Label>
-                <Input {...strField(key, type ?? "text", readOnly)} />
+                {dateOrInput(key, type ?? "text", readOnly)}
               </div>
             ))}
             <div className="space-y-1">
