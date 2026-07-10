@@ -108,7 +108,58 @@ def strip_numbering(xml_path):
     return removed
 
 
-def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=None, drop_numbering=True):
+MC = "{http://schemas.openxmlformats.org/markup-compatibility/2006}"
+
+
+def strip_images(xml_path):
+    """ลบรูปที่ฝังในไฟล์ออกทั้งหมด (โลโก้/ลายเซ็น/รูป): <w:drawing>, <w:pict>, <w:object>,
+    และ <mc:AlternateContent> (textbox/รูปแบบเก่า). เก็บไฟล์ media ไว้เฉยๆ (rels ที่ค้างไม่เป็นไร)"""
+    tree = etree.parse(xml_path)
+    root = tree.getroot()
+    removed = 0
+    for tag in (W + "drawing", W + "pict", W + "object", MC + "AlternateContent"):
+        for el in list(root.iter(tag)):
+            parent = el.getparent()
+            if parent is not None:
+                parent.remove(el)
+                removed += 1
+    if removed:
+        tree.write(xml_path, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return removed
+
+
+REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+IMG_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+
+
+def strip_media(workdir):
+    """ลบไฟล์รูปใน word/media/* + relationship ชนิด image ใน *.rels (ให้ไฟล์เล็กลง/ไม่ค้าง)
+    คืน set ของ path (relative to workdir) ที่ถูกลบ"""
+    dropped = set()
+    mediadir = os.path.join(workdir, "word", "media")
+    if os.path.isdir(mediadir):
+        for f in os.listdir(mediadir):
+            dropped.add(os.path.join("word", "media", f))
+    relsdir = os.path.join(workdir, "word", "_rels")
+    if os.path.isdir(relsdir):
+        for rf in os.listdir(relsdir):
+            if not rf.endswith(".rels"):
+                continue
+            rp = os.path.join(relsdir, rf)
+            tree = etree.parse(rp)
+            root = tree.getroot()
+            changed = False
+            for rel in list(root):
+                if rel.get("Type") == IMG_REL:
+                    root.remove(rel)
+                    changed = True
+            if changed:
+                tree.write(rp, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return dropped
+
+
+def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=None,
+                   drop_numbering=True, drop_images=True):
     """Unzip src, apply rules to document.xml (+ footers), rezip to out_docx."""
     workdir = workdir or (out_docx + ".unz")
     if os.path.exists(workdir):
@@ -129,6 +180,16 @@ def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=Non
     if drop_numbering:
         strip_numbering(dpath)
 
+    # ลบรูปใน document + header + footer ทั้งหมด
+    dropped_files = set()
+    if drop_images:
+        strip_images(dpath)
+        worddir = os.path.join(workdir, "word")
+        for fname in sorted(os.listdir(worddir)):
+            if (fname.startswith("header") or fname.startswith("footer")) and fname.endswith(".xml"):
+                strip_images(os.path.join(worddir, fname))
+        dropped_files = strip_media(workdir)
+
     if footer_rules:
         for fname in sorted(os.listdir(os.path.join(workdir, "word"))):
             if fname.startswith("footer") and fname.endswith(".xml"):
@@ -142,6 +203,8 @@ def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=Non
         os.remove(out_docx)
     with zipfile.ZipFile(out_docx, "w", zipfile.ZIP_DEFLATED) as z:
         for name in names:
+            if name.replace("\\", "/") in {d.replace("\\", "/") for d in dropped_files}:
+                continue  # ข้ามไฟล์รูปที่ลบไปแล้ว
             z.write(os.path.join(workdir, name), name)
 
     shutil.rmtree(workdir)
