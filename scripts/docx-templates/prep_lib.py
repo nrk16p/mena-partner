@@ -92,6 +92,34 @@ def apply_rules(xml_path, rules):
     return matched, unmatched
 
 
+def strip_trailing_empty_paragraphs(xml_path):
+    """ลบย่อหน้าว่าง (empty <w:p>) ที่ค้างท้าย body ก่อน sectPr — กันหน้าเปล่าท้ายเอกสาร"""
+    tree = etree.parse(xml_path)
+    root = tree.getroot()
+    body = root.find(W + "body")
+    if body is None:
+        return 0
+    kids = list(body)
+    i = len(kids) - 1
+    if i >= 0 and kids[i].tag == W + "sectPr":
+        i -= 1  # เก็บ sectPr ไว้
+    removed = 0
+    while i >= 0:
+        el = kids[i]
+        if el.tag != W + "p":
+            break
+        txt = "".join(x.text or "" for x in el.iter(W + "t"))
+        has_img = el.find(".//" + W + "drawing") is not None or el.find(".//" + W + "pict") is not None
+        if txt.strip() or has_img:
+            break
+        body.remove(el)
+        removed += 1
+        i -= 1
+    if removed:
+        tree.write(xml_path, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return removed
+
+
 def strip_numbering(xml_path):
     """ลบ <w:numPr> ทั้งหมด — เอกสารสัญญาใช้เลขเป็น text (ข้อ 1., 3.1) อยู่แล้ว
     numPr ที่ค้างทำให้ docx-preview/บาง renderer โชว์เลข auto (เช่น 0.1, 0.2) เกินมา"""
@@ -189,6 +217,9 @@ def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=Non
             if (fname.startswith("header") or fname.startswith("footer")) and fname.endswith(".xml"):
                 strip_images(os.path.join(worddir, fname))
         dropped_files = strip_media(workdir)
+
+    # ลบย่อหน้าว่างท้ายไฟล์ (หลังลบรูป attachment แล้ว paragraph พวกนั้นจะว่าง → หน้าเปล่าท้ายเอกสาร)
+    strip_trailing_empty_paragraphs(dpath)
 
     if footer_rules:
         for fname in sorted(os.listdir(os.path.join(workdir, "word"))):
