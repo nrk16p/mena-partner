@@ -51,13 +51,13 @@ function HireContractDocumentImpl({ contract }: { contract: Contract }) {
     <div className={sarabun.className}>
       <style>{`
         .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
-        .sheet { font-family: "Cordia New", "CordiaUPC", ${sarabun.style.fontFamily}; }
+        .sheet { font-family: ${sarabun.style.fontFamily}, "Cordia New", "CordiaUPC"; }
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
           padding: 12.5mm 16mm 10mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
-          font-size: 16pt; line-height: normal;
+          font-size: 15pt; line-height: 1.5;
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
         /* ย่อหน้าข้อสัญญาแบบ hanging indent ตามต้นฉบับ Word (ind left=720 hanging=720):
@@ -67,7 +67,7 @@ function HireContractDocumentImpl({ contract }: { contract: Contract }) {
         .cont { margin-left: 42pt; }
         .indent { text-indent: 36pt; }
         .sub { margin-left: 42pt; }
-        .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 2; widows: 2; }
+        .sheet p { margin: 0 0 3pt; text-align: left; orphans: 3; widows: 3; }
         .sig-table { width: 100%; margin-top: 18px; }
         .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }

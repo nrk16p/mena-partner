@@ -64,16 +64,16 @@ function VendorDocDocumentImpl({ contract }: { contract: Contract }) {
     <div className={sarabun.className}>
       <style>{`
         .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
-        .sheet { font-family: "Cordia New", "CordiaUPC", ${sarabun.style.fontFamily}; }
+        .sheet { font-family: ${sarabun.style.fontFamily}, "Cordia New", "CordiaUPC"; }
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
           padding: 12.5mm 16mm 10mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
-          font-size: 15pt; line-height: 1.35;
+          font-size: 15pt; line-height: 1.45;
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 17pt; }
-        .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 2; widows: 2; }
+        .sheet p { margin: 0 0 3pt; text-align: left; orphans: 3; widows: 3; }
         .indent { text-indent: 36pt; }
         .attach-sheet { break-before: page; page-break-before: always; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }

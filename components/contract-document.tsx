@@ -72,15 +72,14 @@ function DocStyles() {
     <style>{`
       /* screen backdrop ใช้เฉพาะหน้าพิมพ์ (wrapper .contract-doc) */
       .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
-      /* ให้เหมือนต้นฉบับ Word มากที่สุด: CordiaUPC/Cordia New 16pt, single spacing
-         (มีในเครื่อง Windows ทุกเครื่อง / Mac ที่ลง MS Office) — ถ้าไม่มีจะใช้ Sarabun แทน */
-      .sheet { font-family: "Cordia New", "CordiaUPC", ${sarabun.style.fontFamily}; }
+      /* ใช้ Sarabun เป็นหลัก (แอปโหลดแน่นอน → หน้าตาเหมือนกันทุกเครื่อง) แล้วค่อย fallback Cordia */
+      .sheet { font-family: ${sarabun.style.fontFamily}, "Cordia New", "CordiaUPC"; }
       .sheet {
         width: 210mm; min-height: 297mm; margin: 0 auto 16px;
         background: #fff; color: #000;
         padding: 12.5mm 16mm 10mm 20mm;
         box-shadow: 0 4px 24px rgba(0,0,0,.18);
-        font-size: 16pt; line-height: normal;
+        font-size: 15pt; line-height: 1.5;
       }
       .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
       .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid;
@@ -90,9 +89,8 @@ function DocStyles() {
       .clause-tab { display: inline-block; width: 30pt; }
       .indent { text-indent: 36pt; }
       .sub { margin-left: 28pt; }
-      /* ต้นฉบับ Word ใช้ thaiDistribute — เทียบเท่า justify + inter-character บน Chromium */
-      .sheet p { margin: 0; text-align: justify; text-justify: inter-character;
-                 orphans: 2; widows: 2; }
+      /* ชิดซ้าย (ragged) — เลี่ยง justify/inter-character ที่ทำให้เกิดช่องโหว่กลางบรรทัด */
+      .sheet p { margin: 0 0 3pt; text-align: left; orphans: 3; widows: 3; }
       .sig-table { width: 100%; margin-top: 18px; }
       .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
       .sig-block { break-inside: avoid; page-break-inside: avoid; }
