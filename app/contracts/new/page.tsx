@@ -319,6 +319,10 @@ export default function NewContractPage() {
     if (step < WIZARD_STEPS.length - 1) { setStep(step + 1); return }
     if (!form.contractCode.trim()) { setError("กรุณากรอกรหัสสัญญา"); setStep(0); return }
     if (!form.buyerName.trim())    { setError("กรุณาเลือกหรือกรอกชื่อผู้เช่าซื้อ"); setStep(0); return }
+    // เลขบัตรผู้ค้ำประกัน เว้นว่างได้ แต่ถ้ากรอกต้องเป็นตัวเลข 13 หลักพอดี
+    if (form.guarantorNationalId && !/^\d{13}$/.test(form.guarantorNationalId)) {
+      setError("ถ้ากรอกเลขบัตรประชาชนผู้ค้ำประกัน ต้องเป็นตัวเลข 13 หลัก"); setStep(2); return
+    }
     setSaving(true); setError("")
     try {
       const res = await fetch("/api/contracts", {

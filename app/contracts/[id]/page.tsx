@@ -302,6 +302,7 @@ export default function ContractDetailPage() {
       value: String(form?.[key] ?? 0),
       type: "number",
       min: "0",
+      step: "any",   // อนุญาตทศนิยม (เช่น ค่างวด 2,222.22) — กัน native validation บล็อกการบันทึก
       disabled: !isAdmin,
       className: missingCls(key),
       onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -319,12 +320,37 @@ export default function ContractDetailPage() {
         className={missingCls(key)}
       />
     )
+    // เลขบัตรประชาชน (ผู้ซื้อ/ผู้ค้ำ) = ตัวเลขล้วน สูงสุด 13 หลัก + โชว์ตัวนับถ้ายังไม่ครบ
+    if (key === "nationalId" || key === "guarantorNationalId") {
+      const v = String(form?.[key] ?? "")
+      return (
+        <>
+          <Input
+            {...strField(key, "text", readOnly)}
+            inputMode="numeric"
+            maxLength={13}
+            className={`font-mono tracking-wider ${missingCls(key)}`}
+            onChange={(e) => setForm((p) => p ? { ...p, [key]: e.target.value.replace(/\D/g, "").slice(0, 13) } : p)}
+          />
+          {v.length > 0 && v.length !== 13 && (
+            <p className="text-[10px] text-amber-600 mt-0.5">{v.length}/13 หลัก</p>
+          )}
+        </>
+      )
+    }
     return <Input {...strField(key, type, readOnly)} />
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!form || !isAdmin) return
+    // เลขบัตร ปชช. เว้นว่างได้ แต่ถ้ากรอกต้องเป็นตัวเลข 13 หลักพอดี
+    if (form.nationalId && !/^\d{13}$/.test(form.nationalId)) {
+      setError("ถ้ากรอกเลขบัตรประชาชนผู้ซื้อ ต้องเป็นตัวเลข 13 หลัก"); setStep(1); return
+    }
+    if (form.guarantorNationalId && !/^\d{13}$/.test(form.guarantorNationalId)) {
+      setError("ถ้ากรอกเลขบัตรประชาชนผู้ค้ำประกัน ต้องเป็นตัวเลข 13 หลัก"); setStep(2); return
+    }
     setSaving(true)
     setError("")
     try {
@@ -785,7 +811,7 @@ export default function ContractDetailPage() {
             {GUARANTOR_FIELDS.map(({ key, label }) => (
               <div key={key} className={`space-y-1 ${key === "guarantorAddress" ? "col-span-2" : ""}`}>
                 <Label className="text-xs">{label}</Label>
-                <Input {...strField(key)} />
+                {dateOrInput(key)}
               </div>
             ))}
           </div>
