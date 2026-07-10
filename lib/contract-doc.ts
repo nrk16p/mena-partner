@@ -26,7 +26,7 @@ export const DOC_REQUIRED: DocField[] = [
   { key: "chassisNumber",           label: "หมายเลขตัวรถ" },
   { key: "engineNumber",            label: "หมายเลขเครื่องยนต์" },
   { key: "engineSize",              label: "ขนาดกำลังเครื่องยนต์" },
-  { key: "mileage",                 label: "ระยะทางที่ใช้แล้ว (กม.)" },
+  // ระยะทางที่ใช้แล้ว = ไม่บังคับ (ถ้าไม่กรอกเอกสารจะแสดง "-")
   { key: "totalPrice",              label: "ราคาซื้อขาย" },
   { key: "downPayment",             label: "เงินดาวน์รวม" },
   { key: "cashDown",                label: "เงินดาวน์ชำระแล้ว" },
