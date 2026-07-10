@@ -7,10 +7,9 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { Printer, ArrowLeft, AlertTriangle } from "lucide-react"
+import { ArrowLeft, AlertTriangle } from "lucide-react"
 import type { Contract } from "@/types"
 import { PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
-import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function PromotionDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,7 +41,6 @@ export default function PromotionDocumentPage() {
     load()
   }, [id])
 
-  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารแนบท้าย…</div>
@@ -58,14 +56,6 @@ export default function PromotionDocumentPage() {
     if (promo.pro3AnnualPm == null) missing.push("โปรโมชั่น 3 (ค่า PM)")
   }
 
-  function handlePrint() {
-    if (
-      missing.length > 0 &&
-      !confirm(`ข้อมูลโปรโมชั่นยังไม่ครบ ${missing.length} รายการ\nช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ\n\nต้องการพิมพ์ต่อหรือไม่?`)
-    )
-      return
-    window.print()
-  }
 
   return (
     <div className="contract-doc">
@@ -77,21 +67,12 @@ export default function PromotionDocumentPage() {
         >
           <ArrowLeft className="w-3.5 h-3.5" /> กลับ
         </button>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg px-4 py-2 hover:bg-emerald-700"
-        >
-          <Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึกเป็น PDF
-        </button>
         <a
           href={`/contracts/${id}/document`}
           className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"
         >
           ← สัญญาซื้อขาย
         </a>
-        <span className="text-[11px] text-zinc-600">
-          เลือกเครื่องพิมพ์ “Save as PDF” และปิด Headers/Footers ในหน้าต่างพิมพ์
-        </span>
       </div>
 
       {missing.length > 0 ? (

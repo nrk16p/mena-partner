@@ -8,12 +8,11 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { Printer, ArrowLeft, AlertTriangle, FileDown, FileText } from "lucide-react"
+import { ArrowLeft, AlertTriangle, FileDown, FileText } from "lucide-react"
 import type { Contract } from "@/types"
 import { missingHireDocFields } from "@/lib/contract-doc"
 import { normPlate } from "@/components/contract-document"
 import { HireContractDocument } from "@/components/hire-contract-document"
-import { useAutoPrint } from "@/lib/use-auto-print"
 
 export default function HireContractDocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -39,7 +38,6 @@ export default function HireContractDocumentPage() {
     load()
   }, [id])
 
-  useAutoPrint(!loading && !!contract)
 
   if (loading)
     return <div className="p-10 text-sm text-zinc-500">กำลังโหลดเอกสารสัญญา…</div>
@@ -48,14 +46,6 @@ export default function HireContractDocumentPage() {
 
   const missing = missingHireDocFields(contract).map((f) => f.label)
 
-  function handlePrint() {
-    if (
-      missing.length > 0 &&
-      !confirm(`ข้อมูลยังไม่ครบ ${missing.length} รายการ\nช่องที่ขาดจะพิมพ์เป็นเส้นประให้เติมด้วยมือ\n\nต้องการพิมพ์ต่อหรือไม่?`)
-    )
-      return
-    window.print()
-  }
 
   return (
     <div className="contract-doc">
@@ -66,12 +56,6 @@ export default function HireContractDocumentPage() {
           className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> กลับ
-        </button>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg px-4 py-2 hover:bg-emerald-700"
-        >
-          <Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึกเป็น PDF
         </button>
         <a
           href={`/api/contracts/${id}/docx?type=hire`}
@@ -94,9 +78,6 @@ export default function HireContractDocumentPage() {
         >
           สัญญาซื้อขาย →
         </Link>
-        <span className="text-[11px] text-zinc-600">
-          เลือกเครื่องพิมพ์ “Save as PDF” และปิด Headers/Footers ในหน้าต่างพิมพ์
-        </span>
       </div>
 
       {missing.length > 0 ? (

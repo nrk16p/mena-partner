@@ -56,5 +56,12 @@ const SEG = new Intl.Segmenter("th", { granularity: "word" })
 /** segment ข้อความไทยแทรก U+200B (เฉพาะข้อความไทย — ห้ามใช้กับเลข/ทะเบียนที่มี "-") */
 export function seg(s: string | null | undefined): string {
   if (!s) return ""
-  return Array.from(SEG.segment(s), (x) => x.segment).join("​")
+  return (
+    Array.from(SEG.segment(s), (x) => x.segment)
+      .join("​")
+      // ห้ามตัดบรรทัดก่อนเครื่องหมายปิด/ตามหลัง และหลังเครื่องหมายเปิด
+      // (กัน ")" หรือ "ๆ" หลุดไปขึ้นต้นบรรทัด และ "(" ค้างท้ายบรรทัด)
+      .replace(/​([)\]”’ๆฯ,.:;!?%])/g, "$1")
+      .replace(/([([“‘])​/g, "$1")
+  )
 }
