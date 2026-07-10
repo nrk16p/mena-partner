@@ -5,16 +5,12 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
-  // อย่า bundle chromium/puppeteer — ต้องรันจาก node_modules เพื่อให้ path /bin ถูก (Vercel)
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
-  // รวมไฟล์ .docx template + asset ของตัวแปลง PDF เข้า serverless bundle (Vercel)
+  // pdfmake มีไฟล์ data ภายใน — อย่า bundle ให้รันจาก node_modules
+  serverExternalPackages: ["pdfmake"],
+  // รวม template .docx + ฟอนต์ CordiaUPC (สำหรับ pdfmake) เข้า serverless bundle
   outputFileTracingIncludes: {
     "/api/contracts/[id]/docx": ["./templates/**"],
-    "/api/contracts/[id]/pdf": [
-      "./templates/**",
-      "./lib/pdf-assets/**",
-      "./node_modules/@sparticuz/chromium/**",
-    ],
+    "/api/contracts/[id]/pdf": ["./fonts/**"],
   },
   // รูปอัปโหลด (สำเนาเอกสาร) เสิร์ฟผ่าน next/image ได้เร็วขึ้น
   images: {

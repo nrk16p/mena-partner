@@ -1,0 +1,57 @@
+/**
+ * Helpers ที่ใช้ร่วมกันสำหรับสร้างเนื้อ PDF ด้วย pdfmake (สัญญาทุกชนิด)
+ * - S(): ตัดคำไทย (ZWSP) — ใช้กับ "ข้อความไทย" เท่านั้น ห้ามใช้กับเลข/ทะเบียน/โค้ด (มี "-" จะแตกบรรทัด)
+ * - body/H/B/sigCell: paragraph helpers ให้หน้าตาตรงต้นฉบับ
+ */
+import "server-only"
+import { seg } from "@/lib/pdfmake-printer"
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+export const S = seg
+
+export const COMPANY = {
+  name: "บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน)",
+  regNo: "0195536000089",
+  address: "เลขที่ 280/8 หมู่ที่ 9 ตำบลทับกวาง อำเภอแก่งคอย จังหวัดสระบุรี",
+  sellerSignatories: ["นางสุวรรณา ขจรวุฒิเดช", "นางสาวพัชรีรัตน์ ขจรวุฒิเดชภัทร์"],
+  witnesses: ["นางสาวนัชภัค ขจรวุฒิเดช", "นางสาวธัญรดี ตะกิ่นนอก"],
+}
+
+// ── style "Body Legal": justify, line 1.15, spacing before/after 0, first-line indent 1.25cm ──
+export const FIRST_LINE_INDENT = 35.4 // 1.25 cm = 35.43 pt
+export const LINE_HEIGHT = 1.15
+
+/** ย่อหน้าเนื้อความ (Body Legal). parts = string (ไทยล้วน) หรือ array ของ run */
+export const body = (parts: any, extra: any = {}) => ({
+  text: Array.isArray(parts) ? parts : S(parts),
+  alignment: "justify",
+  leadingIndent: FIRST_LINE_INDENT,
+  lineHeight: LINE_HEIGHT,
+  margin: [0, 0, 0, 0], // spacing before/after = 0 (ระยะห่างมาจาก line spacing เท่านั้น)
+  ...extra,
+})
+
+/** หัวข้อข้อ (Heading style): หนา + ขีดเส้นใต้, ไม่ย่อหน้าบรรทัดแรก, เว้นก่อนหัวข้อด้วย spacing before */
+export const H = (txt: string) => ({
+  text: S(txt),
+  bold: true,
+  decoration: "underline",
+  lineHeight: LINE_HEIGHT,
+  margin: [0, 12, 0, 0], // spacing before 12pt, after 0
+})
+
+/** run ตัวหนา (ใช้ใน text array) */
+export const B = (txt: string) => ({ text: S(txt), bold: true })
+
+/** ช่องลายเซ็น */
+export const sigCell = (line: string, name?: string) => ({
+  stack: [
+    { text: S(line), margin: [0, 18, 0, 0] },
+    {
+      text: name ? S(`( ${name} )`) : S("(.................................................)"),
+      alignment: "center",
+      margin: [0, 2, 0, 0],
+    },
+  ],
+})
