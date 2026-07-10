@@ -253,6 +253,18 @@ export default function PriceListPage() {
   const contractCount  = rows.filter((r) => r.status === "contract").length
   const availableCount = rows.filter((r) => r.status === "active").length
 
+  // สัดส่วนความพร้อมขายของฝูงรถ (แยกกลุ่มไม่ซ้ำ รวม = จำนวนคันทั้งหมด)
+  const soldCount   = contractCount
+  const readyCount  = rows.filter((r) => r.status !== "contract" && r.saleStatus === "ready").length
+  const repairCnt   = rows.filter((r) => r.status !== "contract" && (r.saleStatus === "repair15" || r.saleStatus === "repair30")).length
+  const unsetCount  = rows.length - soldCount - readyCount - repairCnt
+  const saleBreakdown = [
+    { key: "sold",   label: "ขายแล้ว",    count: soldCount,  cls: "bg-blue-500" },
+    { key: "ready",  label: "พร้อมขาย",   count: readyCount, cls: "bg-emerald-500" },
+    { key: "repair", label: "รอซ่อม",     count: repairCnt,  cls: "bg-amber-500" },
+    { key: "unset",  label: "ยังไม่ระบุ", count: unsetCount, cls: "bg-zinc-300 dark:bg-zinc-600" },
+  ]
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <div className="text-xs text-zinc-400 animate-pulse">กำลังโหลดข้อมูล...</div>
@@ -358,6 +370,30 @@ export default function PriceListPage() {
             {sub && <p className="text-[10px] text-zinc-400 mt-1">{sub}</p>}
           </div>
         ))}
+      </div>
+
+      {/* ── สัดส่วนความพร้อมขาย ── */}
+      <div className="mt-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3.5">
+        <div className="flex items-center justify-between mb-2.5">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">สัดส่วนความพร้อมขาย</p>
+          <p className="text-[10px] text-zinc-400">รวม {rows.length} คัน</p>
+        </div>
+        <div className="flex h-2.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+          {saleBreakdown.filter((s) => s.count > 0).map((s) => (
+            <div key={s.key} className={s.cls} style={{ width: `${(s.count / Math.max(rows.length, 1)) * 100}%` }}
+              title={`${s.label} ${s.count} คัน`} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-2.5">
+          {saleBreakdown.map((s) => (
+            <div key={s.key} className="flex items-center gap-1.5 text-[11px]">
+              <span className={`w-2 h-2 rounded-full ${s.cls}`} />
+              <span className="text-zinc-500">{s.label}</span>
+              <span className="font-bold tabular-nums text-zinc-800 dark:text-zinc-100">{s.count}</span>
+              <span className="text-zinc-400">({rows.length ? Math.round((s.count / rows.length) * 100) : 0}%)</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── Status tabs ── */}
