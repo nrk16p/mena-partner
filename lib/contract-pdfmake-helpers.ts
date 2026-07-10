@@ -44,14 +44,60 @@ export const H = (txt: string) => ({
 /** run ตัวหนา (ใช้ใน text array) */
 export const B = (txt: string) => ({ text: S(txt), bold: true })
 
-/** ช่องลายเซ็น */
-export const sigCell = (line: string, name?: string) => ({
-  stack: [
-    { text: S(line), margin: [0, 18, 0, 0] },
-    {
-      text: name ? S(`( ${name} )`) : S("(.................................................)"),
-      alignment: "center",
-      margin: [0, 2, 0, 0],
-    },
-  ],
-})
+/** ค่าที่กรอก (input data) แบบตัวหนา — v() สำหรับเลข/ทะเบียน/โค้ด (raw), vS() สำหรับข้อความไทย (ตัดคำ) */
+export const v = (x: string) => ({ text: x ?? "", bold: true })
+export const vS = (x: string) => ({ text: S(x), bold: true })
+
+/** footer มืออาชีพ: เลขสัญญา (ซ้าย) + หน้า X/Y (ขวา) + เส้นคั่นบาง */
+export const pageFooter =
+  (contractCode: string) => (currentPage: number, pageCount: number) => ({
+    margin: [57, 6, 45, 0],
+    stack: [
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 493, y2: 0, lineWidth: 0.5, lineColor: "#cccccc" }] },
+      {
+        columns: [
+          { text: S(`เลขที่สัญญา ${contractCode || "-"}`), fontSize: 11, color: "#888888" },
+          { text: `หน้า ${currentPage} / ${pageCount}`, alignment: "right", fontSize: 11, color: "#888888" },
+        ],
+        margin: [0, 3, 0, 0],
+      },
+    ],
+  })
+
+/** ช่องลายเซ็น — รับ line เดิม "ลงชื่อ....ผู้ซื้อ" แล้วทำเส้นเซ็น (เส้นประยืดได้) + ชื่อ center ใต้เส้น
+ *  แก้ปัญหาชื่อเยื้องขวา (เดิม center ใต้ทั้งคอลัมน์) */
+export const sigCell = (line: string, name?: string) => {
+  const m = line.match(/^(.*?)\.{2,}(.*)$/)
+  const prefix = (m ? m[1] : "ลงชื่อ").trim()
+  const role = (m ? m[2] : "").trim()
+  return {
+    stack: [
+      {
+        table: {
+          widths: ["auto", "*", "auto"],
+          body: [[
+            { text: S(prefix + " "), border: [false, false, false, false] },
+            { text: " ", border: [false, false, false, true] },
+            { text: S(" " + role), border: [false, false, false, false] },
+          ]],
+        },
+        layout: {
+          defaultBorder: false,
+          hLineWidth: () => 0.8,
+          hLineColor: () => "#111",
+          hLineStyle: () => ({ dash: { length: 2, space: 2 } }),
+          paddingLeft: () => 0,
+          paddingRight: () => 0,
+          paddingTop: () => 0,
+          paddingBottom: () => 1,
+        },
+        margin: [0, 16, 0, 0],
+      },
+      {
+        text: name ? S(`( ${name} )`) : S("(.................................)"),
+        alignment: "center",
+        margin: [0, 3, 0, 0],
+      },
+    ],
+  }
+}

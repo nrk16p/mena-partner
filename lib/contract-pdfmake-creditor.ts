@@ -6,7 +6,7 @@ import path from "path"
 import type { Contract } from "@/types"
 import { creditorDocxData } from "@/lib/contract-docx-creditor"
 import type { PromoMasterData } from "@/lib/contract-docx"
-import { S } from "@/lib/contract-pdfmake-helpers"
+import { S, v, vS, pageFooter } from "@/lib/contract-pdfmake-helpers"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -69,11 +69,11 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
             body: [
               [
                 { text: S("รหัสเจ้าหนี้ Winspeed"), border: [false, false, false, false], alignment: "right", margin: [0, 3, 4, 0] },
-                { text: undot(d.vendorCodeWinspeed), alignment: "center", bold: true, margin: [0, 3, 0, 0] },
+                { text: v(undot(d.vendorCodeWinspeed)), alignment: "center", margin: [0, 3, 0, 0] },
               ],
               [
                 { text: S("รหัสเจ้าหนี้ ATMS"), border: [false, false, false, false], alignment: "right", margin: [0, 3, 4, 0] },
-                { text: undot(d.vendorCodeAtms), alignment: "center", bold: true, margin: [0, 3, 0, 0] },
+                { text: v(undot(d.vendorCodeAtms)), alignment: "center", margin: [0, 3, 0, 0] },
               ],
             ],
           },
@@ -91,18 +91,18 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     { text: S("ใบขอเปิดเจ้าหนี้รายใหม่ / สาขา"), bold: true, fontSize: 17, alignment: "center" },
     { text: S("แบบฟอร์มลงทะเบียนผู้ขาย / ผู้ให้บริการ"), bold: true, fontSize: 17, alignment: "center", margin: [0, 0, 0, 6] },
 
-    { text: [S("วันที่ "), d.docDate], alignment: "right", margin: [0, 0, 0, 2] },
+    { text: [S("วันที่ "), vS(d.docDate)], alignment: "right", margin: [0, 0, 0, 2] },
 
-    { text: [S("ชื่อเจ้าหนี้ (ภาษาไทย) "), { text: d.buyerName, bold: true }, S("   ชื่อเจ้าหนี้ (ภาษาอังกฤษ) "), { text: d.buyerNameEn, bold: true }], margin: [0, 0, 0, 1] },
-    { text: [S("เลขประจำตัวผู้เสียภาษี/เลขทะเบียนพาณิชย์/เลขบัตรประชาชน "), { text: d.nationalId, bold: true }], margin: [0, 0, 0, 1] },
-    { text: [S("ที่อยู่ (ภาษาไทย) "), { text: d.driverAddress, bold: true }], margin: [0, 0, 0, 2] },
+    { text: [S("ชื่อเจ้าหนี้ (ภาษาไทย) "), vS(d.buyerName), S("   ชื่อเจ้าหนี้ (ภาษาอังกฤษ) "), v(d.buyerNameEn)], margin: [0, 0, 0, 1] },
+    { text: [S("เลขประจำตัวผู้เสียภาษี/เลขทะเบียนพาณิชย์/เลขบัตรประชาชน "), v(d.nationalId)], margin: [0, 0, 0, 1] },
+    { text: [S("ที่อยู่ (ภาษาไทย) "), vS(d.driverAddress)], margin: [0, 0, 0, 2] },
 
     { columns: [chk(S("สำนักงานใหญ่")), chk(S("จดทะเบียนภาษีมูลค่าเพิ่ม")), { text: "", width: "*" }], columnGap: 30, margin: [0, 0, 0, 1] },
     { columns: [chk(S("สาขา (สาขาที่ ........)")), chk([S("ภาษีหัก ณ ที่จ่าย "), { text: "3", bold: true }, S(" %")], true), { text: "", width: "*" }], columnGap: 30, margin: [0, 0, 0, 2] },
 
     { text: [S("เครดิตการชำระเงิน "), { text: "30", bold: true }, S(" วัน")], margin: [0, 0, 0, 1] },
-    { text: [S("เงื่อนไขการจ่ายชำระเงิน "), { text: d.paymentTerms, bold: true }], margin: [0, 0, 0, 1] },
-    { text: [S("ชื่อผู้ติดต่อ (1) "), { text: d.buyerName, bold: true }, S("  เบอร์โทร "), { text: d.phone, bold: true }, S("  Email Address "), { text: d.email, bold: true }], margin: [0, 0, 0, 1] },
+    { text: [S("เงื่อนไขการจ่ายชำระเงิน "), vS(d.paymentTerms)], margin: [0, 0, 0, 1] },
+    { text: [S("ชื่อผู้ติดต่อ (1) "), vS(d.buyerName), S("  เบอร์โทร "), v(d.phone), S("  Email Address "), v(d.email)], margin: [0, 0, 0, 1] },
     { text: [S("ชื่อผู้ติดต่อ (2) "), dl(28), S(" เบอร์โทร "), dl(16), S(" Email Address "), dl(18)], margin: [0, 0, 0, 3] },
 
     // ตาราง 3 คอลัมน์: บริษัท / ร้านค้า / บุคคลธรรมดา
@@ -138,8 +138,8 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     { columns: [chk(S("สำเนาทะเบียนภาษีมูลค่าเพิ่ม ภ.พ.20 (กรณีจด VAT)")), chk([S("อื่นๆ ระบุ "), dl(16)]), { text: "", width: "*" }], columnGap: 24, margin: [0, 0, 0, 1] },
     chkLine(S("สำเนาหน้าสมุดบัญชี (กรณีโอนเงิน)"), true),
 
-    { text: [S("ชื่อเจ้าของบัญชี / หน้าเช็คสั่งจ่าย "), { text: d.buyerName, bold: true }, S("   ประเภทบัญชี "), { text: d.bankAccountType, bold: true }], margin: [0, 3, 0, 1] },
-    { text: [S("หมายเลขบัญชีธนาคาร "), { text: d.bankAccount, bold: true }, S("   สาขา "), { text: d.bankBranch, bold: true }], margin: [0, 0, 0, 3] },
+    { text: [S("ชื่อเจ้าของบัญชี / หน้าเช็คสั่งจ่าย "), vS(d.buyerName), S("   ประเภทบัญชี "), vS(d.bankAccountType)], margin: [0, 3, 0, 1] },
+    { text: [S("หมายเลขบัญชีธนาคาร "), v(d.bankAccount), S("   สาขา "), vS(d.bankBranch)], margin: [0, 0, 0, 3] },
 
     { text: S("*** เอกสารทุกฉบับต้องมีลายเซ็นรับรองของผู้มีอำนาจจากผู้ขาย / ผู้ให้บริการด้วย"), fontSize: 13 },
     { text: S("*** กรณีบริษัท ต้องมีกรรมการเซ็นรับรองพร้อมประทับตราบริษัทฯ"), fontSize: 13 },
@@ -148,7 +148,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
       unbreakable: true,
       stack: [
         { text: S("ลงชื่อและประทับตราผู้มีอำนาจบริษัทผู้ขาย/ผู้บริการ") + dl(45), alignment: "center", margin: [0, 12, 0, 0] },
-        { text: ["( ", { text: d.buyerName === DOTS ? " ".repeat(40) : d.buyerName, bold: true }, " )"], alignment: "center" },
+        { text: ["( ", d.buyerName === DOTS ? { text: " ".repeat(40) } : vS(d.buyerName), " )"], alignment: "center" },
         { text: S("ตำแหน่ง") + dl(45), alignment: "center", margin: [0, 0, 0, 8] },
         {
           table: {
@@ -190,7 +190,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     pdpaP("อ้างถึง พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ.2562 (พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล) บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน) (บริษัท) ในฐานะผู้ควบคุมข้อมูลส่วนบุคคล ได้จัดทำนโยบายความเป็นส่วนตัวขึ้น เพื่อแจ้งให้ท่านในฐานะเจ้าของข้อมูลส่วนบุคคล ได้ทราบเกี่ยวกับรายละเอียดและวัตถุประสงค์ รวมถึงรายละเอียดเกี่ยวกับการเปิดเผยข้อมูลส่วนบุคคล ระยะเวลาในการจัดเก็บข้อมูลส่วนบุคคล ตลอดจนสิทธิตามกฎหมายของท่านที่เกี่ยวข้องกับข้อมูลส่วนบุคคล"),
     pdpaP("เพื่อให้สอดคล้องกับ พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล บริษัทมีความจำเป็นต้องขอความยินยอมในการเก็บ รวบรวม ใช้ หรือเปิดเผยข้อมูลส่วนบุคคลของท่านแก่บริษัท และ/หรือบุคคลที่ได้รับมอบหมายให้เป็นผู้ประมวลผลข้อมูลส่วนบุคคลจากบริษัท และ/หรือหน่วยงานของรัฐ และ/หรือเอกชนเพื่อปฏิบัติให้เป็นไปตามกฎหมาย ดังนี้"),
     {
-      text: [S("ข้าพเจ้า (ชื่อ-สกุล) "), { text: d.buyerName, bold: true }, S(" เลขบัตรประชาชน "), { text: d.nationalId, bold: true }, S(" ในฐานะเจ้าของข้อมูลส่วนบุคคล ได้อ่านและรับทราบนโยบายความเป็นส่วนตัวของบริษัทแล้ว และขอให้ความยินยอมแก่บริษัท ในการเก็บรวบรวม ใช้ หรือเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าที่มีอยู่กับบริษัทได้ภายใต้ข้อกำหนด เงื่อนไข และวัตถุประสงค์ ดังนี้")],
+      text: [S("ข้าพเจ้า (ชื่อ-สกุล) "), vS(d.buyerName), S(" เลขบัตรประชาชน "), v(d.nationalId), S(" ในฐานะเจ้าของข้อมูลส่วนบุคคล ได้อ่านและรับทราบนโยบายความเป็นส่วนตัวของบริษัทแล้ว และขอให้ความยินยอมแก่บริษัท ในการเก็บรวบรวม ใช้ หรือเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าที่มีอยู่กับบริษัทได้ภายใต้ข้อกำหนด เงื่อนไข และวัตถุประสงค์ ดังนี้")],
       alignment: "justify", leadingIndent: 36, margin: [0, 0, 0, 2],
     },
 
@@ -224,7 +224,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
                 {
                   stack: [
                     { text: S("ชื่อของบุคคลผู้ให้ความยินยอม") },
-                    { text: d.buyerName === DOTS ? dl(48) : d.buyerName, bold: d.buyerName !== DOTS, margin: [0, 14, 0, 0] },
+                    d.buyerName === DOTS ? { text: dl(48), margin: [0, 14, 0, 0] } : { text: S(d.buyerName), bold: true, margin: [0, 14, 0, 0] },
                     { text: S("ลายเซ็น : ") + dl(40), margin: [0, 14, 0, 0] },
                     { text: S("วันที่ลงนาม: ") + dl(40), margin: [0, 2, 0, 0] },
                   ],
@@ -255,12 +255,12 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
       ],
       pageBreak: "before",
     },
-    { text: [S("วันที่ "), d.docDate], alignment: "right", margin: [0, 4, 0, 2] },
+    { text: [S("วันที่ "), vS(d.docDate)], alignment: "right", margin: [0, 4, 0, 2] },
 
-    { text: [S("ชื่อบริษัท "), { text: d.buyerName, bold: true }], margin: [0, 0, 0, 1] },
-    { text: [S("ที่อยู่ "), { text: d.driverAddress, bold: true }], margin: [0, 0, 0, 1] },
-    { text: [S("ชนิดสินค้า "), { text: d.productType, bold: true }], margin: [0, 0, 0, 1] },
-    { text: [S("ชื่อผู้ติดต่อ 1. "), { text: d.buyerName, bold: true }, S(" โทร "), { text: d.phone, bold: true }, S(" แฟกซ์ "), dl(12)], margin: [0, 0, 0, 1] },
+    { text: [S("ชื่อบริษัท "), vS(d.buyerName)], margin: [0, 0, 0, 1] },
+    { text: [S("ที่อยู่ "), vS(d.driverAddress)], margin: [0, 0, 0, 1] },
+    { text: [S("ชนิดสินค้า "), vS(d.productType)], margin: [0, 0, 0, 1] },
+    { text: [S("ชื่อผู้ติดต่อ 1. "), vS(d.buyerName), S(" โทร "), v(d.phone), S(" แฟกซ์ "), dl(12)], margin: [0, 0, 0, 1] },
     { text: [S("2. "), dl(28), S(" โทร "), dl(16), S(" แฟกซ์ "), dl(12)], margin: [50, 0, 0, 3] },
 
     { text: S("ข้อมูลทั่วไป เอกสารอ้างอิง"), bold: true, margin: [0, 3, 0, 1] },
@@ -314,9 +314,10 @@ function pdpaP(txt: string, margin: number[] = [0, 0, 0, 2]): any {
 export function creditorDocDef(c: Contract, promo: PromoMasterData | null): any {
   return {
     pageSize: "A4",
-    pageMargins: [45, 32, 45, 32],
+    pageMargins: [45, 32, 45, 42],
     defaultStyle: { font: "Cordia", fontSize: 15, lineHeight: 1.0 },
     info: { title: `เปิดรหัสเจ้าหนี้-${c.contractCode}` },
+    footer: pageFooter(c.contractCode),
     content: content(c, promo),
   }
 }
