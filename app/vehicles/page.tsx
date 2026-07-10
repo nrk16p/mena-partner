@@ -51,6 +51,24 @@ interface SlidePanelProps {
   onDeleted: () => void
 }
 
+// module scope: นิยามนอก component เพื่อไม่ให้ได้ identity ใหม่ทุก render
+// (เดิมอยู่ใน SlidePanel → พิมพ์ 1 ตัว = remount ทั้ง section = cursor หลุด)
+function SectionCard({ icon: Icon, title, children }: {
+  icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode
+}) {
+  return (
+    <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+          <Icon className="w-4 h-4" />
+        </span>
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{title}</h3>
+      </div>
+      {children}
+    </section>
+  )
+}
+
 function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
   const isEdit = !!vehicle
   const [form, setForm]       = useState({ ...EMPTY_FORM })
@@ -161,18 +179,6 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
       </div>
     )
   }
-
-  const SectionCard = ({ icon: Icon, title, children }: { icon: typeof Car; title: string; children: React.ReactNode }) => (
-    <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-          <Icon className="w-4 h-4" />
-        </span>
-        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{title}</h3>
-      </div>
-      {children}
-    </section>
-  )
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-50 dark:bg-zinc-950 flex flex-col">
