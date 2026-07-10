@@ -191,7 +191,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     pdpaP("เพื่อให้สอดคล้องกับ พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล บริษัทมีความจำเป็นต้องขอความยินยอมในการเก็บ รวบรวม ใช้ หรือเปิดเผยข้อมูลส่วนบุคคลของท่านแก่บริษัท และ/หรือบุคคลที่ได้รับมอบหมายให้เป็นผู้ประมวลผลข้อมูลส่วนบุคคลจากบริษัท และ/หรือหน่วยงานของรัฐ และ/หรือเอกชนเพื่อปฏิบัติให้เป็นไปตามกฎหมาย ดังนี้"),
     {
       text: [S("ข้าพเจ้า (ชื่อ-สกุล) "), vS(d.buyerName), S(" เลขบัตรประชาชน "), v(d.nationalId), S(" ในฐานะเจ้าของข้อมูลส่วนบุคคล ได้อ่านและรับทราบนโยบายความเป็นส่วนตัวของบริษัทแล้ว และขอให้ความยินยอมแก่บริษัท ในการเก็บรวบรวม ใช้ หรือเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าที่มีอยู่กับบริษัทได้ภายใต้ข้อกำหนด เงื่อนไข และวัตถุประสงค์ ดังนี้")],
-      alignment: "justify", leadingIndent: 36, margin: [0, 0, 0, 2],
+      alignment: "left", leadingIndent: 36, margin: [0, 0, 0, 2],
     },
 
     pdpaP("1. ข้อมูลที่จัดเก็บและใช้โดยบริษัท ข้อมูลส่วนบุคคลของเจ้าของข้อมูลส่วนบุคคลที่บริษัทได้รับมา ได้แก่", [0, 3, 0, 2]),
@@ -308,7 +308,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
 
 // ย่อหน้า PDPA: justify + ย่อบรรทัดแรก 1 tab
 function pdpaP(txt: string, margin: number[] = [0, 0, 0, 2]): any {
-  return { text: S(txt), alignment: "justify", leadingIndent: 36, margin }
+  return { text: S(txt), alignment: "left", leadingIndent: 36, margin }
 }
 
 export function creditorDocDef(c: Contract, promo: PromoMasterData | null): any {

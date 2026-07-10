@@ -22,10 +22,12 @@ export const COMPANY = {
 export const FIRST_LINE_INDENT = 35.4 // 1.25 cm = 35.43 pt
 export const LINE_HEIGHT = 1.15
 
-/** ย่อหน้าเนื้อความ (Body Legal). parts = string (ไทยล้วน) หรือ array ของ run */
+/** ย่อหน้าเนื้อความ (Body Legal). parts = string (ไทยล้วน) หรือ array ของ run
+ *  หมายเหตุ: ใช้ชิดซ้าย (ไม่ justify) — justify ของ pdfmake เกลี่ยช่องว่างเข้าทุกรอยต่อคำไทย
+ *  ทำให้ตัวอักษรห่างผิดปกติ (ไม่มี thaiDistribute แบบ Word) */
 export const body = (parts: any, extra: any = {}) => ({
   text: Array.isArray(parts) ? parts : S(parts),
-  alignment: "justify",
+  alignment: "left",
   leadingIndent: FIRST_LINE_INDENT,
   lineHeight: LINE_HEIGHT,
   margin: [0, 0, 0, 0], // spacing before/after = 0 (ระยะห่างมาจาก line spacing เท่านั้น)
