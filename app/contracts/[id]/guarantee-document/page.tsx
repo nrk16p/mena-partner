@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { Printer, ArrowLeft, AlertTriangle, FileDown } from "lucide-react"
+import { Printer, ArrowLeft, AlertTriangle, FileDown, FileText } from "lucide-react"
 import type { Contract } from "@/types"
 import { missingGuaranteeDocFields } from "@/lib/contract-doc"
 import { normPlate } from "@/components/contract-document"
@@ -79,6 +79,14 @@ export default function GuaranteeContractDocumentPage() {
           title="ดาวน์โหลดเป็นไฟล์ Word (.docx) รูปแบบตรงต้นฉบับ"
         >
           <FileDown className="w-3.5 h-3.5" /> โหลด .docx
+        </a>
+        <a
+          href={`/api/contracts/${id}/pdf?type=guarantee`}
+          target="_blank"
+          className="flex items-center gap-1.5 text-xs font-semibold bg-rose-600 text-white rounded-lg px-4 py-2 hover:bg-rose-700"
+          title="โหลดเป็น PDF (แปลงจาก .docx ให้ตรงต้นฉบับ)"
+        >
+          <FileText className="w-3.5 h-3.5" /> โหลด PDF
         </a>
         <Link
           href={`/contracts/${id}/document`}

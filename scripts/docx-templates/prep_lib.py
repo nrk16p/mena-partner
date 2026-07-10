@@ -92,7 +92,23 @@ def apply_rules(xml_path, rules):
     return matched, unmatched
 
 
-def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=None):
+def strip_numbering(xml_path):
+    """ลบ <w:numPr> ทั้งหมด — เอกสารสัญญาใช้เลขเป็น text (ข้อ 1., 3.1) อยู่แล้ว
+    numPr ที่ค้างทำให้ docx-preview/บาง renderer โชว์เลข auto (เช่น 0.1, 0.2) เกินมา"""
+    tree = etree.parse(xml_path)
+    root = tree.getroot()
+    removed = 0
+    for numPr in root.iter(W + "numPr"):
+        parent = numPr.getparent()
+        if parent is not None:
+            parent.remove(numPr)
+            removed += 1
+    if removed:
+        tree.write(xml_path, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return removed
+
+
+def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=None, drop_numbering=True):
     """Unzip src, apply rules to document.xml (+ footers), rezip to out_docx."""
     workdir = workdir or (out_docx + ".unz")
     if os.path.exists(workdir):
@@ -109,6 +125,9 @@ def build_template(src_docx, out_docx, doc_rules, footer_rules=None, workdir=Non
     m, un = apply_rules(dpath, doc_rules)
     total_matched += m
     all_unmatched += un
+
+    if drop_numbering:
+        strip_numbering(dpath)
 
     if footer_rules:
         for fname in sorted(os.listdir(os.path.join(workdir, "word"))):

@@ -90,7 +90,8 @@ function DocStyles() {
       .clause-u { text-decoration: underline; text-underline-offset: 3px; }
       .clause-tab { display: inline-block; width: 30pt; }
       .indent { text-indent: 36pt; }
-      .sub { margin-left: 28pt; }
+      /* ข้อย่อยเลข (3.1, 4.1, ...) ย่อหน้าบรรทัดแรก 1 tab ตรงกับ docx (firstLine 720) */
+      .sub { text-indent: 36pt; }
       /* thaiDistribute ตามต้นฉบับ Word ≈ justify + inter-character บน Chromium */
       .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 3; widows: 3; }
       .sig-table { width: 100%; margin-top: 18px; }
