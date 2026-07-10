@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { Printer, ArrowLeft, AlertTriangle } from "lucide-react"
+import { Printer, ArrowLeft, AlertTriangle, FileDown } from "lucide-react"
 import type { Contract } from "@/types"
 import { missingHireDocFields } from "@/lib/contract-doc"
 import { normPlate } from "@/components/contract-document"
@@ -73,6 +73,13 @@ export default function HireContractDocumentPage() {
         >
           <Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึกเป็น PDF
         </button>
+        <a
+          href={`/api/contracts/${id}/docx?type=hire`}
+          className="flex items-center gap-1.5 text-xs font-semibold bg-sky-600 text-white rounded-lg px-4 py-2 hover:bg-sky-700"
+          title="ดาวน์โหลดเป็นไฟล์ Word (.docx) รูปแบบตรงต้นฉบับ"
+        >
+          <FileDown className="w-3.5 h-3.5" /> โหลด .docx
+        </a>
         <Link
           href={`/contracts/${id}/document`}
           className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"

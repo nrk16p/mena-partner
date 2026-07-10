@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
+  // รวมไฟล์ .docx template เข้า serverless bundle ของ route ที่สร้างเอกสาร (Vercel)
+  outputFileTracingIncludes: {
+    "/api/contracts/[id]/docx": ["./templates/**"],
+  },
   // รูปอัปโหลด (สำเนาเอกสาร) เสิร์ฟผ่าน next/image ได้เร็วขึ้น
   images: {
     formats: ["image/avif", "image/webp"],

@@ -163,7 +163,7 @@ function ContractDocumentImpl({
         <p className="indent">คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญากันโดยมีเงื่อนไขและรายละเอียดดังต่อไปนี้</p>
 
         {/* ── ข้อ 1 ── */}
-        <p className="clause-h"><span className="clause-u">ข้อ 1.</span><span className="clause-tab" /><span className="clause-u">ข้อตกลงการซื้อขาย</span></p>
+        <p className="clause-h"><span className="clause-u">ข้อ 1. ข้อตกลงการซื้อขาย</span></p>
         <p className="indent">
           ผู้ขายตกลงขาย และผู้ซื้อตกลงซื้อรถยนต์บรรทุกใช้แล้ว ประเภท{" "}
           <V w={130}>{c.vehicleType}</V> ลักษณะ/มาตรฐาน <V w={150}>{c.vehicleCharacteristic}</V>{" "}
@@ -182,7 +182,7 @@ function ContractDocumentImpl({
         <p className="indent">ในวันทำสัญญาฉบับนี้ ผู้ซื้อตกลงจะเข้าทำสัญญารับจ้างขับรถกับผู้ขายอีกฉบับหนึ่งด้วย</p>
 
         {/* ── ข้อ 2 ── */}
-        <p className="clause-h"><span className="clause-u">ข้อ 2.</span><span className="clause-tab" /><span className="clause-u">ราคาซื้อขายและการชำระราคา</span></p>
+        <p className="clause-h"><span className="clause-u">ข้อ 2. ราคาซื้อขายและการชำระราคา</span></p>
         <p className="indent">
           ผู้ซื้อตกลงซื้อและผู้ขายตกลงขายทรัพย์สิน ในราคา <V w={90}>{money(c.totalPrice)}</V> บาท
           (<V w={220}>{c.totalPrice ? bahtText(c.totalPrice) : undefined}</V>) โดยไม่รวมภาษีมูลค่าเพิ่ม
@@ -233,7 +233,7 @@ function ContractDocumentImpl({
         </p>
 
         {/* ── ข้อ 3 ── */}
-        <p className="clause-h"><span className="clause-u">ข้อ 3.</span><span className="clause-tab" /><span className="clause-u">หน้าที่ผู้ซื้อ</span></p>
+        <p className="clause-h"><span className="clause-u">ข้อ 3. หน้าที่ผู้ซื้อ</span></p>
         <p className="indent">
           ตลอดระยะเวลาที่ผู้ซื้อยังชำระราคาซื้อขายตามสัญญาฉบับนี้ให้แก่ผู้ขายยังไม่ครบถ้วนเสร็จสิ้น
           และผู้ซื้อยังไม่ได้รับโอนกรรมสิทธิ์ในทรัพย์สิน ผู้ซื้อตกลงจะปฏิบัติดังต่อไปนี้
@@ -289,7 +289,7 @@ function ContractDocumentImpl({
         </p>
 
         {/* ── ข้อ 4 ── */}
-        <p className="clause-h"><span className="clause-u">ข้อ 4.</span><span className="clause-tab" /><span className="clause-u">กรรมสิทธิ์ในทรัพย์สิน</span></p>
+        <p className="clause-h"><span className="clause-u">ข้อ 4. กรรมสิทธิ์ในทรัพย์สิน</span></p>
         <p className="sub">
           4.1 คู่สัญญาทั้งสองฝ่ายรับทราบและตกลงว่า กรรมสิทธิ์ในทรัพย์สินตามสัญญานี้
           จะยังไม่โอนไปเป็นของผู้ซื้อจนกว่าผู้ขายจะได้รับชำระราคาซื้อขายทรัพย์สินและได้ปฏิบัติตามสัญญาฉบับนี้ครบถ้วนแล้ว
@@ -309,7 +309,7 @@ function ContractDocumentImpl({
         </p>
 
         {/* ── ข้อ 5 ── */}
-        <p className="clause-h"><span className="clause-u">ข้อ 5.</span><span className="clause-tab" /><span className="clause-u">การผิดนัด การบอกเลิกสัญญา การเรียกค่าเสียหาย</span></p>
+        <p className="clause-h"><span className="clause-u">ข้อ 5. การผิดนัด การบอกเลิกสัญญา การเรียกค่าเสียหาย</span></p>
         <p className="sub">
           5.1 เมื่อมีเหตุการณ์ใดเหตุการณ์หนึ่งดังต่อไปนี้ ให้ถือว่าผู้ซื้อผิดนัดผิดสัญญาฉบับนี้
           และผู้ขายมีสิทธิบอกเลิกสัญญาได้ทันที
@@ -369,7 +369,7 @@ function ContractDocumentImpl({
         </p>
 
         {/* ── ข้อ 6 ── */}
-        <p className="clause-h"><span className="clause-u">ข้อ 6.</span><span className="clause-tab" /><span className="clause-u">ข้อตกลงอื่นๆ</span></p>
+        <p className="clause-h"><span className="clause-u">ข้อ 6. ข้อตกลงอื่นๆ</span></p>
         <p className="sub">
           6.1 การโอนสิทธิ หรือผลประโยชน์ใด ๆ
           ตามสัญญานี้จะกระทำได้ต่อเมื่อได้รับความยินยอมเป็นหนังสือจากคู่สัญญาอีกฝ่ายหนึ่ง
