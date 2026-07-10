@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
+  // อย่า bundle chromium/puppeteer — ต้องรันจาก node_modules เพื่อให้ path /bin ถูก (Vercel)
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   // รวมไฟล์ .docx template + asset ของตัวแปลง PDF เข้า serverless bundle (Vercel)
   outputFileTracingIncludes: {
     "/api/contracts/[id]/docx": ["./templates/**"],

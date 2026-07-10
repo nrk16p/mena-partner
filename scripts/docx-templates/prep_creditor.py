@@ -81,7 +81,8 @@ DOC_RULES = [
 
 def main():
     src, out = sys.argv[1], sys.argv[2]
-    matched, unmatched = build_template(src, out, DOC_RULES)
+    # เก็บโลโก้ MENA ไว้ (creditor มีรูปเดียว = โลโก้) — ไม่ลบรูป
+    matched, unmatched = build_template(src, out, DOC_RULES, drop_images=False)
     print(f"matched rules: {matched}/{len(DOC_RULES)}")
     if unmatched:
         print(f"!! UNMATCHED ({len(unmatched)}):")
