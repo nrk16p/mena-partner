@@ -13,6 +13,7 @@ import { memo } from "react"
 
 import type { Contract } from "@/types"
 import { sarabun } from "@/lib/fonts"
+import { CORDIA_FONT_CSS } from "@/components/cordia-font"
 import { thaiDateParts, formatNationalId } from "@/lib/thai-format"
 
 
@@ -44,14 +45,15 @@ function GuaranteeContractDocumentImpl({ contract }: { contract: Contract }) {
   return (
     <div className={sarabun.className}>
       <style>{`
+        ${CORDIA_FONT_CSS}
         .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
-        .sheet { font-family: ${sarabun.style.fontFamily}, "Cordia New", "CordiaUPC"; }
+        .sheet { font-family: "CordiaUPC", "Cordia New", ${sarabun.style.fontFamily}; }
         .sheet {
           width: 210mm; min-height: 297mm; margin: 0 auto 16px;
           background: #fff; color: #000;
           padding: 12.5mm 16mm 10mm 20mm;
           box-shadow: 0 4px 24px rgba(0,0,0,.18);
-          font-size: 15pt; line-height: 1.5;
+          font-size: 16pt; line-height: normal;
         }
         .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
         /* ย่อหน้าข้อสัญญาแบบ hanging indent ตามต้นฉบับ Word (ind left=720 hanging=720):
@@ -60,7 +62,7 @@ function GuaranteeContractDocumentImpl({ contract }: { contract: Contract }) {
         .clause-no { font-weight: 700; display: inline-block; min-width: 42pt; }
         .cont { margin-left: 42pt; }
         .indent { text-indent: 36pt; }
-        .sheet p { margin: 0 0 3pt; text-align: left; orphans: 3; widows: 3; }
+        .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 3; widows: 3; }
         .sig-table { width: 100%; margin-top: 18px; }
         .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
         .sig-block { break-inside: avoid; page-break-inside: avoid; }

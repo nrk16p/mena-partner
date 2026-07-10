@@ -13,6 +13,7 @@ import { memo } from "react"
 
 import type { Contract } from "@/types"
 import { sarabun } from "@/lib/fonts"
+import { CORDIA_FONT_CSS } from "@/components/cordia-font"
 import {
   bahtText,
   money,
@@ -70,16 +71,17 @@ function V({ children, w }: { children?: React.ReactNode; w?: number }) {
 function DocStyles() {
   return (
     <style>{`
+      ${CORDIA_FONT_CSS}
       /* screen backdrop ใช้เฉพาะหน้าพิมพ์ (wrapper .contract-doc) */
       .contract-doc { background: #d4d4d8; margin: -28px -32px; padding: 24px 8px; min-height: 100%; }
-      /* ใช้ Sarabun เป็นหลัก (แอปโหลดแน่นอน → หน้าตาเหมือนกันทุกเครื่อง) แล้วค่อย fallback Cordia */
-      .sheet { font-family: ${sarabun.style.fontFamily}, "Cordia New", "CordiaUPC"; }
+      /* CordiaUPC ฝังมาแล้ว (data-URI) → ตรงต้นฉบับ Word ทุกเครื่อง; fallback เป็น Sarabun */
+      .sheet { font-family: "CordiaUPC", "Cordia New", ${sarabun.style.fontFamily}; }
       .sheet {
         width: 210mm; min-height: 297mm; margin: 0 auto 16px;
         background: #fff; color: #000;
         padding: 12.5mm 16mm 10mm 20mm;
         box-shadow: 0 4px 24px rgba(0,0,0,.18);
-        font-size: 15pt; line-height: 1.5;
+        font-size: 16pt; line-height: normal;
       }
       .doc-title { text-align: center; font-weight: 700; font-size: 18pt; margin-bottom: 6pt; }
       .clause-h { font-weight: 700; margin-top: 12pt; break-after: avoid-page; page-break-after: avoid;
@@ -89,8 +91,8 @@ function DocStyles() {
       .clause-tab { display: inline-block; width: 30pt; }
       .indent { text-indent: 36pt; }
       .sub { margin-left: 28pt; }
-      /* ชิดซ้าย (ragged) — เลี่ยง justify/inter-character ที่ทำให้เกิดช่องโหว่กลางบรรทัด */
-      .sheet p { margin: 0 0 3pt; text-align: left; orphans: 3; widows: 3; }
+      /* thaiDistribute ตามต้นฉบับ Word ≈ justify + inter-character บน Chromium */
+      .sheet p { margin: 0; text-align: justify; text-justify: inter-character; orphans: 3; widows: 3; }
       .sig-table { width: 100%; margin-top: 18px; }
       .sig-table td { width: 50%; text-align: center; padding: 14px 8px 2px; vertical-align: bottom; }
       .sig-block { break-inside: avoid; page-break-inside: avoid; }
