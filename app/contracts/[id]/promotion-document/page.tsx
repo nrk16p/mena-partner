@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { ArrowLeft, AlertTriangle } from "lucide-react"
+import { ArrowLeft, AlertTriangle, FileText } from "lucide-react"
 import type { Contract } from "@/types"
 import { PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
 
@@ -67,6 +67,14 @@ export default function PromotionDocumentPage() {
         >
           <ArrowLeft className="w-3.5 h-3.5" /> กลับ
         </button>
+        <a
+          href={`/api/contracts/${id}/pdf?type=promotion`}
+          target="_blank"
+          className="flex items-center gap-1.5 text-xs font-semibold bg-rose-600 text-white rounded-lg px-4 py-2 hover:bg-rose-700"
+          title="โหลดเอกสารแนบท้ายโปรโมชั่นเป็น PDF"
+        >
+          <FileText className="w-3.5 h-3.5" /> โหลด PDF
+        </a>
         <a
           href={`/contracts/${id}/document`}
           className="flex items-center gap-1.5 text-xs bg-white border border-zinc-300 rounded-lg px-3 py-2 hover:bg-zinc-100"

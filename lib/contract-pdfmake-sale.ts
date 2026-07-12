@@ -102,9 +102,14 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
       sigCell("ลงชื่อ............................................พยาน", COMPANY.witnesses[0]),
       sigCell("ลงชื่อ..............................................พยาน", COMPANY.witnesses[1]),
     ] },
+  ]
+}
 
-    // ════════ เอกสารแนบท้าย 1 : โปรโมชั่น ════════
-    { text: S("เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น)"), bold: true, fontSize: 18, alignment: "center", pageBreak: "before", margin: [0, 0, 0, 8] },
+// ════════ เอกสารแนบท้าย 1 : โปรโมชั่น (แยกเป็น PDF ของตัวเอง — โหลดจากหน้า promotion-document) ════════
+function promoContent(c: Contract, promo: PromoMasterData | null): any[] {
+  const d = saleDocxData(c, promo)
+  return [
+    { text: S("เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น)"), bold: true, fontSize: 18, alignment: "center", margin: [0, 0, 0, 8] },
     body([S("เอกสารแนบท้ายสัญญาฉบับนี้ จัดทำขึ้นเพื่อระบุรายละเอียดโปรโมชั่นและสิทธิประโยชน์ที่ผู้ขายตกลงให้แก่ผู้ซื้อ อันเป็นส่วนหนึ่งของสัญญาซื้อขายรถยนต์บรรทุก เลขที่ "), v(d.contractCode),
       S(" ลงวันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE), S(" ทะเบียนรถบรรทุกเลขที่ "), v(d.licensePlate),
       S(" ทั้งนี้ คู่สัญญาตกลงให้เอกสารแนบท้ายฉบับนี้มีผลผูกพันเป็นส่วนหนึ่งของสัญญาหลัก โดยไม่ถือเป็นการแก้ไข ลด หรือเปลี่ยนแปลงราคาซื้อขายหรือหน้าที่การชำระเงินของผู้ซื้อ เว้นแต่จะได้ระบุไว้เป็นอย่างอื่นโดยชัดแจ้งเป็นหนังสือ โดยมีรายละเอียดโปรโมชัน ดังนี้")]),
@@ -148,5 +153,16 @@ export function saleDocDef(c: Contract, promo: PromoMasterData | null): any {
     info: { title: `สัญญาซื้อขาย-${c.contractCode}` },
     footer: pageFooter(c.contractCode),
     content: content(c, promo),
+  }
+}
+
+export function promotionDocDef(c: Contract, promo: PromoMasterData | null): any {
+  return {
+    pageSize: "A4",
+    pageMargins: [57, 40, 45, 42],
+    defaultStyle: { font: "Cordia", fontSize: 16, lineHeight: 1.0 },
+    info: { title: `เอกสารแนบท้ายโปรโมชั่น-${c.contractCode}` },
+    footer: pageFooter(c.contractCode),
+    content: promoContent(c, promo),
   }
 }
