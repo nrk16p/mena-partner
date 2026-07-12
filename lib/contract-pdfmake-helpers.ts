@@ -50,21 +50,35 @@ export const B = (txt: string) => ({ text: S(txt), bold: true })
 export const v = (x: string) => ({ text: x ?? "", bold: true })
 export const vS = (x: string) => ({ text: S(x), bold: true })
 
-/** footer มืออาชีพ: เลขสัญญา (ซ้าย) + หน้า X/Y (ขวา) + เส้นคั่นบาง */
-export const pageFooter =
-  (contractCode: string) => (currentPage: number, pageCount: number) => ({
+/** footer มืออาชีพ: เลขสัญญา + วันเวลาพิมพ์ (ซ้าย) + หน้า X/Y (ขวา) + เส้นคั่นบาง
+ *  "พิมพ์เมื่อ" = document-control stamp (คนละอย่างกับวันที่ทำสัญญาซึ่งเป็นวันที่มีผลทางกฎหมาย) */
+export const pageFooter = (contractCode: string) => {
+  const printedAt = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date())
+  return (currentPage: number, pageCount: number) => ({
     margin: [57, 6, 45, 0],
     stack: [
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 493, y2: 0, lineWidth: 0.5, lineColor: "#cccccc" }] },
       {
         columns: [
-          { text: S(`เลขที่สัญญา ${contractCode || "-"}`), fontSize: 11, color: "#888888" },
+          {
+            text: S(`เลขที่สัญญา ${contractCode || "-"}  ·  พิมพ์เมื่อ ${printedAt} น.`),
+            fontSize: 11,
+            color: "#888888",
+          },
           { text: `หน้า ${currentPage} / ${pageCount}`, alignment: "right", fontSize: 11, color: "#888888" },
         ],
         margin: [0, 3, 0, 0],
       },
     ],
   })
+}
 
 /** ช่องลายเซ็น — รับ line เดิม "ลงชื่อ....ผู้ซื้อ" แล้วทำเส้นเซ็น (เส้นประยืดได้) + ชื่อ center ใต้เส้น
  *  แก้ปัญหาชื่อเยื้องขวา (เดิม center ใต้ทั้งคอลัมน์) */
