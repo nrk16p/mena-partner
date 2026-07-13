@@ -123,8 +123,10 @@ interface FormState {
   status:                  string
   payEveryLastDay:         boolean
   saleContractUrl:         string
+  promotionDocUrl:         string
   hireContractUrl:         string
   guaranteeContractUrl:    string
+  creditorDocUrl:          string
   guarantorName:           string
   guarantorNationalId:     string
   guarantorAddress:        string
@@ -149,7 +151,7 @@ const EMPTY: FormState = {
   downInstallmentCount: 0, downInstallmentAmt: 0, financeAmount: 0,
   monthlyInstallment: 0, totalInstallments: 0,
   startDate: "", plant: "", status: "active", payEveryLastDay: false,
-  saleContractUrl: "", hireContractUrl: "", guaranteeContractUrl: "",
+  saleContractUrl: "", promotionDocUrl: "", hireContractUrl: "", guaranteeContractUrl: "", creditorDocUrl: "",
   guarantorName: "", guarantorNationalId: "", guarantorAddress: "",
   buyerNameEn: "", email: "", bankAccountType: "ออมทรัพย์", bankBranch: "",
   vendorCodeWinspeed: "", vendorCodeAtms: "", notes: "",
@@ -295,7 +297,7 @@ export default function NewContractPage() {
     // price effect will fire from the licensePlate change above
   }
 
-  async function uploadDoc(field: "saleContractUrl" | "hireContractUrl" | "guaranteeContractUrl", file: File) {
+  async function uploadDoc(field: "saleContractUrl" | "promotionDocUrl" | "hireContractUrl" | "guaranteeContractUrl" | "creditorDocUrl", file: File) {
     setUploadingDoc(field)
     try {
       const fd = new FormData()
@@ -774,9 +776,11 @@ export default function NewContractPage() {
         {/* ── เอกสารแนบ ── */}
         {(() => {
           const docs = [
-            { field: "saleContractUrl"      as const, label: "สัญญาซื้อขาย" },
-            { field: "hireContractUrl"      as const, label: "สัญญาว่าจ้าง" },
-            { field: "guaranteeContractUrl" as const, label: "สัญญาค้ำประกัน" },
+            { field: "saleContractUrl"      as const, label: "สัญญาซื้อขาย (PDF)" },
+            { field: "promotionDocUrl"      as const, label: "เอกสารแนบท้าย (PDF)" },
+            { field: "hireContractUrl"      as const, label: "สัญญาว่าจ้าง (PDF)" },
+            { field: "guaranteeContractUrl" as const, label: "สัญญาค้ำประกัน (PDF)" },
+            { field: "creditorDocUrl"       as const, label: "เปิดเจ้าหนี้ (PDF)" },
           ]
           const filled = docs.filter((d) => form[d.field]).length
           return (

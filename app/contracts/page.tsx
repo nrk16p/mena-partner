@@ -29,9 +29,11 @@ const STATUS_TABS = [
 
 // เอกสารแนบ 3 ไฟล์ต่อสัญญา (ชุดเดียวกับหน้าเพิ่มสัญญา)
 const ATTACH_DOCS = [
-  { field: "saleContractUrl",      label: "ซื้อขาย",   full: "สัญญาซื้อขาย" },
-  { field: "hireContractUrl",      label: "ว่าจ้าง",   full: "สัญญาว่าจ้าง" },
-  { field: "guaranteeContractUrl", label: "ค้ำประกัน", full: "สัญญาค้ำประกัน" },
+  { field: "saleContractUrl",      label: "ซื้อขาย",    full: "สัญญาซื้อขาย (PDF)" },
+  { field: "promotionDocUrl",      label: "แนบท้าย",    full: "เอกสารแนบท้าย (PDF)" },
+  { field: "hireContractUrl",      label: "ว่าจ้าง",    full: "สัญญาว่าจ้าง (PDF)" },
+  { field: "guaranteeContractUrl", label: "ค้ำประกัน",  full: "สัญญาค้ำประกัน (PDF)" },
+  { field: "creditorDocUrl",       label: "เปิดเจ้าหนี้", full: "เปิดเจ้าหนี้ (PDF)" },
 ] as const
 type AttachField = (typeof ATTACH_DOCS)[number]["field"]
 
@@ -40,6 +42,7 @@ export default function ContractsPage() {
   const [items, setItems]   = useState<Contract[]>([])
   const [q, setQ]           = useState("")
   const [statusFilter, setStatusFilter] = useState("active")
+  const [docFilter, setDocFilter] = useState("")   // "" ทั้งหมด | "complete" ครบ | "incomplete" ไม่ครบ
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)   // `${contractId}:${field}`
   const isAdmin = session?.user?.role === "admin"
@@ -88,13 +91,13 @@ export default function ContractsPage() {
   const in60 = d60.toISOString().slice(0, 10)
 
   function handleExportCSV() {
-    if (!items.length) return
+    if (!visible.length) return
     const headers = [
       "รหัส","ชื่อผู้เช่าซื้อ","ทะเบียน","เบอร์รถ","ยี่ห้อ","รุ่น",
       "วันที่ทำสัญญา","วันที่เริ่ม","ราคารถ","เงินดาวน์","ค่างวด/เดือน","จำนวนงวด",
       "บริษัทประกัน","วันต่อภาษี","วันหมดอายุ","สถานะ","ข้อมูลครบ","เอกสารแนบ",
     ]
-    const rows = items.map((c) => {
+    const rows = visible.map((c) => {
       const missing = missingDocFields(c)
       const attached = ATTACH_DOCS.filter(({ field }) => c[field]).length
       return [
@@ -115,12 +118,19 @@ export default function ContractsPage() {
     URL.revokeObjectURL(url)
   }
 
-  const pg = usePagination(items, 50, [q, statusFilter])
+  // ── กรองตามความครบถ้วนของข้อมูลเอกสาร (เกณฑ์เดียวกับคอลัมน์ "ข้อมูลครบ") ──
+  const visible =
+    docFilter === ""
+      ? items
+      : items.filter((c) => (missingDocFields(c).length === 0) === (docFilter === "complete"))
+
+  const pg = usePagination(visible, 50, [q, statusFilter, docFilter])
 
   const counts = {
     active:     items.filter((c) => c.status === "active").length,
     completed:  items.filter((c) => c.status === "completed").length,
     terminated: items.filter((c) => c.status === "terminated").length,
+    complete:   items.filter((c) => missingDocFields(c).length === 0).length,
   }
 
   return (
@@ -133,7 +143,7 @@ export default function ContractsPage() {
             สัญญา
           </h1>
           <p className="text-sm text-zinc-400 mt-0.5">
-            {items.length} สัญญา
+            {visible.length} สัญญา
             {statusFilter === "" && (
               <> · ใช้งาน <span className="text-emerald-600 font-medium">{counts.active}</span> / สิ้นสุด {counts.completed} / ยกเลิก {counts.terminated}</>
             )}
@@ -168,6 +178,26 @@ export default function ContractsPage() {
               onClick={() => setStatusFilter(tab.key)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 statusFilter === tab.key
+                  ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* กรองตามความครบถ้วนของข้อมูลเอกสารสัญญา */}
+        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+          {[
+            { key: "", label: "ข้อมูลทั้งหมด" },
+            { key: "complete", label: `ครบ (${counts.complete})` },
+            { key: "incomplete", label: `ไม่ครบ (${items.length - counts.complete})` },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setDocFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                docFilter === tab.key
                   ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
               }`}

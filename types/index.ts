@@ -97,8 +97,10 @@ export interface Contract {
   reserveAsOfMonth?: string
   payEveryLastDay?: boolean      // จ่ายทุกวันสุดท้ายของเดือน
   saleContractUrl?:      string  // สัญญาซื้อขาย
+  promotionDocUrl?:      string  // เอกสารแนบท้าย (โปรโมชั่น)
   hireContractUrl?:      string  // สัญญาว่าจ้าง
   guaranteeContractUrl?: string  // สัญญาค้ำประกัน
+  creditorDocUrl?:       string  // เปิดเจ้าหนี้
   // ผู้ค้ำประกัน — ใช้ในเอกสารสัญญาค้ำประกัน
   guarantorName?:       string
   guarantorNationalId?: string
