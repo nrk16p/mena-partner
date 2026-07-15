@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as {
+    truckType?:        string
     vehicleType?:      string
     characteristic?:   string
     brand?:            string
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const client = await clientPromise
   const result = await client.db(DB).collection(COLL).insertOne({
+    truckType:            body.truckType === "trailer" ? "trailer" : "mixer",
     vehicleType:          body.vehicleType?.trim()          ?? null,
     characteristic:       body.characteristic?.trim()       ?? null,
     brand:                body.brand?.trim()                ?? null,

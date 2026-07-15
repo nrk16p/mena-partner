@@ -18,6 +18,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { id } = await params
   const body = await req.json() as {
+    truckType?:        string | null
     vehicleType?:      string | null
     characteristic?:   string | null
     brand?:            string | null
@@ -35,6 +36,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const $set: Record<string, unknown> = { updatedAt: new Date() }
   const str = (v: string | null | undefined) => v?.trim() ?? null
+  if (body.truckType            !== undefined) $set.truckType            = body.truckType === "trailer" ? "trailer" : "mixer"
   if (body.vehicleType          !== undefined) $set.vehicleType          = str(body.vehicleType)
   if (body.characteristic       !== undefined) $set.characteristic       = str(body.characteristic)
   if (body.brand                !== undefined) $set.brand                = str(body.brand)

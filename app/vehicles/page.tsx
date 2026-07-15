@@ -36,6 +36,7 @@ const FORM_FIELDS: { key: keyof Vehicle; label: string; type?: string; placehold
 ]
 
 const EMPTY_FORM: Omit<Vehicle, "_id" | "createdAt" | "updatedAt"> = {
+  truckType: "mixer",
   vehicleType: "", characteristic: "", brand: "", model: "",
   registrationDate: "", color: "", licensePlate: "", truckNumber: "",
   chassisNumber: "", engineNumber: "", engineSize: "", status: "active",
@@ -80,6 +81,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
   useEffect(() => {
     if (vehicle) {
       setForm({
+        truckType:           vehicle.truckType === "trailer" ? "trailer" : "mixer",
         vehicleType:         vehicle.vehicleType         ?? "",
         characteristic:      vehicle.characteristic      ?? "",
         brand:               vehicle.brand               ?? "",
@@ -267,6 +269,27 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             </p>
           )}
 
+          {/* ประเภทหลัก: Mixer / Trailer */}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-zinc-500">ประเภทรถ:</span>
+            {([["mixer", "Mixer (โม่ปูน)"], ["trailer", "Trailer (เทรลเลอร์)"]] as [("mixer" | "trailer"), string][]).map(([val, lbl]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, truckType: val }))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                  (form.truckType ?? "mixer") === val
+                    ? val === "trailer"
+                      ? "bg-amber-500 text-white border-transparent"
+                      : "bg-sky-600 text-white border-transparent"
+                    : "bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <SectionCard icon={Car} title="ข้อมูลทั่วไป">
             <div className="grid grid-cols-2 gap-4">
@@ -373,6 +396,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
 
 const TABLE_COLS = [
   { key: "truckNumber",   label: "เบอร์รถ",       w: "w-24" },
+  { key: "truckType",     label: "ประเภท",        w: "w-24" },
   { key: "licensePlate",  label: "ทะเบียนรถ",     w: "w-32" },
   { key: "vehicleType",   label: "ประเภทรถ",      w: "w-32" },
   { key: "characteristic",label: "ลักษณะ",        w: "w-24" },
@@ -392,6 +416,7 @@ export default function VehiclesPage() {
   const [items, setItems]               = useState<Vehicle[]>([])
   const [q, setQ]                       = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("")
+  const [typeFilter, setTypeFilter]     = useState<"" | "mixer" | "trailer">("")
   const [loading, setLoading]           = useState(true)
   const [panel, setPanel]               = useState<Vehicle | null | "new">(null)
 
@@ -435,21 +460,27 @@ export default function VehiclesPage() {
     } finally { setSyncing(false) }
   }
 
+  // truckType: default "mixer" ถ้ายังไม่ได้ระบุ (fleet เป็น Mixer)
+  const vType = (v: Vehicle) => (v.truckType === "trailer" ? "trailer" : "mixer")
+
   const filtered = useMemo(() => {
-    if (!q) return items
     const lq = q.toLowerCase()
-    return items.filter((v) =>
-      [v.truckNumber, v.licensePlate, v.brand, v.model, v.vehicleType,
-       v.chassisNumber, v.engineNumber, v.characteristic]
+    return items.filter((v) => {
+      if (typeFilter && vType(v) !== typeFilter) return false
+      if (!q) return true
+      return [v.truckNumber, v.licensePlate, v.brand, v.model, v.vehicleType,
+        v.chassisNumber, v.engineNumber, v.characteristic]
         .some((f) => (f ?? "").toLowerCase().includes(lq))
-    )
-  }, [items, q])
+    })
+  }, [items, q, typeFilter])
 
   // ── pagination: สูงสุด 50 คัน/หน้า ──
-  const pg = usePagination(filtered, 50, [q, statusFilter])
+  const pg = usePagination(filtered, 50, [q, statusFilter, typeFilter])
 
   const activeCount   = items.filter((v) => v.status === "active").length
   const inactiveCount = items.filter((v) => v.status !== "active").length
+  const mixerCount    = items.filter((v) => vType(v) === "mixer").length
+  const trailerCount  = items.filter((v) => vType(v) === "trailer").length
   const showPanel     = panel !== null
   const editVehicle   = panel === "new" ? null : panel
 
@@ -511,6 +542,24 @@ export default function VehiclesPage() {
             {f.label}
           </button>
         ))}
+        <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+        {([
+          { key: "",        label: `ทุกประเภท` },
+          { key: "mixer",   label: `Mixer (${mixerCount})` },
+          { key: "trailer", label: `Trailer (${trailerCount})` },
+        ] as { key: "" | "mixer" | "trailer"; label: string }[]).map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setTypeFilter(f.key)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              typeFilter === f.key
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
         <div className="flex-1" />
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
@@ -560,6 +609,15 @@ export default function VehiclesPage() {
                     {/* เบอร์รถ */}
                     <td className="px-3 py-2.5">
                       <span className="font-bold text-zinc-800 dark:text-zinc-100 font-mono">{v.truckNumber || "—"}</span>
+                    </td>
+
+                    {/* ประเภท (Mixer / Trailer) */}
+                    <td className="px-3 py-2.5">
+                      {vType(v) === "trailer" ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Trailer</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">Mixer</span>
+                      )}
                     </td>
 
                     {/* ทะเบียน */}

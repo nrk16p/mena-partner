@@ -4,7 +4,8 @@ export type UserRole = "admin" | "viewer"
 
 export interface Vehicle {
   _id?: string
-  vehicleType?:    string   // ประเภทรถ
+  truckType?:      "mixer" | "trailer"  // ประเภทหลัก — โม่ปูน (mixer) / เทรลเลอร์ (trailer)
+  vehicleType?:    string   // ประเภทรถ (ข้อความละเอียด เช่น "Mixer 10 ล้อ")
   characteristic?: string  // ลักษณะ
   brand?:          string  // ยี่ห้อ
   model?:          string  // รุ่น
