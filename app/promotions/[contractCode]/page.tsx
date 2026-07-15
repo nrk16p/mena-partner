@@ -15,7 +15,6 @@ export default function PromoDetailPage() {
   const router = useRouter()
   const [data, setData]     = useState<PromoDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [repairMonthly, setRepairMonthly] = useState<Record<string, number | string> | null>(null)
 
   const [rDate, setRDate]   = useState("")
   const [rDesc, setRDesc]   = useState("")
@@ -33,16 +32,9 @@ export default function PromoDetailPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const [promoRes, repairRes] = await Promise.all([
-        fetch(`/api/promotions/${contractCode}`),
-        fetch(`/api/repair-monthly/${contractCode}`),
-      ])
+      const promoRes = await fetch(`/api/promotions/${contractCode}`)
       if (promoRes.ok) setData(await promoRes.json())
       else setData(null)
-      if (repairRes.ok) {
-        const rm = await repairRes.json()
-        setRepairMonthly(rm)
-      }
     } catch { setData(null) }
     finally { setLoading(false) }
   }
@@ -69,13 +61,13 @@ export default function PromoDetailPage() {
     if (r.ok) await load()
   }
 
-  // กติกา: ทีมต้องระบุ (ยืนยัน) ก่อน งบโปรฯ ถึงถูกตัด
-  const handleConfirmToggle = async (id: string, confirmed: boolean) => {
-    if (confirmed && !confirm("ยืนยันตัดงบโปรโมชั่นสำหรับรายการนี้?")) return
+  // กติกา: ทีมต้องระบุ (ยืนยัน) ก่อน งบโปรฯ ถึงถูกตัด — ยืนยันแล้วถาวร ยกเลิกไม่ได้
+  const handleConfirmRepair = async (id: string) => {
+    if (!confirm("ยืนยันตัดงบโปรโมชั่นสำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
     const r = await fetch(`/api/promotions/repair/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirmed }),
+      body: JSON.stringify({ confirmed: true }),
     })
     if (r.ok) await load()
   }
@@ -99,12 +91,12 @@ export default function PromoDetailPage() {
     if (r.ok) await load()
   }
 
-  const handlePmConfirmToggle = async (id: string, confirmed: boolean) => {
-    if (confirmed && !confirm("ยืนยันตัดเพดาน PM สำหรับรายการนี้?")) return
+  const handleConfirmPm = async (id: string) => {
+    if (!confirm("ยืนยันตัดเพดาน PM สำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
     const r = await fetch(`/api/promotions/pm/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirmed }),
+      body: JSON.stringify({ confirmed: true }),
     })
     if (r.ok) await load()
   }
@@ -174,26 +166,6 @@ export default function PromoDetailPage() {
           })()}
         </div>
 
-        {/* Repair monthly breakdown from Excel */}
-        {repairMonthly && (repairMonthly.totalRepair as number) > 0 && (
-          <div className="bg-zinc-50 dark:bg-zinc-800/40 rounded-lg px-4 py-3 space-y-2">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ค่าซ่อมจริง — {repairMonthly.month as string}</p>
-            <div className="grid grid-cols-4 gap-3">
-              {([
-                ["ค่าอะไหล่", repairMonthly.partsAmount as number, "text-zinc-700"],
-                ["ยาง", repairMonthly.tireAmount as number, "text-zinc-700"],
-                ["ค่าแรง", repairMonthly.laborAmount as number, "text-zinc-700"],
-                ["รวม", repairMonthly.totalRepair as number, "text-red-500 font-bold"],
-              ] as [string, number, string][]).map(([label, val, cls]) => (
-                <div key={label}>
-                  <p className="text-[10px] text-zinc-400 mb-0.5">{label}</p>
-                  <p className={`text-sm ${cls}`}>{val ? val.toLocaleString("th-TH", { maximumFractionDigits: 0 }) : "0"}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Repair history */}
         <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
           <table className="w-full text-sm">
@@ -227,7 +199,7 @@ export default function PromoDetailPage() {
                             </span>
                           ) : c.confirmed ? (
                             <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
-                              ✓ ยืนยันตัดงบแล้ว
+                              ✓ ยืนยันตัดงบแล้ว · ยกเลิกไม่ได้
                             </span>
                           ) : (
                             <span
@@ -240,14 +212,13 @@ export default function PromoDetailPage() {
                         </td>
                         <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(c.amount)}</td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
-                          {!coveredByStock && (
-                            c.confirmed ? (
-                              <button onClick={() => handleConfirmToggle(c._id!, false)} className="text-xs text-zinc-400 hover:text-amber-600 mr-2" title="ยกเลิกการตัดงบ">ยกเลิกยืนยัน</button>
-                            ) : (
-                              <button onClick={() => handleConfirmToggle(c._id!, true)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
-                            )
+                          {!coveredByStock && !c.confirmed && (
+                            <button onClick={() => handleConfirmRepair(c._id!)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
                           )}
-                          <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
+                          {/* ยืนยันแล้ว = ถาวร ลบไม่ได้ (กันตัดงบแล้วหาย) */}
+                          {!c.confirmed && (
+                            <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
+                          )}
                         </td>
                       </tr>
                     )
@@ -392,7 +363,7 @@ export default function PromoDetailPage() {
                       </span>
                       {counted ? (
                         <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
-                          ✓ ยืนยันแล้ว
+                          ✓ ยืนยันแล้ว · ยกเลิกไม่ได้
                         </span>
                       ) : (
                         <span className="ml-2 text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5">
@@ -404,12 +375,12 @@ export default function PromoDetailPage() {
                     <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(p.amount)}</td>
                     <td className="px-3 py-2 text-zinc-400 text-xs">{p.notes}</td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {counted ? (
-                        <button onClick={() => handlePmConfirmToggle(p._id!, false)} className="text-xs text-zinc-400 hover:text-amber-600 mr-2" title="ยกเลิกการตัดเพดาน">ยกเลิกยืนยัน</button>
-                      ) : (
-                        <button onClick={() => handlePmConfirmToggle(p._id!, true)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
+                      {!counted && (
+                        <>
+                          <button onClick={() => handleConfirmPm(p._id!)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
+                          <button onClick={() => handlePmDelete(p._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
+                        </>
                       )}
-                      <button onClick={() => handlePmDelete(p._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
                     </td>
                   </tr>
                 )
