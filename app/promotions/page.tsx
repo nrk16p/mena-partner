@@ -59,7 +59,7 @@ function fmt(n: unknown) {
 }
 
 const TYPE_META: Record<ProType, { icon: React.ReactNode; color: string; label: string }> = {
-  pro1:   { icon: <Gift className="w-3.5 h-3.5" />,      color: "text-violet-600 bg-violet-50 dark:bg-violet-950/40 dark:text-violet-300 border-violet-200 dark:border-violet-800",   label: "ฟรีค่างวด" },
+  pro1:   { icon: <Gift className="w-3.5 h-3.5" />,      color: "text-violet-600 bg-violet-50 dark:bg-violet-950/40 dark:text-violet-300 border-violet-200 dark:border-violet-800",   label: "ค่าตอบแทนพิเศษเมื่อผ่อนชำระครบกำหนด" },
   pro2:   { icon: <Wrench className="w-3.5 h-3.5" />,    color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", label: "ฟรีซ่อม" },
   pro3:   { icon: <Settings2 className="w-3.5 h-3.5" />, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800",   label: "PM" },
   custom: { icon: <Plus className="w-3.5 h-3.5" />,      color: "text-zinc-600 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",           label: "อื่นๆ" },
