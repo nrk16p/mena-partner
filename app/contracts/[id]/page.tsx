@@ -540,132 +540,8 @@ export default function ContractDetailPage() {
         </div>
       )}
 
-      {/* Tax/Insurance cost summary — seeded from Excel, read-only */}
-      {step === 0 && form.taxInsuranceTotalCost ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ค่าใช้จ่าย ภาษี + ประกัน + พรบ</h2>
-            <span className="text-xs text-zinc-400">{form.insuranceCompany ?? ""}</span>
-          </div>
-          <div className="grid grid-cols-5 gap-3 mb-4">
-            {([
-              ["ประกันภัย", form.insuranceAmount],
-              ["พรบ", form.prbAmount],
-              ["ภาษีทะเบียน", form.taxAmount],
-              ["ตรวจสภาพ", form.inspectionCost],
-              ["รวมทั้งสิ้น", form.taxInsuranceTotalCost],
-            ] as [string, number | undefined][]).map(([label, val]) => (
-              <div key={label}>
-                <p className="text-xs text-zinc-400 mb-1">{label}</p>
-                <p className={`text-sm font-semibold ${label === "รวมทั้งสิ้น" ? "text-emerald-600" : ""}`}>{val ? formatMoney(val) : "-"}</p>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
-            <div><span className="text-zinc-400">จ่าย </span>{form.taxInstallmentCount ?? 0} งวด × {formatMoney(form.taxMonthlyInstallment ?? 0)}/เดือน</div>
-            <div><span className="text-zinc-400">ต่อภาษี </span>{formatDate(form.taxRenewalDate)}</div>
-            <div><span className="text-zinc-400">คงเหลือ </span><span className="text-zinc-700 font-medium">{formatMoney(form.taxBalanceRemaining ?? 0)}</span></div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Insurance info card — editable for admins */}
-      {step === 0 && (form.insurer || isAdmin) && (
-        <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${
-          form.taxExpiryDate && form.taxExpiryDate < today
-            ? "border-red-300 dark:border-red-800"
-            : "border-zinc-200 dark:border-zinc-800"
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">ข้อมูลประกันภัย / ภาษี</h2>
-            {form.taxExpiryDate && form.taxExpiryDate < today && (
-              <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">หมดอายุแล้ว</span>
-            )}
-          </div>
-          {isAdmin ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label className="text-xs">บริษัทประกัน</Label>
-                <Input
-                  value={String(form.insurer ?? "")}
-                  onChange={(e) => setForm((p) => p ? { ...p, insurer: e.target.value } : p)}
-                  placeholder="ชื่อบริษัทประกัน"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">ค่าประกัน/ภาษี ต่อเดือน (บาท)</Label>
-                <Input
-                  type="number" min="0"
-                  value={String(form.monthlyInsuranceFee ?? 0)}
-                  onChange={(e) => setForm((p) => p ? { ...p, monthlyInsuranceFee: Number(e.target.value) } : p)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">วันต่อล่าสุด</Label>
-                <ThaiDateInput
-                  value={String(form.taxRenewalDate ?? "")}
-                  onChange={(iso) => setForm((p) => p ? { ...p, taxRenewalDate: iso } : p)}
-                  disabled={!isAdmin}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">วันหมดอายุ</Label>
-                <ThaiDateInput
-                  value={String(form.taxExpiryDate ?? "")}
-                  onChange={(iso) => setForm((p) => p ? { ...p, taxExpiryDate: iso } : p)}
-                  disabled={!isAdmin}
-                  className={form.taxExpiryDate && form.taxExpiryDate < today ? "border-red-400 text-red-600" : ""}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">เบี้ยประกันภัย (บาท)</Label>
-                <Input
-                  type="number" min="0"
-                  value={String(form.insuranceAmount ?? 0)}
-                  onChange={(e) => setForm((p) => p ? { ...p, insuranceAmount: Number(e.target.value) } : p)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">เบี้ย พรบ (บาท)</Label>
-                <Input
-                  type="number" min="0"
-                  value={String(form.prbAmount ?? 0)}
-                  onChange={(e) => setForm((p) => p ? { ...p, prbAmount: Number(e.target.value) } : p)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">ค่าภาษีทะเบียน (บาท)</Label>
-                <Input
-                  type="number" min="0"
-                  value={String(form.taxAmount ?? 0)}
-                  onChange={(e) => setForm((p) => p ? { ...p, taxAmount: Number(e.target.value) } : p)}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-zinc-400 mb-1">บริษัทประกัน</p>
-                <p className="text-sm font-medium">{form.insurer || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-zinc-400 mb-1">วันต่อล่าสุด</p>
-                <p className="text-sm font-medium">{formatDate(form.taxRenewalDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-zinc-400 mb-1">วันหมดอายุ</p>
-                <p className={`text-sm font-medium ${form.taxExpiryDate && form.taxExpiryDate < today ? "text-red-600" : ""}`}>
-                  {formatDate(form.taxExpiryDate)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-zinc-400 mb-1">ค่างวดต่อเดือน</p>
-                <p className="text-sm font-medium">{form.monthlyInsuranceFee ? formatMoney(form.monthlyInsuranceFee) : "-"}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* ภาษี & ประกันภัย — ย้ายไปจัดการตามทะเบียนรถที่ /insurance-tax (การ์ดนี้ read-only) */}
+      {step === 0 && <InsuranceTaxCard plate={form.licensePlate} />}
 
       {error && <div className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</div>}
 
@@ -970,6 +846,79 @@ export default function ContractDetailPage() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── การ์ดภาษี & ประกันภัย (read-only) — ข้อมูลจริงจัดการตามทะเบียนรถที่ /insurance-tax ──
+type ItCycle = {
+  effectiveDate?: string; expiryDate?: string; insuranceCompany?: string; insurer?: string
+  insuranceAmount?: number; prbAmount?: number; taxAmount?: number; inspectionCost?: number
+  totalCost?: number; installmentCount?: number; monthlyInstallment?: number
+}
+function InsuranceTaxCard({ plate }: { plate?: string }) {
+  const [cycle, setCycle] = useState<ItCycle | null | undefined>(undefined) // undefined = กำลังโหลด
+  useEffect(() => {
+    if (!plate) { setCycle(null); return }
+    fetch(`/api/insurance-tax?plate=${encodeURIComponent(plate)}`)
+      .then((r) => (r.ok ? r.json() : { cycles: [] }))
+      .then((d) => setCycle((d.cycles ?? [])[0] ?? null))
+      .catch(() => setCycle(null))
+  }, [plate])
+
+  const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)
+  const expired = cycle?.expiryDate ? cycle.expiryDate < today : false
+  const manageLink = `/insurance-tax${plate ? `?q=${encodeURIComponent(plate)}` : ""}`
+
+  return (
+    <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${
+      expired ? "border-red-300 dark:border-red-800" : "border-zinc-200 dark:border-zinc-800"
+    }`}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+          ภาษี & ประกันภัย <span className="normal-case text-zinc-400">(ตามทะเบียนรถ)</span>
+        </h2>
+        <div className="flex items-center gap-2">
+          {expired && (
+            <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">หมดอายุแล้ว</span>
+          )}
+          <Link href={manageLink} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
+            จัดการภาษี & ประกันภัย →
+          </Link>
+        </div>
+      </div>
+      {cycle === undefined ? (
+        <p className="text-xs text-zinc-400">กำลังโหลด…</p>
+      ) : cycle === null ? (
+        <p className="text-xs text-zinc-400">
+          ยังไม่มีข้อมูลรอบภาษี/ประกันของทะเบียนนี้ — เพิ่มได้ที่เมนู งานประจำวัน → ภาษี & ประกันภัย
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-5 gap-3 mb-4">
+            {([
+              ["ประกันภัย", cycle.insuranceAmount],
+              ["พรบ", cycle.prbAmount],
+              ["ภาษีทะเบียน", cycle.taxAmount],
+              ["ตรวจสภาพ", cycle.inspectionCost],
+              ["รวมทั้งสิ้น", cycle.totalCost],
+            ] as [string, number | undefined][]).map(([label, val]) => (
+              <div key={label}>
+                <p className="text-xs text-zinc-400 mb-1">{label}</p>
+                <p className={`text-sm font-semibold ${label === "รวมทั้งสิ้น" ? "text-emerald-600" : ""}`}>
+                  {val ? formatMoney(val) : "-"}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
+            <div><span className="text-zinc-400">บริษัทประกัน </span>{cycle.insuranceCompany || cycle.insurer || "-"}</div>
+            <div><span className="text-zinc-400">คุ้มครอง </span>{formatDate(cycle.effectiveDate)} – <span className={expired ? "text-red-600 font-medium" : ""}>{formatDate(cycle.expiryDate)}</span></div>
+            <div><span className="text-zinc-400">เรียกเก็บ </span>{cycle.installmentCount ?? 0} งวด × {formatMoney(cycle.monthlyInstallment ?? 0)}/เดือน</div>
+            <div />
+          </div>
+        </>
+      )}
     </div>
   )
 }

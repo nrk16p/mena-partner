@@ -1,5 +1,6 @@
 import type { Db } from "mongodb"
 import { nextMonth } from "@/lib/utils"
+import { getInsuranceDeductionForPlate } from "@/lib/insurance-tax"
 
 export interface PayrollResult {
   contractCode: string
@@ -45,7 +46,7 @@ export async function calculatePayrollEntry(
   const [contract, tripAgg, fuelRec, gpsRec, repairRec, installRec, adjRec] = await Promise.all([
     db.collection("contracts").findOne(
       { contractCode },
-      { projection: { taxMonthlyInstallment: 1, repairMonthlyInstallment: 1, monthlyInstallment: 1 } }
+      { projection: { taxMonthlyInstallment: 1, repairMonthlyInstallment: 1, monthlyInstallment: 1, licensePlate: 1 } }
     ),
     db.collection("trips").aggregate([
       { $match: { contractCode, date: { $gte: start, $lt: end } } },
@@ -74,7 +75,10 @@ export async function calculatePayrollEntry(
 
   const fuel             = (fuelRec?.deductionAmount as number) ?? 0
   const gps              = (gpsRec?.monthlyFee as number) ?? 700
-  const taxInsurance     = (contract.taxMonthlyInstallment as number) ?? 0
+  // ภาษี/ประกัน: หักตามรอบของทะเบียนรถ (vehicle_insurance_tax) — ทะเบียนที่ยังไม่มีข้อมูล
+  // ในโมดูลใหม่ (null) fallback ไป field เดิมใน contract ช่วงเปลี่ยนผ่าน
+  const cycleDeduction   = await getInsuranceDeductionForPlate(db, (contract.licensePlate as string) ?? "", month)
+  const taxInsurance     = cycleDeduction ?? ((contract.taxMonthlyInstallment as number) ?? 0)
   const installment      = (installRec?.monthlyAmount as number) ?? (contract.monthlyInstallment as number) ?? 0
   const repairInstallment = (contract.repairMonthlyInstallment as number) ?? 0
 

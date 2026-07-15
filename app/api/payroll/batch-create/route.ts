@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
 import { nextMonth } from "@/lib/utils"
+import { getInsuranceDeductionMap, normPlateIT } from "@/lib/insurance-tax"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -70,9 +71,15 @@ export async function POST(req: NextRequest) {
   // 5. Contract lookup for installment + insurance
   const contracts = await db.collection("contracts")
     .find({ contractCode: { $in: pendingCodes } }, {
-      projection: { contractCode: 1, monthlyInstallment: 1, monthlyInsuranceFee: 1 }
+      projection: { contractCode: 1, monthlyInstallment: 1, monthlyInsuranceFee: 1, licensePlate: 1 }
     }).toArray()
   const contractMap = Object.fromEntries(contracts.map((c) => [c.contractCode as string, c]))
+
+  // ภาษี/ประกัน: หักตามรอบของทะเบียนรถ (vehicle_insurance_tax) — null = ทะเบียนยังไม่มีข้อมูล
+  // ในโมดูลใหม่ → fallback ไป contract.monthlyInsuranceFee ช่วงเปลี่ยนผ่าน
+  const insuranceMap = await getInsuranceDeductionMap(
+    db, month, contracts.map((c) => c.licensePlate as string).filter(Boolean)
+  )
 
   // 6. Build payroll entries
   const now = new Date().toISOString()
@@ -83,7 +90,10 @@ export async function POST(req: NextRequest) {
     const transportFee  = trips?.total ?? 0
     const mgmtFee8pct   = Math.round(transportFee * 0.08 * 100) / 100
     const installment   = (contract?.monthlyInstallment as number) ?? 0
-    const taxInsurance  = (contract?.monthlyInsuranceFee as number) ?? 0
+    const cycleDeduction = contract?.licensePlate
+      ? insuranceMap.get(normPlateIT(contract.licensePlate as string)) ?? null
+      : null
+    const taxInsurance  = cycleDeduction ?? ((contract?.monthlyInsuranceFee as number) ?? 0)
     const totalIncome   = transportFee
     const totalDeductions = mgmtFee8pct + installment + taxInsurance
     return {

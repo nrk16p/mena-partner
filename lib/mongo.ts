@@ -59,6 +59,9 @@ function ensureIndexes(client: MongoClient): Promise<unknown> {
     db.collection("stock_movements").createIndex({ mr: 1 }),
     db.collection("stock_movements").createIndex({ promoType: 1 }),
     db.collection("debt_acceptances").createIndex({ repairOrderNo: 1 }),
+    // vehicle_insurance_tax = รอบต่อภาษี/ประกันรายทะเบียน — join ด้วย platePlain, แจ้งเตือนตาม expiryDate
+    db.collection("vehicle_insurance_tax").createIndex({ platePlain: 1, createdAt: -1 }),
+    db.collection("vehicle_insurance_tax").createIndex({ expiryDate: 1 }),
   ]).catch(() => { /* non-fatal: index creation errors don't block the app */ })
 }
 

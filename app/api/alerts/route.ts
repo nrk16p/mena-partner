@@ -55,25 +55,56 @@ export async function GET() {
   const today = new Date(Date.now() + BKK_MS).toISOString().slice(0, 10)
   const in60  = new Date(Date.now() + BKK_MS + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  const insuranceContracts = await db
-    .collection("contracts")
-    .find(
-      { taxExpiryDate: { $lte: in60 } },
-      { projection: { contractCode: 1, driverName: 1, taxExpiryDate: 1 } }
-    )
-    .sort({ taxExpiryDate: 1 })
-    .toArray()
+  // อ่านจากรอบภาษี/ประกันตามทะเบียนรถ (vehicle_insurance_tax — รอบล่าสุดต่อทะเบียน)
+  // ถ้าโมดูลใหม่ยังไม่มีข้อมูล (ก่อน migration) fallback ไปอ่าน field เดิมใน contracts
+  const latestCycles = await db.collection("vehicle_insurance_tax").aggregate([
+    { $sort: { createdAt: -1 } },
+    { $group: { _id: "$platePlain", latest: { $first: "$$ROOT" } } },
+  ]).toArray()
 
-  for (const c of insuranceContracts) {
-    const expired = (c.taxExpiryDate as string) < today
-    alerts.push({
-      type: expired ? "insurance_expired" : "insurance_expiring",
-      severity: expired ? "critical" : "warning",
-      contractCode: c.contractCode as string,
-      driverName: (c.driverName as string) ?? c.contractCode,
-      message: expired ? "ประกันภัย/ภาษีหมดอายุแล้ว" : "ประกันภัย/ภาษีใกล้หมดอายุ",
-      value: c.taxExpiryDate as string,
-    })
+  if (latestCycles.length > 0) {
+    const activeContracts = await db
+      .collection("contracts")
+      .find({ status: "active" }, { projection: { contractCode: 1, driverName: 1, licensePlate: 1 } })
+      .toArray()
+    const plateNorm = (p?: string) => (p ?? "").replace(/^[^0-9]*/, "").trim()
+    const byPlate = new Map(activeContracts.map((c) => [plateNorm(c.licensePlate as string), c]))
+
+    for (const g of latestCycles) {
+      const cyc = g.latest as { licensePlate?: string; expiryDate?: string }
+      if (!cyc.expiryDate || cyc.expiryDate > in60) continue
+      const expired = cyc.expiryDate < today
+      const con = byPlate.get(g._id as string)
+      alerts.push({
+        type: expired ? "insurance_expired" : "insurance_expiring",
+        severity: expired ? "critical" : "warning",
+        contractCode: (con?.contractCode as string) ?? (cyc.licensePlate ?? ""),
+        driverName: (con?.driverName as string) ?? (cyc.licensePlate ?? ""),
+        message: expired ? "ประกันภัย/ภาษีหมดอายุแล้ว" : "ประกันภัย/ภาษีใกล้หมดอายุ",
+        value: cyc.expiryDate,
+      })
+    }
+  } else {
+    const insuranceContracts = await db
+      .collection("contracts")
+      .find(
+        { taxExpiryDate: { $lte: in60 } },
+        { projection: { contractCode: 1, driverName: 1, taxExpiryDate: 1 } }
+      )
+      .sort({ taxExpiryDate: 1 })
+      .toArray()
+
+    for (const c of insuranceContracts) {
+      const expired = (c.taxExpiryDate as string) < today
+      alerts.push({
+        type: expired ? "insurance_expired" : "insurance_expiring",
+        severity: expired ? "critical" : "warning",
+        contractCode: c.contractCode as string,
+        driverName: (c.driverName as string) ?? c.contractCode,
+        message: expired ? "ประกันภัย/ภาษีหมดอายุแล้ว" : "ประกันภัย/ภาษีใกล้หมดอายุ",
+        value: c.taxExpiryDate as string,
+      })
+    }
   }
 
   // 3. Repair budget > 90% utilized

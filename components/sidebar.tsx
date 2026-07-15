@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
-  ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt,
+  ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
@@ -32,6 +32,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     items: [
       { href: "/trips", label: "เที่ยววิ่ง", icon: ClipboardList },
       { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ", icon: Wrench },
+      { href: "/insurance-tax", label: "ภาษี & ประกันภัย", icon: BadgeCheck },
       { href: "/promotions", label: "โปรโมชั่น", icon: ShieldCheck },
     ],
   },
