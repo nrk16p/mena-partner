@@ -49,6 +49,7 @@ export interface LedgerEntry {
   monthlyAmount: number
   startMonth: string          // "YYYY-MM"
   paidAmount: number          // สะสมยอดที่หักแล้ว (deposit: = balance ก่อนหักถอน)
+  openingPaid?: number        // ยอดที่ผ่อนมาแล้วก่อนเข้าระบบ (migrate) — รวมอยู่ใน paidAmount แล้ว
   withdrawnAmount?: number    // deposit เท่านั้น
   status: "active" | "paid" | "paused" | "cancelled"
   notes?: string
@@ -146,7 +147,11 @@ export async function getLedgerDeductions(db: any, contractCode: string, month: 
     }
     if (amount <= 0) continue
 
-    const n = (countByEntry.get(entryId) ?? 0) + 1
+    // งวดที่ n = งวดที่หักผ่านระบบ + งวดที่ผ่อนมาก่อน migrate (openingPaid ÷ ยอด/เดือน)
+    const openingInstallments = entry.openingPaid && entry.monthlyAmount
+      ? Math.round((entry.openingPaid as number) / (entry.monthlyAmount as number))
+      : 0
+    const n = (countByEntry.get(entryId) ?? 0) + openingInstallments + 1
     const srcType = (entry.source?.type ?? "manual") as SourceType
     const refLabel = entry.source?.refLabel as string | undefined
     const label = `${SOURCE_LABELS[srcType] ?? srcType}${refLabel ? " " + refLabel : ""} (งวดที่ ${n})`

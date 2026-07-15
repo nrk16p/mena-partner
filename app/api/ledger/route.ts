@@ -210,6 +210,12 @@ export async function POST(req: NextRequest) {
   if (kind === "deposit" && targetAmount !== undefined && !(targetAmount > 0)) {
     return NextResponse.json({ error: "targetAmount must be > 0" }, { status: 400 })
   }
+  // migrate: ยอดที่ผ่อนมาแล้วก่อนเข้าระบบ (debt เท่านั้น; ต้องน้อยกว่ายอดรวม)
+  const alreadyPaid = typeof body.alreadyPaid === "number" && body.alreadyPaid > 0 ? round2(body.alreadyPaid) : 0
+  if (alreadyPaid > 0) {
+    if (kind !== "debt") return NextResponse.json({ error: "alreadyPaid ใช้ได้กับหนี้เท่านั้น" }, { status: 400 })
+    if (alreadyPaid >= (principal as number)) return NextResponse.json({ error: "alreadyPaid ต้องน้อยกว่ายอดหนี้รวม" }, { status: 400 })
+  }
 
   const debtCode = await nextDebtCode(db)
 
@@ -225,7 +231,9 @@ export async function POST(req: NextRequest) {
     ...(kind === "deposit" && targetAmount !== undefined ? { targetAmount: round2(targetAmount) } : {}),
     monthlyAmount: round2(monthlyAmount),
     startMonth,
-    paidAmount: 0,
+    // migrate: ระบุยอดที่ผ่อนมาแล้วก่อนเข้าระบบได้ (ยอดรวม principal คงเต็ม)
+    paidAmount: alreadyPaid,
+    ...(alreadyPaid > 0 ? { openingPaid: alreadyPaid } : {}),
     ...(kind === "deposit" ? { withdrawnAmount: 0 } : {}),
     status: "active",
     notes,

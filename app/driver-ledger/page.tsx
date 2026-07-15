@@ -836,6 +836,7 @@ function AddDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: () 
   const [monthly, setMonthly]   = useState("")
   const [monthlyTouched, setMonthlyTouched] = useState(false)
   const [startMonth, setStartMonth] = useState(currentMonth())
+  const [alreadyPaid, setAlreadyPaid] = useState("")   // migrate: ผ่อนมาแล้ว (debt เท่านั้น)
   const [notes, setNotes]       = useState("")
   const [busy, setBusy]         = useState(false)
   const [error, setError]       = useState("")
@@ -885,6 +886,7 @@ function AddDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: () 
       else body.targetAmount = a
     }
     if (Number(count) > 0) body.installmentCount = Number(count)
+    if (kind === "debt" && Number(alreadyPaid) > 0) body.alreadyPaid = Number(alreadyPaid)
     if (notes.trim()) body.notes = notes.trim()
 
     setBusy(true)
@@ -1006,6 +1008,28 @@ function AddDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: () 
               <Input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} className="h-9 text-xs" />
             </div>
           </div>
+
+          {/* migrate: ผ่อนมาแล้ว (หนี้เท่านั้น) — ยอดรวมคงเต็ม ระบบเดินต่อจากงวดจริง */}
+          {kind === "debt" && (
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-500 block mb-1.5">
+                ผ่อนมาแล้ว (บาท) — สำหรับหนี้เก่าที่หักไปบางส่วนแล้ว (เว้นว่าง = ยังไม่เคยหัก)
+              </label>
+              <Input
+                type="number" min="0" step="any"
+                value={alreadyPaid}
+                placeholder="0"
+                onChange={(e) => setAlreadyPaid(e.target.value)}
+                className="h-9 text-xs"
+              />
+              {Number(alreadyPaid) > 0 && Number(amount) > 0 && (
+                <p className="text-[10px] text-zinc-400 mt-1">
+                  คงเหลือ {(Number(amount) - Number(alreadyPaid)).toLocaleString("th-TH")} บาท
+                  {Number(monthly) > 0 && <> · เริ่มต่อที่งวดที่ {Math.round(Number(alreadyPaid) / Number(monthly)) + 1}</>}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* หมายเหตุ */}
           <div>

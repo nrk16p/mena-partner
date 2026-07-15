@@ -677,7 +677,7 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
   const [formPanel, setFormPanel] = useState<{ itemType: ItemType; item: Item | null; mode: "renew" | "edit" } | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
   // convert รายการ → หนี้ผ่อนใน driver_ledger (ล้างงวดหักฝั่งนี้อัตโนมัติ กันหักซ้ำ)
-  const [convertFor, setConvertFor] = useState<{ item: Item; count: string; start: string } | null>(null)
+  const [convertFor, setConvertFor] = useState<{ item: Item; count: string; start: string; paid: string } | null>(null)
   const [converting, setConverting] = useState(false)
 
   async function submitConvert() {
@@ -693,6 +693,7 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
           convertFrom: { type: "insurance_item", itemId: convertFor.item._id },
           installmentCount: count,
           startMonth: convertFor.start,
+          alreadyPaid: Number(convertFor.paid) > 0 ? Number(convertFor.paid) : undefined,
         }),
       })
       if (!res.ok) {
@@ -833,7 +834,7 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
                           title="แปลงเป็นหนี้ผ่อน หักเงินเดือนผ่านระบบหนี้สิน (ยกเลิกงวดหักของรายการนี้)"
                           onClick={() => {
                             const ym = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 7)
-                            setConvertFor({ item: it, count: String(it.installmentCount ?? 12), start: ym })
+                            setConvertFor({ item: it, count: String(it.installmentCount ?? 12), start: ym, paid: "" })
                           }}
                           className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 px-2 py-1 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-950/60 whitespace-nowrap"
                         >
@@ -1015,8 +1016,21 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
                 />
               </div>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">ผ่อนมาแล้ว (บาท) — สำหรับข้อมูลเก่าที่หักไปบางส่วนแล้ว (เว้นว่าง = ยังไม่เคยหัก)</label>
+              <Input
+                type="number" min="0" step="any"
+                value={convertFor.paid}
+                placeholder="0"
+                onChange={(e) => setConvertFor((p) => p ? { ...p, paid: e.target.value } : p)}
+              />
+            </div>
             <p className="text-[11px] text-zinc-500">
               หัก/เดือน ≈ {formatMoney(Math.round(((convertFor.item.amount ?? 0) / Math.max(1, Number(convertFor.count) || 1)) * 100) / 100)} บาท
+              {Number(convertFor.paid) > 0 && (
+                <> · คงเหลือ {formatMoney(Math.max(0, (convertFor.item.amount ?? 0) - Number(convertFor.paid)))} บาท
+                (เริ่มต่อที่งวดที่ {Math.round(Number(convertFor.paid) / Math.max(0.01, (convertFor.item.amount ?? 0) / Math.max(1, Number(convertFor.count) || 1))) + 1})</>
+              )}
             </p>
             <div className="flex gap-2">
               <button
