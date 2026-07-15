@@ -4,10 +4,11 @@ import { useEffect, useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import {
   Wrench, Settings2, Circle, Plus, Trash2, ChevronDown, ChevronRight,
-  Search, X, Check, FileText, ShieldCheck,
+  Search, X, Check, FileText, ShieldCheck, Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DebtImport, StockImport } from "@/components/excel-import"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -545,6 +546,7 @@ function DebtTab() {
   const [loading,    setLoading]    = useState(true)
   const [q,          setQ]          = useState("")
   const [typeFilter, setTypeFilter] = useState("")
+  const [showImport, setShowImport] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -580,8 +582,15 @@ function DebtTab() {
         </div>
       </div>
 
+      {/* แผงนำเข้า Excel */}
+      {showImport && (
+        <div className="bg-zinc-50/60 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
+          <DebtImport onImported={load} />
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <SearchBar value={q} onChange={setQ} placeholder="ค้นหาเลขที่ใบ รหัสพนักงาน ชื่อ ทะเบียน..." />
         <div className="flex gap-1.5">
           {([["", "ทั้งหมด"], ["repair", "ซ่อม"], ["tire", "ยาง"], ["accident", "อุบัติเหตุ"]] as [string, string][]).map(([val, lbl]) => (
@@ -596,6 +605,17 @@ function DebtTab() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setShowImport((v) => !v)}
+          className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            showImport
+              ? "bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+          }`}
+        >
+          <Upload className="w-3.5 h-3.5" /> {showImport ? "ปิดแผงนำเข้า" : "นำเข้า Excel"}
+        </button>
       </div>
 
       {/* Table */}
@@ -741,6 +761,7 @@ function MovementTab() {
   const [loading,     setLoading]     = useState(true)
   const [q,           setQ]           = useState("")
   const [groupFilter, setGroupFilter] = useState("")
+  const [showImport,  setShowImport]  = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -777,8 +798,15 @@ function MovementTab() {
         </div>
       </div>
 
+      {/* แผงนำเข้า Excel */}
+      {showImport && (
+        <div className="bg-zinc-50/60 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
+          <StockImport onImported={load} />
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-start">
         <SearchBar value={q} onChange={setQ} placeholder="ค้นหาสินค้า รหัส เลขรถ ทะเบียน MR WD..." />
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setGroupFilter("")}
@@ -802,6 +830,17 @@ function MovementTab() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setShowImport((v) => !v)}
+          className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            showImport
+              ? "bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+          }`}
+        >
+          <Upload className="w-3.5 h-3.5" /> {showImport ? "ปิดแผงนำเข้า" : "นำเข้า Excel"}
+        </button>
       </div>
 
       {loading ? (
