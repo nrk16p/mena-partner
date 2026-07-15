@@ -5,19 +5,26 @@ export function normPlateIT(p?: string | null): string {
   return (p ?? "").replace(/^[^0-9]*/, "").trim()
 }
 
-export interface InsuranceCycle {
+// ── รายการแยก 4 ประเภท (item-level) ──────────────────────────────────────────
+export const ITEM_TYPES = ["insurance", "prb", "tax", "inspection"] as const
+export type ItemType = typeof ITEM_TYPES[number]
+export const ITEM_LABELS: Record<ItemType, string> = {
+  insurance: "ประกันภัย",
+  prb: "พรบ.",
+  tax: "ภาษีทะเบียน",
+  inspection: "ตรวจสภาพ",
+}
+
+/** 1 doc = 1 รายการ (ประกัน/พรบ./ภาษี/ตรวจสภาพ) ต่ออายุแยกอิสระต่อกัน */
+export interface InsuranceItem {
   _id?: string
   licensePlate: string          // canonical with สบ. prefix as given
   platePlain: string            // normalized (71-1515) — set on write, used for joins
-  effectiveDate?: string        // ISO YYYY-MM-DD วันเริ่มคุ้มครอง/ต่อภาษี
+  itemType: ItemType
+  effectiveDate?: string        // ISO YYYY-MM-DD วันเริ่มคุ้มครอง/ต่ออายุ
   expiryDate?: string           // ISO YYYY-MM-DD วันหมดอายุ
-  insuranceCompany?: string
-  insurer?: string              // ผู้ทำเรื่อง/ผู้รับผิดชอบ
-  insuranceAmount?: number      // ประกันภัย
-  prbAmount?: number            // พรบ.
-  taxAmount?: number            // ภาษีทะเบียน
-  inspectionCost?: number       // ตรวจสภาพ
-  totalCost?: number            // รวม (ถ้าไม่ส่งมา คำนวณจาก 4 ตัวบน)
+  amount?: number               // ค่าใช้จ่ายของรายการนี้
+  company?: string              // บริษัท (ใช้กับ insurance/prb)
   installmentCount?: number     // จำนวนงวดเรียกเก็บจาก พขร.
   monthlyInstallment?: number   // ยอดหัก/เดือน
   collectStart?: string         // "YYYY-MM" เดือนแรกที่หัก
@@ -25,7 +32,34 @@ export interface InsuranceCycle {
   status: "active" | "renewed"  // renewed = ถูกแทนที่ด้วยรอบใหม่แล้ว
   attachments?: { name: string; url: string }[]
   notes?: string
-  migratedFrom?: string         // contractCode ถ้ามาจาก migration
+  migratedFrom?: string         // contractCode / ที่มา ถ้ามาจาก migration
+  createdAt: string
+  updatedAt: string
+}
+
+/** @deprecated โครงเก่าแบบ bundled (1 doc = ประกัน+พรบ.+ภาษี+ตรวจสภาพ)
+ *  docs พวกนี้ถูก migrate เป็น InsuranceItem แล้ว (status "converted") — เก็บ type ไว้อ่านของเก่าเท่านั้น */
+export interface InsuranceCycle {
+  _id?: string
+  licensePlate: string
+  platePlain: string
+  effectiveDate?: string
+  expiryDate?: string
+  insuranceCompany?: string
+  insurer?: string
+  insuranceAmount?: number
+  prbAmount?: number
+  taxAmount?: number
+  inspectionCost?: number
+  totalCost?: number
+  installmentCount?: number
+  monthlyInstallment?: number
+  collectStart?: string
+  collectEnd?: string
+  status: "active" | "renewed" | "converted"
+  attachments?: { name: string; url: string }[]
+  notes?: string
+  migratedFrom?: string
   createdAt: string
   updatedAt: string
 }
@@ -35,7 +69,7 @@ const EXPIRING_DAYS = 60
 
 /** สถานะแสดงผล: active(ปกติ) | expiring(หมดใน<=60วัน) | expired | renewed */
 export function cycleDisplayStatus(
-  c: Pick<InsuranceCycle, "expiryDate" | "status">,
+  c: Pick<InsuranceItem, "expiryDate" | "status">,
   todayISO?: string
 ): "active" | "expiring" | "expired" | "renewed" {
   if (c.status === "renewed") return "renewed"
@@ -48,42 +82,56 @@ export function cycleDisplayStatus(
   return "active"
 }
 
-/** เดือน "YYYY-MM" อยู่ในช่วง collectStart..collectEnd ของ cycle หรือไม่
+/** เดือน "YYYY-MM" อยู่ในช่วง collectStart..collectEnd ของรายการหรือไม่
  *  (ไม่ระบุขอบไหน = เปิดปลายด้านนั้น — record จาก migration เก่าไม่มีช่วงหัก ให้หักต่อเนื่องตามพฤติกรรมเดิม) */
-function monthInCollectRange(c: Pick<InsuranceCycle, "collectStart" | "collectEnd">, month: string): boolean {
+function monthInCollectRange(c: Pick<InsuranceItem, "collectStart" | "collectEnd">, month: string): boolean {
   if (c.collectStart && month < c.collectStart) return false
   if (c.collectEnd && month > c.collectEnd) return false
   return true
 }
 
+/** รวมยอดหักของ item docs 1 ทะเบียน: ต่อ itemType เอา doc createdAt ล่าสุดที่เดือนอยู่ในช่วงหัก
+ *  แล้ว sum monthlyInstallment ?? 0 ข้ามทุก itemType — ไม่มี item doc เลย → null */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pickDeduction(cycles: any[], month: string): number | null {
-  if (cycles.length === 0) return null
-  // เอาใบที่เดือนอยู่ในช่วงหัก — ถ้าซ้อนกันหลายใบ เอาใบ createdAt ล่าสุด
-  const inRange = cycles
-    .filter((c) => monthInCollectRange(c, month))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  if (inRange.length === 0) return 0 // มี cycle แต่เดือนนี้อยู่นอกช่วงหักทุกใบ → หยุดหัก
-  return inRange[0].monthlyInstallment ?? 0
+function sumItemDeductions(items: any[], month: string): number | null {
+  if (items.length === 0) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const byType = new Map<string, any[]>()
+  for (const it of items) {
+    const arr = byType.get(it.itemType) ?? []
+    arr.push(it)
+    byType.set(it.itemType, arr)
+  }
+  let sum = 0
+  for (const arr of byType.values()) {
+    const inRange = arr
+      .filter((c) => monthInCollectRange(c, month))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    if (inRange.length > 0) sum += inRange[0].monthlyInstallment ?? 0
+    // เดือนนอกช่วงหักทุกใบของ type นี้ → type นี้ contribute 0 (หยุดหัก)
+  }
+  return sum
 }
 
-/** ยอดหักประกัน/ภาษีของทะเบียนสำหรับเดือน payroll ("YYYY-MM"):
- *  - ไม่มี cycle ของทะเบียนนี้เลย → null (ให้ caller fallback ไป field เดิมใน contract)
- *  - มี cycle แต่เดือนนี้อยู่นอกช่วง collectStart..collectEnd ทุกใบ → 0 (หยุดหัก)
- *  - เดือนอยู่ในช่วงของ cycle ไหน (เอาใบ createdAt ล่าสุดถ้าซ้อน) → monthlyInstallment ?? 0 */
+/** ยอดหักประกัน/ภาษีของทะเบียนสำหรับเดือน payroll ("YYYY-MM") — item-level:
+ *  - ทะเบียนไม่มี item doc เลย → null (ให้ caller fallback ไป field เดิมใน contract)
+ *  - มี item docs → รวมยอดหักทุก itemType: ต่อ type เอาใบ createdAt ล่าสุดที่เดือนอยู่ในช่วง
+ *    collectStart..collectEnd (ไม่ระบุ = เปิดปลาย) แล้วบวก monthlyInstallment ?? 0
+ *    (type ที่เดือนอยู่นอกช่วงทุกใบ → 0)
+ *  หมายเหตุ: docs bundled เก่า (ไม่มี itemType) ถูก exclude เสมอ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getInsuranceDeductionForPlate(db: any, licensePlate: string, month: string): Promise<number | null> {
   const platePlain = normPlateIT(licensePlate)
   if (!platePlain) return null
-  const cycles = await db
+  const items = await db
     .collection(COLL)
-    .find({ platePlain })
-    .project({ collectStart: 1, collectEnd: 1, monthlyInstallment: 1, createdAt: 1 })
+    .find({ platePlain, itemType: { $exists: true } })
+    .project({ itemType: 1, collectStart: 1, collectEnd: 1, monthlyInstallment: 1, createdAt: 1 })
     .toArray()
-  return pickDeduction(cycles, month)
+  return sumItemDeductions(items, month)
 }
 
-/** batch เวอร์ชันของข้างบน: คืน Map<platePlain, number|null> ครอบทุก plate ที่ส่งเข้า (plate ที่ไม่มี cycle → null) */
+/** batch เวอร์ชันของข้างบน: คืน Map<platePlain, number|null> ครอบทุก plate ที่ส่งเข้า (plate ที่ไม่มี item doc → null) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getInsuranceDeductionMap(db: any, month: string, plates: string[]): Promise<Map<string, number | null>> {
   const plains = Array.from(new Set(plates.map(normPlateIT).filter(Boolean)))
@@ -91,19 +139,19 @@ export async function getInsuranceDeductionMap(db: any, month: string, plates: s
   for (const p of plates) out.set(normPlateIT(p), null)
   if (plains.length === 0) return out
 
-  const cycles = await db
+  const items = await db
     .collection(COLL)
-    .find({ platePlain: { $in: plains } })
-    .project({ platePlain: 1, collectStart: 1, collectEnd: 1, monthlyInstallment: 1, createdAt: 1 })
+    .find({ platePlain: { $in: plains }, itemType: { $exists: true } })
+    .project({ platePlain: 1, itemType: 1, collectStart: 1, collectEnd: 1, monthlyInstallment: 1, createdAt: 1 })
     .toArray()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const byPlate = new Map<string, any[]>()
-  for (const c of cycles) {
+  for (const c of items) {
     const arr = byPlate.get(c.platePlain) ?? []
     arr.push(c)
     byPlate.set(c.platePlain, arr)
   }
-  for (const [plate, arr] of byPlate) out.set(plate, pickDeduction(arr, month))
+  for (const [plate, arr] of byPlate) out.set(plate, sumItemDeductions(arr, month))
   return out
 }

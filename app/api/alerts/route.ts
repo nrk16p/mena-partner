@@ -55,14 +55,18 @@ export async function GET() {
   const today = new Date(Date.now() + BKK_MS).toISOString().slice(0, 10)
   const in60  = new Date(Date.now() + BKK_MS + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  // อ่านจากรอบภาษี/ประกันตามทะเบียนรถ (vehicle_insurance_tax — รอบล่าสุดต่อทะเบียน)
+  // อ่านจากรายการภาษี/ประกันตามทะเบียนรถ (vehicle_insurance_tax — รายการล่าสุดต่อทะเบียน+ประเภท)
   // ถ้าโมดูลใหม่ยังไม่มีข้อมูล (ก่อน migration) fallback ไปอ่าน field เดิมใน contracts
-  const latestCycles = await db.collection("vehicle_insurance_tax").aggregate([
+  const ITEM_LABELS: Record<string, string> = {
+    insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษีทะเบียน", inspection: "ตรวจสภาพ",
+  }
+  const latestItems = await db.collection("vehicle_insurance_tax").aggregate([
+    { $match: { itemType: { $exists: true } } },
     { $sort: { createdAt: -1 } },
-    { $group: { _id: "$platePlain", latest: { $first: "$$ROOT" } } },
+    { $group: { _id: { plate: "$platePlain", itemType: "$itemType" }, latest: { $first: "$$ROOT" } } },
   ]).toArray()
 
-  if (latestCycles.length > 0) {
+  if (latestItems.length > 0) {
     const activeContracts = await db
       .collection("contracts")
       .find({ status: "active" }, { projection: { contractCode: 1, driverName: 1, licensePlate: 1 } })
@@ -70,18 +74,20 @@ export async function GET() {
     const plateNorm = (p?: string) => (p ?? "").replace(/^[^0-9]*/, "").trim()
     const byPlate = new Map(activeContracts.map((c) => [plateNorm(c.licensePlate as string), c]))
 
-    for (const g of latestCycles) {
-      const cyc = g.latest as { licensePlate?: string; expiryDate?: string }
-      if (!cyc.expiryDate || cyc.expiryDate > in60) continue
-      const expired = cyc.expiryDate < today
-      const con = byPlate.get(g._id as string)
+    for (const g of latestItems) {
+      const item = g.latest as { licensePlate?: string; expiryDate?: string; itemType?: string }
+      if (!item.expiryDate || item.expiryDate > in60) continue
+      const expired = item.expiryDate < today
+      const key = (g._id as { plate: string }).plate
+      const con = byPlate.get(key)
+      const label = ITEM_LABELS[item.itemType ?? ""] ?? "ประกันภัย/ภาษี"
       alerts.push({
         type: expired ? "insurance_expired" : "insurance_expiring",
         severity: expired ? "critical" : "warning",
-        contractCode: (con?.contractCode as string) ?? (cyc.licensePlate ?? ""),
-        driverName: (con?.driverName as string) ?? (cyc.licensePlate ?? ""),
-        message: expired ? "ประกันภัย/ภาษีหมดอายุแล้ว" : "ประกันภัย/ภาษีใกล้หมดอายุ",
-        value: cyc.expiryDate,
+        contractCode: (con?.contractCode as string) ?? (item.licensePlate ?? ""),
+        driverName: (con?.driverName as string) ?? (item.licensePlate ?? ""),
+        message: expired ? `${label}หมดอายุแล้ว` : `${label}ใกล้หมดอายุ`,
+        value: item.expiryDate,
       })
     }
   } else {

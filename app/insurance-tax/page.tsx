@@ -1,10 +1,12 @@
 "use client"
 
 /**
- * ภาษี & ประกันภัย — ติดตามรอบต่อภาษี/ประกันภัยรถต่อทะเบียน
- * - list รวมทุกทะเบียน + สถานะรอบปัจจุบัน (ใช้งาน/ใกล้หมด/หมดแล้ว/ยังไม่มีข้อมูล)
- * - ต่ออายุ = POST รอบใหม่ (backend ปิดรอบเก่าเป็น renewed ให้อัตโนมัติ)
- * - ประวัติทุกรอบต่อทะเบียนดูได้จาก drawer (GET ?plate=)
+ * ภาษี & ประกันภัย — ติดตามรายการต่ออายุแบบแยก 4 รายการต่อทะเบียน
+ * - insurance = ประกันภัย / prb = พรบ. / tax = ภาษีทะเบียน / inspection = ตรวจสภาพ
+ * - แต่ละรายการมีวันเริ่ม/วันหมดอายุ + แผนหักเงินเดือน (จำนวนงวด, หัก/เดือน, ช่วงเดือนเก็บ) ของตัวเอง
+ * - ต่ออายุ = POST รายการใหม่ (backend ปิดรายการเดิม plate+type เดียวกันเป็น renewed อัตโนมัติ)
+ * - "ต่ออายุทั้งชุด" = POST { bulk: true, items: [...] } ครั้งเดียว 4 รายการ
+ * - ประวัติทุกรายการต่อทะเบียนดูใน drawer "จัดการ" (GET ?plate= แล้ว group ตาม itemType)
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
@@ -12,7 +14,7 @@ import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import {
   ShieldCheck, Search, Download, Clock, X, RefreshCw, Pencil, Upload,
-  FileText, Trash2, PlusCircle,
+  FileText, Trash2, PlusCircle, Layers, Settings2, ChevronDown, ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,26 +22,25 @@ import { usePagination, PaginationBar } from "@/components/pagination"
 import { ThaiDateInput, displayThaiDate } from "@/components/thai-date-input"
 import { formatMoney } from "@/lib/utils"
 
-// ────────────────────────── types (ตาม API /api/insurance-tax) ──────────────────────────
+// ────────────────────────── types (ตาม API /api/insurance-tax แบบ item-level) ──────────────────────────
 type Attachment = { name: string; url: string }
 
-interface Cycle {
+type ItemType = "insurance" | "prb" | "tax" | "inspection"
+const ITEM_TYPES: ItemType[] = ["insurance", "prb", "tax", "inspection"]
+
+interface Item {
   _id: string
   licensePlate: string
   platePlain?: string
-  effectiveDate?: string
-  expiryDate?: string
-  insuranceCompany?: string
-  insurer?: string
-  insuranceAmount?: number
-  prbAmount?: number
-  taxAmount?: number
-  inspectionCost?: number
-  totalCost?: number
+  itemType: ItemType
+  effectiveDate?: string        // ISO YYYY-MM-DD
+  expiryDate?: string           // ISO YYYY-MM-DD
+  amount?: number
+  company?: string              // เฉพาะ insurance / prb
   installmentCount?: number
   monthlyInstallment?: number
-  collectStart?: string
-  collectEnd?: string
+  collectStart?: string         // "YYYY-MM"
+  collectEnd?: string           // "YYYY-MM"
   status?: string
   attachments?: Attachment[]
   notes?: string
@@ -48,7 +49,8 @@ interface Cycle {
   updatedAt?: string
 }
 
-type DisplayStatus = "active" | "expiring" | "expired" | "renewed" | "none"
+type ItemStatus = "active" | "expiring" | "expired" | "none"
+type WorstStatus = ItemStatus
 
 interface Row {
   licensePlate: string
@@ -58,23 +60,41 @@ interface Row {
   model?: string
   driverName?: string
   contractCode?: string
-  current: Cycle | null
-  displayStatus: DisplayStatus
-  cyclesCount: number
+  items: Record<ItemType, Item | null>
+  itemStatus: Record<ItemType, ItemStatus>
+  worstStatus: WorstStatus
 }
 
 interface Counts { total: number; active: number; expiring: number; expired: number; none: number }
+const EMPTY_COUNTS: Counts = { total: 0, active: 0, expiring: 0, expired: 0, none: 0 }
 
 // ────────────────────────── labels / colors ──────────────────────────
-const STATUS_LABEL: Record<DisplayStatus, string> = {
+const ITEM_LABEL: Record<ItemType, string> = {
+  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษีทะเบียน", inspection: "ตรวจสภาพ",
+}
+const ITEM_COL_LABEL: Record<ItemType, string> = {
+  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษี", inspection: "ตรวจสภาพ",
+}
+const HAS_COMPANY: Record<ItemType, boolean> = { insurance: true, prb: true, tax: false, inspection: false }
+
+const STATUS_LABEL: Record<string, string> = {
   active: "ใช้งาน", expiring: "ใกล้หมดอายุ", expired: "หมดอายุ", renewed: "ต่ออายุแล้ว", none: "ยังไม่มีข้อมูล",
 }
-const STATUS_COLOR: Record<DisplayStatus, string> = {
+const STATUS_COLOR: Record<string, string> = {
   active:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
   expiring: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
   expired:  "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
   renewed:  "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
   none:     "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+}
+const STATUS_DOT: Record<ItemStatus, string> = {
+  active: "bg-emerald-500", expiring: "bg-amber-500", expired: "bg-red-500", none: "bg-zinc-300 dark:bg-zinc-600",
+}
+const STATUS_TEXT: Record<ItemStatus, string> = {
+  active:   "text-zinc-600 dark:text-zinc-400",
+  expiring: "text-amber-600 dark:text-amber-400 font-semibold",
+  expired:  "text-red-500 font-semibold",
+  none:     "text-zinc-300 dark:text-zinc-600",
 }
 
 const STATUS_TABS: { key: string; label: string }[] = [
@@ -83,6 +103,11 @@ const STATUS_TABS: { key: string; label: string }[] = [
   { key: "expiring", label: "ใกล้หมด" },
   { key: "expired",  label: "หมดแล้ว" },
   { key: "none",     label: "ยังไม่มีข้อมูล" },
+]
+
+const ITEM_TABS: { key: "" | ItemType; label: string }[] = [
+  { key: "", label: "ทุกรายการ" },
+  ...ITEM_TYPES.map((t) => ({ key: t, label: ITEM_LABEL[t] })),
 ]
 
 // ────────────────────────── helpers ──────────────────────────
@@ -110,129 +135,352 @@ function displayThaiMonth(ym?: string): string {
   const MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
   return `${MONTHS[Number(m[2]) - 1]} ${Number(m[1]) + 543}`
 }
+/** ISO → "15 ก.ค. 69" (พ.ศ. 2 หลัก สำหรับ cell แคบ ๆ) */
+function shortThaiDate(iso?: string): string {
+  const full = displayThaiDate(iso ?? "")
+  return full.replace(/(\d{4})$/, (y) => String(Number(y) % 100).padStart(2, "0"))
+}
 
-// ────────────────────────── ฟอร์มต่ออายุ / แก้ไขรอบ ──────────────────────────
-interface FormState {
+const EXPIRING_DAYS = 60
+
+/** fallback client-side: คำนวณสถานะรายการจาก expiryDate (กรณี API ยังไม่ส่ง itemStatus) */
+function computeItemStatus(item: Item | null, today: string): ItemStatus {
+  if (!item) return "none"
+  if (!item.expiryDate) return "active"
+  const exp = item.expiryDate.slice(0, 10)
+  if (exp < today) return "expired"
+  const limit = new Date(today + "T00:00:00Z")
+  limit.setUTCDate(limit.getUTCDate() + EXPIRING_DAYS)
+  if (exp <= limit.toISOString().slice(0, 10)) return "expiring"
+  return "active"
+}
+
+const WORST_ORDER: WorstStatus[] = ["expired", "expiring", "active", "none"]
+function worstOf(statuses: ItemStatus[]): WorstStatus {
+  for (const s of WORST_ORDER) if (statuses.includes(s)) return s
+  return "none"
+}
+
+/** ป้องกันช่วง migration: แถวจาก API อาจไม่มี items/itemStatus/worstStatus → เติมให้ครบ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeRow(raw: any, today: string): Row {
+  const items = {} as Record<ItemType, Item | null>
+  const itemStatus = {} as Record<ItemType, ItemStatus>
+  for (const t of ITEM_TYPES) {
+    const it = raw?.items?.[t] ?? null
+    items[t] = it && typeof it === "object" ? it : null
+    const st = raw?.itemStatus?.[t]
+    itemStatus[t] = st === "active" || st === "expiring" || st === "expired" || st === "none"
+      ? st : computeItemStatus(items[t], today)
+  }
+  const ws = raw?.worstStatus
+  const worstStatus: WorstStatus = ws === "active" || ws === "expiring" || ws === "expired" || ws === "none"
+    ? ws : worstOf(ITEM_TYPES.map((t) => itemStatus[t]))
+  return {
+    licensePlate: raw?.licensePlate ?? "",
+    platePlain: raw?.platePlain,
+    truckNumber: raw?.truckNumber,
+    brand: raw?.brand,
+    model: raw?.model,
+    driverName: raw?.driverName,
+    contractCode: raw?.contractCode,
+    items, itemStatus, worstStatus,
+  }
+}
+
+function sumAmounts(row: Row): number | null {
+  let sum = 0, has = false
+  for (const t of ITEM_TYPES) {
+    const a = row.items[t]?.amount
+    if (typeof a === "number") { sum += a; has = true }
+  }
+  return has ? sum : null
+}
+function sumMonthly(row: Row): number | null {
+  let sum = 0, has = false
+  for (const t of ITEM_TYPES) {
+    const m = row.items[t]?.monthlyInstallment
+    if (typeof m === "number") { sum += m; has = true }
+  }
+  return has ? sum : null
+}
+
+// ────────────────────────── form state ต่อ 1 รายการ ──────────────────────────
+interface ItemFormState {
   effectiveDate: string
   expiryDate: string
-  insuranceCompany: string
-  insurer: string
-  insuranceAmount: string
-  prbAmount: string
-  taxAmount: string
-  inspectionCost: string
+  company: string
+  amount: string
   installmentCount: string
   monthlyInstallment: string
   collectStart: string
   collectEnd: string
   notes: string
   attachments: Attachment[]
+  monthlyTouched: boolean
 }
 
-const EMPTY_FORM: FormState = {
-  effectiveDate: "", expiryDate: "", insuranceCompany: "", insurer: "",
-  insuranceAmount: "", prbAmount: "", taxAmount: "", inspectionCost: "",
+const EMPTY_ITEM_FORM: ItemFormState = {
+  effectiveDate: "", expiryDate: "", company: "", amount: "",
   installmentCount: "", monthlyInstallment: "", collectStart: "", collectEnd: "",
-  notes: "", attachments: [],
+  notes: "", attachments: [], monthlyTouched: false,
 }
 
-/** เตรียมค่าจากรอบเดิม — โหมดต่ออายุเลื่อนวันที่ +1 ปี (เริ่ม = วันหมดเดิม) */
-function formFromCycle(c: Cycle, mode: "renew" | "edit"): FormState {
+/** เตรียมค่าจากรายการเดิม — โหมดต่ออายุเลื่อนวันที่ +1 ปี (เริ่ม = วันหมดเดิม) */
+function formFromItem(it: Item | null, mode: "renew" | "edit"): ItemFormState {
+  if (!it) return { ...EMPTY_ITEM_FORM }
   const s = (v?: number) => (v || v === 0 ? String(v) : "")
   if (mode === "edit") return {
-    effectiveDate: c.effectiveDate?.slice(0, 10) ?? "",
-    expiryDate:    c.expiryDate?.slice(0, 10) ?? "",
-    insuranceCompany: c.insuranceCompany ?? "",
-    insurer:          c.insurer ?? "",
-    insuranceAmount: s(c.insuranceAmount), prbAmount: s(c.prbAmount),
-    taxAmount: s(c.taxAmount), inspectionCost: s(c.inspectionCost),
-    installmentCount: s(c.installmentCount), monthlyInstallment: s(c.monthlyInstallment),
-    collectStart: c.collectStart ?? "", collectEnd: c.collectEnd ?? "",
-    notes: c.notes ?? "", attachments: c.attachments ?? [],
+    effectiveDate: it.effectiveDate?.slice(0, 10) ?? "",
+    expiryDate:    it.expiryDate?.slice(0, 10) ?? "",
+    company:       it.company ?? "",
+    amount:        s(it.amount),
+    installmentCount: s(it.installmentCount),
+    monthlyInstallment: s(it.monthlyInstallment),
+    collectStart: it.collectStart ?? "", collectEnd: it.collectEnd ?? "",
+    notes: it.notes ?? "", attachments: it.attachments ?? [],
+    monthlyTouched: !!it.monthlyInstallment,
   }
   return {
-    ...EMPTY_FORM,
-    effectiveDate: c.expiryDate?.slice(0, 10) ?? "",
-    expiryDate:    plusOneYear(c.expiryDate),
-    insuranceCompany: c.insuranceCompany ?? "",
-    insurer:          c.insurer ?? "",
-    insuranceAmount: s(c.insuranceAmount), prbAmount: s(c.prbAmount),
-    taxAmount: s(c.taxAmount), inspectionCost: s(c.inspectionCost),
-    installmentCount: s(c.installmentCount),
-    collectStart: plusOneYearMonth(c.collectStart), collectEnd: plusOneYearMonth(c.collectEnd),
+    ...EMPTY_ITEM_FORM,
+    effectiveDate: it.expiryDate?.slice(0, 10) ?? "",
+    expiryDate:    plusOneYear(it.expiryDate),
+    company:       it.company ?? "",
+    amount:        s(it.amount),
+    installmentCount: s(it.installmentCount),
+    collectStart: plusOneYearMonth(it.collectStart), collectEnd: plusOneYearMonth(it.collectEnd),
   }
 }
 
-function CyclePanel({ row, cycle, mode, onClose, onSaved }: {
-  row: Row
-  cycle: Cycle | null              // โหมด edit = รอบที่แก้ / โหมด renew = รอบเดิมไว้ prefill
-  mode: "renew" | "edit"
-  onClose: () => void
-  onSaved: () => void
+function suggestMonthly(f: ItemFormState): number | null {
+  const a = num(f.amount), c = num(f.installmentCount)
+  return a && a > 0 && c && c > 0 ? Math.round((a / c) * 100) / 100 : null
+}
+
+/** อัปเดต field พร้อม auto-suggest หัก/เดือน = จำนวนเงิน ÷ งวด (จนกว่าผู้ใช้จะพิมพ์เอง) */
+function applyField(f: ItemFormState, k: keyof ItemFormState, v: ItemFormState[keyof ItemFormState]): ItemFormState {
+  const next = { ...f, [k]: v } as ItemFormState
+  if (k === "monthlyInstallment") next.monthlyTouched = true
+  if ((k === "amount" || k === "installmentCount") && !next.monthlyTouched) {
+    const sug = suggestMonthly(next)
+    next.monthlyInstallment = sug !== null ? String(sug) : ""
+  }
+  return next
+}
+
+/** payload ของ 1 รายการ (ไม่รวม licensePlate/itemType) */
+function itemPayload(f: ItemFormState) {
+  return {
+    effectiveDate: f.effectiveDate || undefined,
+    expiryDate: f.expiryDate || undefined,
+    amount: num(f.amount),
+    company: f.company.trim() || undefined,
+    installmentCount: num(f.installmentCount),
+    monthlyInstallment: num(f.monthlyInstallment),
+    collectStart: f.collectStart || undefined,
+    collectEnd: f.collectEnd || undefined,
+    notes: f.notes.trim() || undefined,
+    attachments: f.attachments,
+  }
+}
+
+function hasAnyValue(f: ItemFormState): boolean {
+  return !!(f.effectiveDate || f.expiryDate || f.company.trim() || f.amount.trim()
+    || f.installmentCount.trim() || f.monthlyInstallment.trim() || f.collectStart
+    || f.collectEnd || f.notes.trim() || f.attachments.length)
+}
+
+async function uploadInsuranceFile(file: File): Promise<Attachment> {
+  const fd = new FormData()
+  fd.append("file", file)
+  fd.append("folder", "insurance")
+  const res = await fetch("/api/upload", { method: "POST", body: fd })
+  if (!res.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
+  const { url } = await res.json()
+  return { name: file.name, url }
+}
+
+// ────────────────────────── ชุด field ของ 1 รายการ (ใช้ทั้งฟอร์มเดี่ยว + bulk) ──────────────────────────
+const LABEL_CLS = "block text-[11px] font-semibold text-zinc-500 mb-1"
+const NUMBER_CLS = "h-9 text-right tabular-nums"
+
+function ItemFieldSet({ itemType, form, onForm }: {
+  itemType: ItemType
+  form: ItemFormState
+  onForm: (updater: (f: ItemFormState) => ItemFormState) => void
 }) {
-  const [form, setForm] = useState<FormState>(() => (cycle ? formFromCycle(cycle, mode) : { ...EMPTY_FORM }))
-  const [monthlyTouched, setMonthlyTouched] = useState(mode === "edit" && !!cycle?.monthlyInstallment)
-  const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState("")
-
-  const set = (k: keyof FormState) => (v: string) => setForm((p) => ({ ...p, [k]: v }))
-
-  const total = useMemo(
-    () => [form.insuranceAmount, form.prbAmount, form.taxAmount, form.inspectionCost]
-      .map((s) => num(s) ?? 0).reduce((a, b) => a + b, 0),
-    [form.insuranceAmount, form.prbAmount, form.taxAmount, form.inspectionCost],
-  )
+  const [uploadError, setUploadError] = useState("")
+  const set = (k: keyof ItemFormState) => (v: string) => onForm((f) => applyField(f, k, v))
+  const sug = suggestMonthly(form)
   const count = num(form.installmentCount)
-  const suggest = total > 0 && count && count > 0 ? Math.round((total / count) * 100) / 100 : null
 
-  // auto-suggest หัก/เดือน = รวม/จำนวนงวด (จนกว่าผู้ใช้จะพิมพ์เอง)
-  useEffect(() => {
-    if (!monthlyTouched && suggest !== null) setForm((p) => ({ ...p, monthlyInstallment: String(suggest) }))
-  }, [suggest, monthlyTouched])
-
-  async function uploadFile(f: File) {
+  async function handleUpload(file: File) {
     setUploading(true)
-    setError("")
+    setUploadError("")
     try {
-      const fd = new FormData()
-      fd.append("file", f)
-      fd.append("folder", "insurance")
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
-      if (!res.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
-      const { url } = await res.json()
-      setForm((p) => ({ ...p, attachments: [...p.attachments, { name: f.name, url }] }))
+      const att = await uploadInsuranceFile(file)
+      onForm((f) => ({ ...f, attachments: [...f.attachments, att] }))
     } catch (e) {
-      setError(e instanceof Error ? e.message : "อัปโหลดไฟล์ไม่สำเร็จ")
+      setUploadError(e instanceof Error ? e.message : "อัปโหลดไฟล์ไม่สำเร็จ")
     } finally {
       setUploading(false)
     }
   }
 
+  return (
+    <div className="space-y-3">
+      {/* ช่วงคุ้มครอง */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL_CLS}>วันเริ่ม</label>
+          <ThaiDateInput value={form.effectiveDate} onChange={set("effectiveDate")} />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>วันหมดอายุ</label>
+          <ThaiDateInput value={form.expiryDate} onChange={set("expiryDate")} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {HAS_COMPANY[itemType] && (
+          <div>
+            <label className={LABEL_CLS}>บริษัท</label>
+            <Input value={form.company} onChange={(e) => set("company")(e.target.value)} className="h-9" placeholder="เช่น วิริยะประกันภัย" />
+          </div>
+        )}
+        <div className={HAS_COMPANY[itemType] ? "" : "col-span-2"}>
+          <label className={LABEL_CLS}>จำนวนเงิน (บาท)</label>
+          <Input
+            type="number" min={0} step="0.01" inputMode="decimal"
+            value={form.amount}
+            onChange={(e) => set("amount")(e.target.value)}
+            className={NUMBER_CLS}
+            placeholder="0"
+          />
+        </div>
+      </div>
+
+      {/* การหักเงิน */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL_CLS}>จำนวนงวด</label>
+          <Input
+            type="number" min={0} step={1} inputMode="numeric"
+            value={form.installmentCount}
+            onChange={(e) => set("installmentCount")(e.target.value)}
+            className={NUMBER_CLS}
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>หัก/เดือน (บาท)</label>
+          <Input
+            type="number" min={0} step="0.01" inputMode="decimal"
+            value={form.monthlyInstallment}
+            onChange={(e) => set("monthlyInstallment")(e.target.value)}
+            className={NUMBER_CLS}
+          />
+          {sug !== null && num(form.monthlyInstallment) !== sug && (
+            <button
+              type="button"
+              onClick={() => onForm((f) => ({ ...f, monthlyInstallment: String(sug), monthlyTouched: true }))}
+              className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              แนะนำ ฿{formatMoney(sug)} (จำนวนเงิน ÷ {count} งวด)
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL_CLS}>เริ่มหัก (เดือน)</label>
+          <Input type="month" value={form.collectStart} onChange={(e) => set("collectStart")(e.target.value)} className="h-9" />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>สิ้นสุดหัก (เดือน)</label>
+          <Input type="month" value={form.collectEnd} onChange={(e) => set("collectEnd")(e.target.value)} className="h-9" />
+        </div>
+      </div>
+
+      {/* หมายเหตุ */}
+      <div>
+        <label className={LABEL_CLS}>หมายเหตุ</label>
+        <textarea
+          value={form.notes}
+          onChange={(e) => set("notes")(e.target.value)}
+          rows={2}
+          className="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </div>
+
+      {/* ไฟล์แนบ */}
+      <div>
+        <label className={LABEL_CLS}>ไฟล์แนบ (กรมธรรม์ / ใบเสร็จ)</label>
+        <div className="space-y-1.5">
+          {form.attachments.map((a, i) => (
+            <div key={`${a.url}-${i}`} className="flex items-center gap-2 text-xs bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5">
+              <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <a href={a.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-emerald-700 dark:text-emerald-400 hover:underline">
+                {a.name || "ไฟล์แนบ"}
+              </a>
+              <button
+                type="button"
+                onClick={() => onForm((f) => ({ ...f, attachments: f.attachments.filter((_, j) => j !== i) }))}
+                className="text-zinc-300 hover:text-red-500 shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          <label className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-dashed cursor-pointer transition-colors ${
+            uploading
+              ? "border-blue-300 bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:border-blue-700"
+              : "border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:border-emerald-400 hover:text-emerald-600 dark:hover:border-emerald-600 dark:hover:text-emerald-400"
+          }`}>
+            {uploading
+              ? <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              : <Upload className="w-3 h-3" />}
+            แนบไฟล์ (PDF/รูปภาพ)
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleUpload(f)
+                e.target.value = ""
+              }}
+            />
+          </label>
+          {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────── ฟอร์มเดี่ยว: ต่ออายุ / แก้ไข / เพิ่ม 1 รายการ ──────────────────────────
+function ItemFormPanel({ row, itemType, item, mode, onClose, onSaved }: {
+  row: Row
+  itemType: ItemType
+  item: Item | null              // edit = รายการที่แก้ / renew = รายการเดิมไว้ prefill (null = เพิ่มใหม่)
+  mode: "renew" | "edit"
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState<ItemFormState>(() => formFromItem(item, mode))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+
   async function handleSubmit() {
     setSaving(true)
     setError("")
     try {
-      const body = {
-        licensePlate: row.licensePlate,
-        effectiveDate: form.effectiveDate || undefined,
-        expiryDate: form.expiryDate || undefined,
-        insuranceCompany: form.insuranceCompany.trim() || undefined,
-        insurer: form.insurer.trim() || undefined,
-        insuranceAmount: num(form.insuranceAmount),
-        prbAmount: num(form.prbAmount),
-        taxAmount: num(form.taxAmount),
-        inspectionCost: num(form.inspectionCost),
-        totalCost: total > 0 ? total : undefined,
-        installmentCount: num(form.installmentCount),
-        monthlyInstallment: num(form.monthlyInstallment),
-        collectStart: form.collectStart || undefined,
-        collectEnd: form.collectEnd || undefined,
-        notes: form.notes.trim() || undefined,
-        attachments: form.attachments,
-      }
-      const res = mode === "edit" && cycle
-        ? await fetch(`/api/insurance-tax/${cycle._id}`, {
+      const body = { licensePlate: row.licensePlate, itemType, ...itemPayload(form) }
+      const res = mode === "edit" && item
+        ? await fetch(`/api/insurance-tax/${item._id}`, {
             method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
           })
         : await fetch("/api/insurance-tax", {
@@ -247,11 +495,8 @@ function CyclePanel({ row, cycle, mode, onClose, onSaved }: {
     }
   }
 
-  const label = "block text-[11px] font-semibold text-zinc-500 mb-1"
-  const numberCls = "h-9 text-right tabular-nums"
-
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
       <div
         className="relative w-full max-w-md h-full bg-white dark:bg-zinc-900 shadow-2xl overflow-y-auto"
@@ -262,7 +507,7 @@ function CyclePanel({ row, cycle, mode, onClose, onSaved }: {
           <div>
             <div className="flex items-center gap-1.5 text-sm font-bold text-zinc-800 dark:text-zinc-100">
               {mode === "edit" ? <Pencil className="w-4 h-4 text-blue-500" /> : <RefreshCw className="w-4 h-4 text-emerald-500" />}
-              {mode === "edit" ? "แก้ไขรอบปัจจุบัน" : cycle ? "ต่ออายุ (บันทึกรอบใหม่)" : "บันทึกรอบใหม่"}
+              {mode === "edit" ? `แก้ไข ${ITEM_LABEL[itemType]}` : item ? `ต่ออายุ ${ITEM_LABEL[itemType]}` : `เพิ่มข้อมูล ${ITEM_LABEL[itemType]}`}
             </div>
             <div className="text-xs text-zinc-400 font-mono">{row.licensePlate}{row.truckNumber ? ` · ${row.truckNumber}` : ""}</div>
           </div>
@@ -272,177 +517,23 @@ function CyclePanel({ row, cycle, mode, onClose, onSaved }: {
         </div>
 
         <div className="p-4 space-y-4">
-          {mode === "renew" && cycle && (
+          {mode === "renew" && item && (
             <p className="text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
-              ระบบดึงข้อมูลจากรอบเดิมและเลื่อนวันที่ให้ +1 ปี — บันทึกแล้วรอบเดิมจะถูกปิดเป็น &quot;ต่ออายุแล้ว&quot; อัตโนมัติ
+              ระบบดึงข้อมูลจากรายการเดิมและเลื่อนวันที่ให้ +1 ปี — บันทึกแล้วรายการเดิมจะถูกปิดเป็น &quot;ต่ออายุแล้ว&quot; อัตโนมัติ
             </p>
           )}
 
-          {/* ทะเบียน */}
-          <div>
-            <label className={label}>ทะเบียนรถ</label>
-            <Input value={row.licensePlate} readOnly disabled className="h-9 font-mono bg-zinc-50 dark:bg-zinc-800" />
-          </div>
-
-          {/* ช่วงคุ้มครอง */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={label}>วันเริ่มคุ้มครอง</label>
-              <ThaiDateInput value={form.effectiveDate} onChange={set("effectiveDate")} />
-            </div>
-            <div>
-              <label className={label}>วันหมดอายุ</label>
-              <ThaiDateInput value={form.expiryDate} onChange={set("expiryDate")} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={label}>บริษัทประกัน</label>
-              <Input value={form.insuranceCompany} onChange={(e) => set("insuranceCompany")(e.target.value)} className="h-9" placeholder="เช่น วิริยะประกันภัย" />
-            </div>
-            <div>
-              <label className={label}>ผู้ทำเรื่อง</label>
-              <Input value={form.insurer} onChange={(e) => set("insurer")(e.target.value)} className="h-9" />
-            </div>
-          </div>
-
-          {/* ค่าใช้จ่าย */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 space-y-3">
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ค่าใช้จ่าย (บาท)</p>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                ["insuranceAmount", "ประกันภัย"],
-                ["prbAmount", "พรบ."],
-                ["taxAmount", "ภาษีทะเบียน"],
-                ["inspectionCost", "ตรวจสภาพ"],
-              ] as const).map(([k, l]) => (
-                <div key={k}>
-                  <label className={label}>{l}</label>
-                  <Input
-                    type="number" min={0} step="0.01" inputMode="decimal"
-                    value={form[k]}
-                    onChange={(e) => set(k)(e.target.value)}
-                    className={numberCls}
-                    placeholder="0"
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between border-t border-dashed border-zinc-200 dark:border-zinc-700 pt-2.5">
-              <span className="text-xs font-semibold text-zinc-500">รวมทั้งสิ้น</span>
-              <span className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                ฿{formatMoney(total)}
-              </span>
-            </div>
-          </div>
-
-          {/* การหักเงิน */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={label}>จำนวนงวด</label>
-              <Input
-                type="number" min={0} step={1} inputMode="numeric"
-                value={form.installmentCount}
-                onChange={(e) => set("installmentCount")(e.target.value)}
-                className={numberCls}
-              />
-            </div>
-            <div>
-              <label className={label}>หัก/เดือน (บาท)</label>
-              <Input
-                type="number" min={0} step="0.01" inputMode="decimal"
-                value={form.monthlyInstallment}
-                onChange={(e) => { setMonthlyTouched(true); set("monthlyInstallment")(e.target.value) }}
-                className={numberCls}
-              />
-              {suggest !== null && num(form.monthlyInstallment) !== suggest && (
-                <button
-                  type="button"
-                  onClick={() => { setMonthlyTouched(true); set("monthlyInstallment")(String(suggest)) }}
-                  className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline"
-                >
-                  แนะนำ ฿{formatMoney(suggest)} (รวม ÷ {count} งวด)
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={label}>เริ่มหัก (เดือน)</label>
-              <Input type="month" value={form.collectStart} onChange={(e) => set("collectStart")(e.target.value)} className="h-9" />
-            </div>
-            <div>
-              <label className={label}>สิ้นสุดหัก (เดือน)</label>
-              <Input type="month" value={form.collectEnd} onChange={(e) => set("collectEnd")(e.target.value)} className="h-9" />
-            </div>
-          </div>
-
-          {/* หมายเหตุ */}
-          <div>
-            <label className={label}>หมายเหตุ</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => set("notes")(e.target.value)}
-              rows={2}
-              className="w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-          </div>
-
-          {/* ไฟล์แนบ */}
-          <div>
-            <label className={label}>ไฟล์แนบ (กรมธรรม์ / ใบเสร็จ)</label>
-            <div className="space-y-1.5">
-              {form.attachments.map((a, i) => (
-                <div key={`${a.url}-${i}`} className="flex items-center gap-2 text-xs bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5">
-                  <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <a href={a.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-emerald-700 dark:text-emerald-400 hover:underline">
-                    {a.name || "ไฟล์แนบ"}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setForm((p) => ({ ...p, attachments: p.attachments.filter((_, j) => j !== i) }))}
-                    className="text-zinc-300 hover:text-red-500 shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-              <label className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-dashed cursor-pointer transition-colors ${
-                uploading
-                  ? "border-blue-300 bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:border-blue-700"
-                  : "border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:border-emerald-400 hover:text-emerald-600 dark:hover:border-emerald-600 dark:hover:text-emerald-400"
-              }`}>
-                {uploading
-                  ? <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  : <Upload className="w-3 h-3" />}
-                แนบไฟล์ (PDF/รูปภาพ)
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadFile(f)
-                    e.target.value = ""
-                  }}
-                />
-              </label>
-            </div>
-          </div>
+          <ItemFieldSet itemType={itemType} form={form} onForm={(u) => setForm(u)} />
 
           {error && <p className="text-xs text-red-500">{error}</p>}
 
-          {/* actions */}
           <div className="flex items-center gap-2 pt-1 pb-6">
             <Button
               onClick={handleSubmit}
-              disabled={saving || uploading}
+              disabled={saving}
               className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
             >
-              {saving ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกรอบใหม่"}
+              {saving ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกรายการใหม่"}
             </Button>
             <Button variant="outline" onClick={onClose} disabled={saving}>ยกเลิก</Button>
           </div>
@@ -452,32 +543,174 @@ function CyclePanel({ row, cycle, mode, onClose, onSaved }: {
   )
 }
 
-// ────────────────────────── drawer ประวัติทุกรอบของทะเบียน ──────────────────────────
-function HistoryDrawer({ plate, isAdmin, onClose, onChanged }: {
-  plate: string
+// ────────────────────────── ฟอร์ม bulk: ต่ออายุทั้งชุด (4 รายการในฟอร์มเดียว) ──────────────────────────
+function BulkRenewPanel({ row, onClose, onSaved }: {
+  row: Row
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [forms, setForms] = useState<Record<ItemType, ItemFormState>>(() => {
+    const out = {} as Record<ItemType, ItemFormState>
+    for (const t of ITEM_TYPES) out[t] = formFromItem(row.items[t], "renew")
+    return out
+  })
+  const [include, setInclude] = useState<Record<ItemType, boolean>>(() => {
+    const out = {} as Record<ItemType, boolean>
+    for (const t of ITEM_TYPES) out[t] = !!row.items[t]
+    return out
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+
+  const totalAmount = ITEM_TYPES.reduce((s, t) => s + (include[t] ? (num(forms[t].amount) ?? 0) : 0), 0)
+  const totalMonthly = ITEM_TYPES.reduce((s, t) => s + (include[t] ? (num(forms[t].monthlyInstallment) ?? 0) : 0), 0)
+  const included = ITEM_TYPES.filter((t) => include[t])
+
+  async function handleSubmit() {
+    const items = included
+      .filter((t) => hasAnyValue(forms[t]))
+      .map((t) => ({ itemType: t, ...itemPayload(forms[t]) }))
+    if (items.length === 0) {
+      setError("กรุณาเลือกอย่างน้อย 1 รายการและกรอกข้อมูล")
+      return
+    }
+    setSaving(true)
+    setError("")
+    try {
+      const res = await fetch("/api/insurance-tax", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bulk: true, licensePlate: row.licensePlate, items }),
+      })
+      if (!res.ok) throw new Error("บันทึกไม่สำเร็จ กรุณาลองใหม่")
+      onSaved()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div
+        className="relative w-full max-w-lg h-full bg-white dark:bg-zinc-900 shadow-2xl overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5 text-sm font-bold text-zinc-800 dark:text-zinc-100">
+              <Layers className="w-4 h-4 text-emerald-500" /> ต่ออายุทั้งชุด
+            </div>
+            <div className="text-xs text-zinc-400 font-mono">{row.licensePlate}{row.truckNumber ? ` · ${row.truckNumber}` : ""}</div>
+          </div>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+            ระบบดึงข้อมูลจากรายการปัจจุบันของแต่ละประเภทและเลื่อนวันที่ให้ +1 ปี — บันทึกครั้งเดียวทุกรายการที่เลือก
+            รายการเดิมจะถูกปิดเป็น &quot;ต่ออายุแล้ว&quot; อัตโนมัติ
+          </p>
+
+          {ITEM_TYPES.map((t) => (
+            <div key={t} className={`rounded-xl border p-3 transition-colors ${
+              include[t]
+                ? "border-emerald-200 dark:border-emerald-900"
+                : "border-zinc-200 dark:border-zinc-800 opacity-60"
+            }`}>
+              <label className="flex items-center gap-2 cursor-pointer select-none mb-1">
+                <input
+                  type="checkbox"
+                  checked={include[t]}
+                  onChange={(e) => setInclude((p) => ({ ...p, [t]: e.target.checked }))}
+                  className="accent-emerald-600"
+                />
+                <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">{ITEM_LABEL[t]}</span>
+                {!row.items[t] && <span className="text-[10px] text-zinc-400">(ยังไม่มีข้อมูลเดิม)</span>}
+              </label>
+              {include[t] && (
+                <div className="mt-2">
+                  <ItemFieldSet
+                    itemType={t}
+                    form={forms[t]}
+                    onForm={(u) => setForms((p) => ({ ...p, [t]: u(p[t]) }))}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* สรุปรวม */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex items-center justify-between text-sm">
+            <span className="text-xs font-semibold text-zinc-500">
+              รวม {included.length} รายการ · หัก/เดือนรวม ฿{formatMoney(totalMonthly)}
+            </span>
+            <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">฿{formatMoney(totalAmount)}</span>
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <div className="flex items-center gap-2 pt-1 pb-6">
+            <Button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+            >
+              {saving ? "กำลังบันทึก..." : `บันทึกต่ออายุ ${included.length} รายการ`}
+            </Button>
+            <Button variant="outline" onClick={onClose} disabled={saving}>ยกเลิก</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────── drawer "จัดการ" ต่อทะเบียน: 4 การ์ด + ประวัติ ──────────────────────────
+function ManageDrawer({ row, isAdmin, onClose, onChanged }: {
+  row: Row
   isAdmin: boolean
   onClose: () => void
   onChanged: () => void
 }) {
-  const [cycles, setCycles] = useState<Cycle[] | null>(null)
+  const [history, setHistory] = useState<Item[] | null>(null)
+  const [expanded, setExpanded] = useState<Record<ItemType, boolean>>({ insurance: false, prb: false, tax: false, inspection: false })
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [formPanel, setFormPanel] = useState<{ itemType: ItemType; item: Item | null; mode: "renew" | "edit" } | null>(null)
+  const [bulkOpen, setBulkOpen] = useState(false)
 
-  const load = useCallback(() => {
-    fetch(`/api/insurance-tax?plate=${encodeURIComponent(plate)}`)
-      .then((r) => (r.ok ? r.json() : { cycles: [] }))
-      .then((d) => setCycles(d.cycles ?? []))
-      .catch(() => setCycles([]))
-  }, [plate])
+  const loadHistory = useCallback(() => {
+    fetch(`/api/insurance-tax?plate=${encodeURIComponent(row.licensePlate)}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      // ป้องกันช่วง migration: shape เก่าคืน { cycles } — กรองเฉพาะ record ที่มี itemType
+      .then((d: { items?: unknown; cycles?: unknown }) => {
+        const arr = Array.isArray(d.items) ? d.items : Array.isArray(d.cycles) ? d.cycles : []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setHistory(arr.filter((it: any) => ITEM_TYPES.includes(it?.itemType)))
+      })
+      .catch(() => setHistory([]))
+  }, [row.licensePlate])
 
-  useEffect(() => { setCycles(null); load() }, [load])
+  useEffect(() => { setHistory(null); loadHistory() }, [loadHistory])
 
-  async function handleDelete(c: Cycle) {
-    if (!confirm(`ลบรอบ ${displayThaiDate(c.effectiveDate ?? "") || "?"} – ${displayThaiDate(c.expiryDate ?? "") || "?"} ของ ${plate}?`)) return
-    setDeleting(c._id)
+  const historyByType = useMemo(() => {
+    const out = { insurance: [], prb: [], tax: [], inspection: [] } as Record<ItemType, Item[]>
+    for (const it of history ?? []) out[it.itemType]?.push(it)
+    return out
+  }, [history])
+
+  async function handleDelete(it: Item) {
+    if (!confirm(`ลบ ${ITEM_LABEL[it.itemType]} รอบ ${displayThaiDate(it.effectiveDate ?? "") || "?"} – ${displayThaiDate(it.expiryDate ?? "") || "?"} ของ ${row.licensePlate}?`)) return
+    setDeleting(it._id)
     try {
-      const res = await fetch(`/api/insurance-tax/${c._id}`, { method: "DELETE" })
+      const res = await fetch(`/api/insurance-tax/${it._id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("ลบไม่สำเร็จ")
-      load()
+      loadHistory()
       onChanged()
     } catch (e) {
       alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
@@ -486,91 +719,243 @@ function HistoryDrawer({ plate, isAdmin, onClose, onChanged }: {
     }
   }
 
+  const hasAnyItem = ITEM_TYPES.some((t) => !!row.items[t])
+
   return (
     <div className="fixed inset-0 z-[60] flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
       <div
-        className="relative w-full max-w-sm h-full bg-white dark:bg-zinc-900 shadow-2xl overflow-y-auto"
+        className="relative w-full max-w-2xl h-full bg-white dark:bg-zinc-900 shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-4 py-3 flex items-center justify-between">
-          <div>
+        {/* header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-4 py-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-sm font-bold text-zinc-800 dark:text-zinc-100">
-              <Clock className="w-4 h-4" /> ประวัติภาษี & ประกันภัย
+              <ShieldCheck className="w-4 h-4 text-emerald-500" /> จัดการภาษี &amp; ประกันภัย
             </div>
-            <div className="text-xs text-zinc-400 font-mono">{plate}</div>
+            <div className="text-xs text-zinc-400 truncate">
+              <span className="font-mono">{row.licensePlate}</span>
+              {row.truckNumber ? ` · ${row.truckNumber}` : ""}
+              {row.driverName ? ` · ${row.driverName}` : ""}
+            </div>
           </div>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {isAdmin && hasAnyItem && (
+              <button
+                type="button"
+                onClick={() => setBulkOpen(true)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-950/60 whitespace-nowrap"
+              >
+                <Layers className="w-3.5 h-3.5" /> ต่ออายุทั้งชุด
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
+        {/* 4 การ์ดรายการ */}
         <div className="p-4 space-y-3">
-          {cycles === null ? (
-            <p className="text-sm text-zinc-400 text-center py-8">กำลังโหลด...</p>
-          ) : cycles.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-8">ยังไม่มีประวัติ</p>
-          ) : cycles.map((c) => {
-            const st = (["active", "expiring", "expired", "renewed", "none"].includes(c.status ?? "")
-              ? c.status : "renewed") as DisplayStatus
+          {ITEM_TYPES.map((t) => {
+            const it = row.items[t]
+            const st = row.itemStatus[t]
+            const hist = historyByType[t]
+            const isExpanded = expanded[t]
             return (
-              <div key={c._id} className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100">
-                    {displayThaiDate(c.effectiveDate ?? "") || "—"} – {displayThaiDate(c.expiryDate ?? "") || "—"}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${STATUS_COLOR[st]}`}>
-                    {STATUS_LABEL[st] ?? c.status}
-                  </span>
-                </div>
-                <div className="text-[11px] text-zinc-500 space-y-0.5">
-                  {c.insuranceCompany && <p>บริษัท: <span className="text-zinc-700 dark:text-zinc-300">{c.insuranceCompany}</span>{c.insurer && <span className="text-zinc-400"> · ผู้ทำเรื่อง {c.insurer}</span>}</p>}
-                  {(c.totalCost || c.totalCost === 0) && (
-                    <p>รวม: <span className="font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">฿{formatMoney(c.totalCost)}</span>
-                      {c.monthlyInstallment ? <span className="text-zinc-400"> · หัก ฿{formatMoney(c.monthlyInstallment)}/เดือน{c.installmentCount ? ` ×${c.installmentCount}` : ""}</span> : null}
-                    </p>
-                  )}
-                  {(c.collectStart || c.collectEnd) && (
-                    <p>ช่วงหัก: {displayThaiMonth(c.collectStart)} – {displayThaiMonth(c.collectEnd)}</p>
-                  )}
-                  {c.notes && <p className="text-zinc-400">หมายเหตุ: {c.notes}</p>}
-                </div>
-                {(c.attachments?.length || c.migratedFrom) && (
-                  <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                    {c.attachments?.map((a, i) => (
-                      <a
-                        key={`${a.url}-${i}`}
-                        href={a.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/60 max-w-[140px] truncate"
+              <div key={t} className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                {/* card header */}
+                <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 bg-zinc-50/60 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[st]}`} />
+                    <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">{ITEM_LABEL[t]}</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${STATUS_COLOR[st]}`}>
+                      {STATUS_LABEL[st]}
+                    </span>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {it && (
+                        <button
+                          type="button"
+                          title={`แก้ไข ${ITEM_LABEL[t]}`}
+                          onClick={() => setFormPanel({ itemType: t, item: it, mode: "edit" })}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-zinc-500 hover:text-blue-600 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 whitespace-nowrap"
+                        >
+                          <Pencil className="w-3 h-3" /> แก้ไข
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        title={it ? `ต่ออายุ ${ITEM_LABEL[t]}` : `เพิ่มข้อมูล ${ITEM_LABEL[t]}`}
+                        onClick={() => setFormPanel({ itemType: t, item: it, mode: "renew" })}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-950/60 whitespace-nowrap"
                       >
-                        <FileText className="w-2.5 h-2.5 shrink-0" /> {a.name || "ไฟล์แนบ"}
-                      </a>
-                    ))}
-                    {c.migratedFrom && (
-                      <span className="inline-flex items-center text-[10px] text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-700 px-1.5 py-0.5 rounded" title={`ย้ายข้อมูลมาจาก ${c.migratedFrom}`}>
-                        migrated: {c.migratedFrom}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {isAdmin && (
-                  <div className="flex justify-end mt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(c)}
-                      disabled={deleting === c._id}
-                      className="inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-red-500 disabled:opacity-40"
-                    >
-                      <Trash2 className="w-3 h-3" /> {deleting === c._id ? "กำลังลบ..." : "ลบรอบนี้"}
-                    </button>
-                  </div>
-                )}
+                        {it ? <RefreshCw className="w-3 h-3" /> : <PlusCircle className="w-3 h-3" />}
+                        {it ? "ต่ออายุ" : "เพิ่มข้อมูล"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* current item detail */}
+                <div className="px-3.5 py-3">
+                  {!it ? (
+                    <p className="text-xs text-zinc-400">ยังไม่มีข้อมูล</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-zinc-500">
+                      <p>ช่วงคุ้มครอง: <span className="text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                        {displayThaiDate(it.effectiveDate ?? "") || "—"} – {displayThaiDate(it.expiryDate ?? "") || "—"}
+                      </span></p>
+                      <p>จำนวนเงิน: <span className="font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">
+                        {fmt(it.amount) ? `฿${fmt(it.amount)}` : "—"}
+                      </span></p>
+                      {HAS_COMPANY[t] && (
+                        <p>บริษัท: <span className="text-zinc-700 dark:text-zinc-300">{it.company || "—"}</span></p>
+                      )}
+                      <p>งวดหัก: <span className="text-zinc-700 dark:text-zinc-300 tabular-nums">
+                        {it.monthlyInstallment
+                          ? <>฿{formatMoney(it.monthlyInstallment)}/เดือน{it.installmentCount ? ` ×${it.installmentCount}` : ""}</>
+                          : "—"}
+                      </span></p>
+                      {(it.collectStart || it.collectEnd) && (
+                        <p className="col-span-2">ช่วงหัก: {displayThaiMonth(it.collectStart)} – {displayThaiMonth(it.collectEnd)}</p>
+                      )}
+                      {it.notes && <p className="col-span-2 text-zinc-400">หมายเหตุ: {it.notes}</p>}
+                      {(it.attachments?.length || it.migratedFrom) ? (
+                        <div className="col-span-2 flex items-center gap-1.5 flex-wrap pt-0.5">
+                          {it.attachments?.map((a, i) => (
+                            <a
+                              key={`${a.url}-${i}`}
+                              href={a.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/60 max-w-[160px] truncate"
+                            >
+                              <FileText className="w-2.5 h-2.5 shrink-0" /> {a.name || "ไฟล์แนบ"}
+                            </a>
+                          ))}
+                          {it.migratedFrom && (
+                            <span className="inline-flex items-center text-[10px] text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-700 px-1.5 py-0.5 rounded" title={`ย้ายข้อมูลมาจาก ${it.migratedFrom}`}>
+                              migrated: {it.migratedFrom}
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* ประวัติ (expandable) */}
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((p) => ({ ...p, [t]: !p[t] }))}
+                    className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-semibold text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  >
+                    <Clock className="w-3 h-3" />
+                    ประวัติ{history === null ? "" : ` (${hist.length})`}
+                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="mt-2 space-y-2">
+                      {history === null ? (
+                        <p className="text-[11px] text-zinc-400">กำลังโหลด...</p>
+                      ) : hist.length === 0 ? (
+                        <p className="text-[11px] text-zinc-400">ยังไม่มีประวัติ</p>
+                      ) : hist.map((h) => {
+                        const isCurrent = it?._id === h._id
+                        const hs = isCurrent ? st
+                          : (h.status === "renewed" ? "renewed" : computeItemStatus(h, new Date().toISOString().slice(0, 10)))
+                        return (
+                          <div key={h._id} className="rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 px-2.5 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-200">
+                                {displayThaiDate(h.effectiveDate ?? "") || "—"} – {displayThaiDate(h.expiryDate ?? "") || "—"}
+                              </span>
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold shrink-0 ${STATUS_COLOR[hs] ?? STATUS_COLOR.none}`}>
+                                {STATUS_LABEL[hs] ?? h.status}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-zinc-500 mt-0.5 space-x-2">
+                              {fmt(h.amount) && <span className="tabular-nums">฿{fmt(h.amount)}</span>}
+                              {h.monthlyInstallment ? <span className="tabular-nums">หัก ฿{formatMoney(h.monthlyInstallment)}/เดือน{h.installmentCount ? ` ×${h.installmentCount}` : ""}</span> : null}
+                              {HAS_COMPANY[t] && h.company && <span>{h.company}</span>}
+                            </div>
+                            {(h.attachments?.length || h.migratedFrom) ? (
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                {h.attachments?.map((a, i) => (
+                                  <a
+                                    key={`${a.url}-${i}`}
+                                    href={a.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-[9px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded hover:bg-emerald-100 max-w-[140px] truncate"
+                                  >
+                                    <FileText className="w-2.5 h-2.5 shrink-0" /> {a.name || "ไฟล์แนบ"}
+                                  </a>
+                                ))}
+                                {h.migratedFrom && (
+                                  <span className="inline-flex items-center text-[9px] text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-700 px-1.5 py-0.5 rounded" title={`ย้ายข้อมูลมาจาก ${h.migratedFrom}`}>
+                                    migrated: {h.migratedFrom}
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
+                            {isAdmin && (
+                              <div className="flex justify-end mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(h)}
+                                  disabled={deleting === h._id}
+                                  className="inline-flex items-center gap-1 text-[9px] text-zinc-400 hover:text-red-500 disabled:opacity-40"
+                                >
+                                  <Trash2 className="w-2.5 h-2.5" /> {deleting === h._id ? "กำลังลบ..." : "ลบ"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })}
+
+          {/* สรุปรวมของทะเบียน */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex items-center justify-between text-sm">
+            <span className="text-xs font-semibold text-zinc-500">
+              รวมค่าใช้จ่าย 4 รายการ
+              {sumMonthly(row) !== null && <> · หัก/เดือนรวม ฿{formatMoney(sumMonthly(row)!)}</>}
+            </span>
+            <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+              {sumAmounts(row) !== null ? `฿${formatMoney(sumAmounts(row)!)}` : "—"}
+            </span>
+          </div>
         </div>
+
+        {/* ฟอร์มเดี่ยว (ซ้อนบน drawer) */}
+        {formPanel && (
+          <ItemFormPanel
+            row={row}
+            itemType={formPanel.itemType}
+            item={formPanel.item}
+            mode={formPanel.mode}
+            onClose={() => setFormPanel(null)}
+            onSaved={() => { setFormPanel(null); loadHistory(); onChanged() }}
+          />
+        )}
+
+        {/* ฟอร์ม bulk (ซ้อนบน drawer) */}
+        {bulkOpen && (
+          <BulkRenewPanel
+            row={row}
+            onClose={() => setBulkOpen(false)}
+            onSaved={() => { setBulkOpen(false); loadHistory(); onChanged() }}
+          />
+        )}
       </div>
     </div>
   )
@@ -583,12 +968,12 @@ function InsuranceTaxContent() {
   const isAdmin = session?.user?.role === "admin"
 
   const [items, setItems]   = useState<Row[]>([])
-  const [counts, setCounts] = useState<Counts>({ total: 0, active: 0, expiring: 0, expired: 0, none: 0 })
+  const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState(searchParams.get("q") ?? "")
   const [statusFilter, setStatusFilter] = useState("")
-  const [panel, setPanel] = useState<{ row: Row; cycle: Cycle | null; mode: "renew" | "edit" } | null>(null)
-  const [historyPlate, setHistoryPlate] = useState<string | null>(null)
+  const [itemFilter, setItemFilter] = useState<"" | ItemType>("")
+  const [managePlate, setManagePlate] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -596,12 +981,14 @@ function InsuranceTaxContent() {
       const res = await fetch("/api/insurance-tax")
       if (!res.ok) throw new Error()
       const data = await res.json()
-      setItems(Array.isArray(data.items) ? data.items : [])
-      if (data.counts) setCounts(data.counts)
+      const today = new Date().toISOString().slice(0, 10)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setItems(Array.isArray(data.items) ? data.items.map((r: any) => normalizeRow(r, today)) : [])
+      setCounts(data.counts ?? EMPTY_COUNTS)
     } catch {
       // backend ยังไม่พร้อม / ผิดพลาด → แสดง empty state
       setItems([])
-      setCounts({ total: 0, active: 0, expiring: 0, expired: 0, none: 0 })
+      setCounts(EMPTY_COUNTS)
     } finally {
       setLoading(false)
     }
@@ -609,52 +996,68 @@ function InsuranceTaxContent() {
 
   useEffect(() => { load() }, [load])
 
+  /** สถานะของแถวตาม filter รายการ: เลือกรายการ → ใช้สถานะรายการนั้น / ไม่เลือก → worstStatus */
+  const rowStatus = useCallback(
+    (r: Row): ItemStatus => (itemFilter ? r.itemStatus[itemFilter] : r.worstStatus),
+    [itemFilter],
+  )
+
   // ค้นหา + กรองสถานะ (client-side)
   const visible = useMemo(() => {
     const kw = q.trim().toLowerCase()
     return items.filter((r) => {
-      if (statusFilter && r.displayStatus !== statusFilter) return false
+      if (statusFilter && rowStatus(r) !== statusFilter) return false
       if (!kw) return true
-      return [r.licensePlate, r.platePlain, r.truckNumber, r.driverName, r.current?.insuranceCompany, r.contractCode]
-        .some((v) => v?.toLowerCase().includes(kw))
+      return [
+        r.licensePlate, r.platePlain, r.truckNumber, r.driverName, r.contractCode,
+        r.items.insurance?.company, r.items.prb?.company,
+      ].some((v) => v?.toLowerCase().includes(kw))
     })
-  }, [items, q, statusFilter])
+  }, [items, q, statusFilter, rowStatus])
 
-  const pg = usePagination(visible, 50, [q, statusFilter])
+  const pg = usePagination(visible, 50, [q, statusFilter, itemFilter])
+
+  // KPI: ไม่เลือกกรายการ → counts จาก API (worstStatus) / เลือกรายการ → นับจากสถานะรายการนั้น
+  const effectiveCounts = useMemo<Counts>(() => {
+    if (!itemFilter) return counts
+    const c = { total: items.length, active: 0, expiring: 0, expired: 0, none: 0 }
+    for (const r of items) c[r.itemStatus[itemFilter]]++
+    return c
+  }, [counts, items, itemFilter])
 
   function handleExportCSV() {
     if (!visible.length) return
     const headers = [
-      "ทะเบียน","เบอร์รถ","คนขับ","บริษัทประกัน","ผู้ทำเรื่อง","วันเริ่ม","วันหมดอายุ",
-      "ประกันภัย","พรบ.","ภาษีทะเบียน","ตรวจสภาพ","รวม","จำนวนงวด","หัก/เดือน","เริ่มหัก","สิ้นสุดหัก","สถานะ","จำนวนรอบ",
+      "ทะเบียน", "เบอร์รถ", "คนขับ",
+      ...ITEM_TYPES.flatMap((t) => [`วันหมด${ITEM_LABEL[t]}`, `จำนวนเงิน${ITEM_LABEL[t]}`, `หัก/เดือน${ITEM_LABEL[t]}`]),
+      "รวมค่าใช้จ่าย", "หัก/เดือนรวม", "สถานะรวม",
     ]
-    const rows = visible.map((r) => {
-      const c = r.current
-      return [
-        r.licensePlate, r.truckNumber ?? "", r.driverName ?? "",
-        c?.insuranceCompany ?? "", c?.insurer ?? "",
-        c?.effectiveDate?.slice(0, 10) ?? "", c?.expiryDate?.slice(0, 10) ?? "",
-        c?.insuranceAmount ?? "", c?.prbAmount ?? "", c?.taxAmount ?? "", c?.inspectionCost ?? "",
-        c?.totalCost ?? "", c?.installmentCount ?? "", c?.monthlyInstallment ?? "",
-        c?.collectStart ?? "", c?.collectEnd ?? "",
-        STATUS_LABEL[r.displayStatus] ?? r.displayStatus, r.cyclesCount,
-      ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")
-    })
+    const rows = visible.map((r) => [
+      r.licensePlate, r.truckNumber ?? "", r.driverName ?? "",
+      ...ITEM_TYPES.flatMap((t) => {
+        const it = r.items[t]
+        return [it?.expiryDate?.slice(0, 10) ?? "", it?.amount ?? "", it?.monthlyInstallment ?? ""]
+      }),
+      sumAmounts(r) ?? "", sumMonthly(r) ?? "",
+      STATUS_LABEL[r.worstStatus] ?? r.worstStatus,
+    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
     const csv = [headers.join(","), ...rows].join("\n")
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a"); a.href = url
-    a.download = `insurance-tax-${statusFilter || "all"}.csv`; a.click()
+    a.download = `insurance-tax-${itemFilter || "all"}-${statusFilter || "all"}.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 
   const KPI = [
-    { key: "",         label: "ทั้งหมด",        value: counts.total,    dot: "bg-zinc-400",    accent: "text-zinc-900 dark:text-zinc-50" },
-    { key: "active",   label: "ใช้งาน",          value: counts.active,   dot: "bg-emerald-500", accent: "text-emerald-700 dark:text-emerald-400" },
-    { key: "expiring", label: "ใกล้หมดอายุ (≤60 วัน)", value: counts.expiring, dot: "bg-amber-500",   accent: "text-amber-700 dark:text-amber-400" },
-    { key: "expired",  label: "หมดอายุ",         value: counts.expired,  dot: "bg-red-500",     accent: "text-red-700 dark:text-red-400" },
-    { key: "none",     label: "ยังไม่มีข้อมูล",   value: counts.none,     dot: "bg-zinc-300 dark:bg-zinc-600", accent: "text-zinc-500 dark:text-zinc-400" },
+    { key: "",         label: "ทั้งหมด",        value: effectiveCounts.total,    dot: "bg-zinc-400",    accent: "text-zinc-900 dark:text-zinc-50" },
+    { key: "active",   label: "ใช้งาน",          value: effectiveCounts.active,   dot: "bg-emerald-500", accent: "text-emerald-700 dark:text-emerald-400" },
+    { key: "expiring", label: "ใกล้หมดอายุ (≤60 วัน)", value: effectiveCounts.expiring, dot: "bg-amber-500",   accent: "text-amber-700 dark:text-amber-400" },
+    { key: "expired",  label: "หมดอายุ",         value: effectiveCounts.expired,  dot: "bg-red-500",     accent: "text-red-700 dark:text-red-400" },
+    { key: "none",     label: "ยังไม่มีข้อมูล",   value: effectiveCounts.none,     dot: "bg-zinc-300 dark:bg-zinc-600", accent: "text-zinc-500 dark:text-zinc-400" },
   ]
+
+  const manageRow = managePlate ? items.find((r) => r.licensePlate === managePlate) ?? null : null
 
   return (
     <div>
@@ -667,8 +1070,9 @@ function InsuranceTaxContent() {
           </h1>
           <p className="text-sm text-zinc-400 mt-0.5">
             {visible.length} ทะเบียน
-            {statusFilter === "" && counts.total > 0 && (
-              <> · ใช้งาน <span className="text-emerald-600 font-medium">{counts.active}</span> / ใกล้หมด <span className="text-amber-600 font-medium">{counts.expiring}</span> / หมดแล้ว <span className="text-red-500 font-medium">{counts.expired}</span></>
+            {itemFilter && <> · เฉพาะรายการ <span className="text-zinc-600 dark:text-zinc-300 font-medium">{ITEM_LABEL[itemFilter]}</span></>}
+            {statusFilter === "" && effectiveCounts.total > 0 && (
+              <> · ใช้งาน <span className="text-emerald-600 font-medium">{effectiveCounts.active}</span> / ใกล้หมด <span className="text-amber-600 font-medium">{effectiveCounts.expiring}</span> / หมดแล้ว <span className="text-red-500 font-medium">{effectiveCounts.expired}</span></>
             )}
           </p>
         </div>
@@ -707,6 +1111,7 @@ function InsuranceTaxContent() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {/* สถานะ */}
         <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
           {STATUS_TABS.map((tab) => (
             <button
@@ -722,10 +1127,26 @@ function InsuranceTaxContent() {
             </button>
           ))}
         </div>
+        {/* รายการ — เลือกแล้วสถานะ/สีจะอิงรายการนั้นแทน worstStatus */}
+        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+          {ITEM_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setItemFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                itemFilter === tab.key
+                  ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2 flex-1 max-w-sm">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
           <Input
-            placeholder="ค้นหา ทะเบียน / เบอร์รถ / คนขับ / บริษัทประกัน"
+            placeholder="ค้นหา ทะเบียน / เบอร์รถ / คนขับ / บริษัท"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="h-9"
@@ -740,15 +1161,21 @@ function InsuranceTaxContent() {
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-[11px] text-zinc-500 uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">ทะเบียน</th>
-                <th className="px-4 py-3 text-left font-semibold">เบอร์รถ</th>
-                <th className="px-4 py-3 text-left font-semibold">คนขับ</th>
-                <th className="px-4 py-3 text-left font-semibold">บริษัทประกัน</th>
-                <th className="px-4 py-3 text-left font-semibold">วันเริ่ม</th>
-                <th className="px-4 py-3 text-left font-semibold">วันหมดอายุ</th>
-                <th className="px-4 py-3 text-right font-semibold">ค่าใช้จ่ายรวม</th>
-                <th className="px-4 py-3 text-right font-semibold">หัก/เดือน</th>
-                <th className="px-4 py-3 text-center font-semibold">สถานะ</th>
-                <th className="px-4 py-3 text-center font-semibold"></th>
+                <th className="px-3 py-3 text-left font-semibold">เบอร์รถ</th>
+                <th className="px-3 py-3 text-left font-semibold">คนขับ</th>
+                {ITEM_TYPES.map((t) => (
+                  <th
+                    key={t}
+                    className={`px-3 py-3 text-center font-semibold whitespace-nowrap ${
+                      itemFilter === t ? "text-emerald-600 dark:text-emerald-400" : ""
+                    }`}
+                  >
+                    {ITEM_COL_LABEL[t]}
+                  </th>
+                ))}
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">รวมค่าใช้จ่าย</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">หัก/เดือนรวม</th>
+                <th className="px-3 py-3 text-center font-semibold"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -756,118 +1183,70 @@ function InsuranceTaxContent() {
                 <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
               ) : visible.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
-              ) : pg.paged.map((r) => {
-                const c = r.current
-                return (
-                  <tr key={r.licensePlate} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100 text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
-                        {r.licensePlate}
-                      </span>
-                      {(r.brand || r.model) && (
-                        <div className="text-[10px] text-zinc-400 mt-0.5">{[r.brand, r.model].filter(Boolean).join(" · ")}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-zinc-600 dark:text-zinc-400">{r.truckNumber || <span className="text-zinc-300 dark:text-zinc-600">—</span>}</td>
-                    <td className="px-4 py-3 text-xs text-zinc-600 dark:text-zinc-400">{r.driverName || <span className="text-zinc-300 dark:text-zinc-600">—</span>}</td>
-                    <td className="px-4 py-3 text-xs">
-                      {c?.insuranceCompany
-                        ? <span className="text-zinc-700 dark:text-zinc-300">{c.insuranceCompany}</span>
-                        : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                      {c?.effectiveDate ? displayThaiDate(c.effectiveDate) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap">
-                      {c?.expiryDate ? (
-                        <span className={
-                          r.displayStatus === "expired" ? "text-red-500 font-semibold"
-                          : r.displayStatus === "expiring" ? "text-amber-600 dark:text-amber-400 font-semibold"
-                          : "text-zinc-600 dark:text-zinc-400"
-                        }>
-                          {displayThaiDate(c.expiryDate)}
-                        </span>
-                      ) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {fmt(c?.totalCost)
-                        ? <span className="font-semibold text-zinc-800 dark:text-zinc-200">{fmt(c?.totalCost)}</span>
-                        : <span className="text-zinc-300 dark:text-zinc-600 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-xs">
-                      {c?.monthlyInstallment ? (
-                        <span className="text-zinc-700 dark:text-zinc-300">
-                          {formatMoney(c.monthlyInstallment)}
-                          {c.installmentCount ? <span className="text-zinc-400"> ×{c.installmentCount}</span> : null}
-                        </span>
-                      ) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${STATUS_COLOR[r.displayStatus]}`}>
-                        {STATUS_LABEL[r.displayStatus] ?? r.displayStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            title={c ? "ต่ออายุ (บันทึกรอบใหม่)" : "บันทึกรอบใหม่"}
-                            onClick={() => setPanel({ row: r, cycle: c, mode: "renew" })}
-                            className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-950/60 whitespace-nowrap"
-                          >
-                            {c ? <RefreshCw className="w-3 h-3" /> : <PlusCircle className="w-3 h-3" />}
-                            {c ? "ต่ออายุ" : "เพิ่มข้อมูล"}
-                          </button>
+              ) : pg.paged.map((r) => (
+                <tr key={r.licensePlate} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100 text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                      {r.licensePlate}
+                    </span>
+                    {(r.brand || r.model) && (
+                      <div className="text-[10px] text-zinc-400 mt-0.5">{[r.brand, r.model].filter(Boolean).join(" · ")}</div>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-zinc-600 dark:text-zinc-400">{r.truckNumber || <span className="text-zinc-300 dark:text-zinc-600">—</span>}</td>
+                  <td className="px-3 py-3 text-xs text-zinc-600 dark:text-zinc-400">{r.driverName || <span className="text-zinc-300 dark:text-zinc-600">—</span>}</td>
+                  {/* 4 ช่องสถานะรายการ: จุดสี + วันหมดอายุ พ.ศ. สั้น */}
+                  {ITEM_TYPES.map((t) => {
+                    const it = r.items[t]
+                    const st = r.itemStatus[t]
+                    const dimmed = itemFilter !== "" && itemFilter !== t
+                    return (
+                      <td key={t} className={`px-3 py-3 text-center whitespace-nowrap ${dimmed ? "opacity-40" : ""}`}>
+                        {st === "none" || !it ? (
+                          <span className="text-zinc-300 dark:text-zinc-600 text-xs">–</span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 text-xs ${STATUS_TEXT[st]}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[st]}`} />
+                            {it.expiryDate ? shortThaiDate(it.expiryDate) : STATUS_LABEL[st]}
+                          </span>
                         )}
-                        {isAdmin && c && (
-                          <button
-                            type="button"
-                            title="แก้ไขรอบปัจจุบัน"
-                            onClick={() => setPanel({ row: r, cycle: c, mode: "edit" })}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {r.cyclesCount > 0 && (
-                          <button
-                            type="button"
-                            title={`ประวัติ ${r.cyclesCount} รอบ`}
-                            onClick={() => setHistoryPlate(r.licensePlate)}
-                            className="inline-flex items-center gap-0.5 text-[10px] w-auto px-1.5 h-6 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                          >
-                            <Clock className="w-3.5 h-3.5" />{r.cyclesCount > 1 ? r.cyclesCount : null}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+                      </td>
+                    )
+                  })}
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {sumAmounts(r) !== null
+                      ? <span className="font-semibold text-zinc-800 dark:text-zinc-200">{formatMoney(sumAmounts(r)!)}</span>
+                      : <span className="text-zinc-300 dark:text-zinc-600 text-xs">—</span>}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-xs">
+                    {sumMonthly(r) !== null
+                      ? <span className="text-zinc-700 dark:text-zinc-300">{formatMoney(sumMonthly(r)!)}</span>
+                      : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      type="button"
+                      title="จัดการรายการของทะเบียนนี้"
+                      onClick={() => setManagePlate(r.licensePlate)}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 whitespace-nowrap"
+                    >
+                      <Settings2 className="w-3 h-3" /> จัดการ
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
         <PaginationBar {...pg} unit="ทะเบียน" />
       </div>
 
-      {/* slide-over ฟอร์มต่ออายุ / แก้ไข */}
-      {panel && (
-        <CyclePanel
-          row={panel.row}
-          cycle={panel.cycle}
-          mode={panel.mode}
-          onClose={() => setPanel(null)}
-          onSaved={() => { setPanel(null); load() }}
-        />
-      )}
-
-      {/* drawer ประวัติ */}
-      {historyPlate && (
-        <HistoryDrawer
-          plate={historyPlate}
+      {/* drawer จัดการต่อทะเบียน */}
+      {manageRow && (
+        <ManageDrawer
+          row={manageRow}
           isAdmin={isAdmin}
-          onClose={() => setHistoryPlate(null)}
+          onClose={() => setManagePlate(null)}
           onChanged={load}
         />
       )}

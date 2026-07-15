@@ -850,72 +850,87 @@ export default function ContractDetailPage() {
   )
 }
 
-// ── การ์ดภาษี & ประกันภัย (read-only) — ข้อมูลจริงจัดการตามทะเบียนรถที่ /insurance-tax ──
-type ItCycle = {
-  effectiveDate?: string; expiryDate?: string; insuranceCompany?: string; insurer?: string
-  insuranceAmount?: number; prbAmount?: number; taxAmount?: number; inspectionCost?: number
-  totalCost?: number; installmentCount?: number; monthlyInstallment?: number
+// ── การ์ดภาษี & ประกันภัย (read-only) — จัดการตามทะเบียนรถที่ /insurance-tax (แยก 4 รายการ) ──
+const IT_LABELS: Record<string, string> = {
+  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษีทะเบียน", inspection: "ตรวจสภาพ",
+}
+type ItItem = {
+  itemType?: string; effectiveDate?: string; expiryDate?: string; amount?: number
+  company?: string; installmentCount?: number; monthlyInstallment?: number; status?: string
 }
 function InsuranceTaxCard({ plate }: { plate?: string }) {
-  const [cycle, setCycle] = useState<ItCycle | null | undefined>(undefined) // undefined = กำลังโหลด
+  const [items, setItems] = useState<ItItem[] | null | undefined>(undefined) // undefined = กำลังโหลด
   useEffect(() => {
-    if (!plate) { setCycle(null); return }
+    if (!plate) { setItems(null); return }
     fetch(`/api/insurance-tax?plate=${encodeURIComponent(plate)}`)
-      .then((r) => (r.ok ? r.json() : { cycles: [] }))
-      .then((d) => setCycle((d.cycles ?? [])[0] ?? null))
-      .catch(() => setCycle(null))
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setItems((d.items ?? d.cycles ?? []) as ItItem[]))
+      .catch(() => setItems(null))
   }, [plate])
 
   const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)
-  const expired = cycle?.expiryDate ? cycle.expiryDate < today : false
   const manageLink = `/insurance-tax${plate ? `?q=${encodeURIComponent(plate)}` : ""}`
+
+  // รายการล่าสุดต่อประเภท (ข้าม renewed ถ้ามี active)
+  const latest: Record<string, ItItem | undefined> = {}
+  for (const it of items ?? []) {
+    const t = it.itemType ?? ""
+    if (!t) continue
+    if (!latest[t] || (latest[t]!.status === "renewed" && it.status !== "renewed")) {
+      if (!latest[t]) latest[t] = it
+      else if (latest[t]!.status === "renewed" && it.status !== "renewed") latest[t] = it
+    }
+  }
+  const types = ["insurance", "prb", "tax", "inspection"]
+  const shown = types.map((t) => [t, latest[t]] as const)
+  const hasAny = shown.some(([, it]) => it)
+  const anyExpired = shown.some(([, it]) => it?.expiryDate && it.expiryDate < today)
+  const totalAmount = shown.reduce((s, [, it]) => s + (it?.amount ?? 0), 0)
+  const totalMonthly = shown.reduce((s, [, it]) => s + (it?.monthlyInstallment ?? 0), 0)
 
   return (
     <div className={`bg-white dark:bg-zinc-900 rounded-xl border p-5 mb-6 ${
-      expired ? "border-red-300 dark:border-red-800" : "border-zinc-200 dark:border-zinc-800"
+      anyExpired ? "border-red-300 dark:border-red-800" : "border-zinc-200 dark:border-zinc-800"
     }`}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-          ภาษี & ประกันภัย <span className="normal-case text-zinc-400">(ตามทะเบียนรถ)</span>
+          ภาษี & ประกันภัย <span className="normal-case text-zinc-400">(ตามทะเบียนรถ — แยก 4 รายการ)</span>
         </h2>
         <div className="flex items-center gap-2">
-          {expired && (
-            <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">หมดอายุแล้ว</span>
+          {anyExpired && (
+            <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">มีรายการหมดอายุ</span>
           )}
           <Link href={manageLink} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
             จัดการภาษี & ประกันภัย →
           </Link>
         </div>
       </div>
-      {cycle === undefined ? (
+      {items === undefined ? (
         <p className="text-xs text-zinc-400">กำลังโหลด…</p>
-      ) : cycle === null ? (
+      ) : !hasAny ? (
         <p className="text-xs text-zinc-400">
-          ยังไม่มีข้อมูลรอบภาษี/ประกันของทะเบียนนี้ — เพิ่มได้ที่เมนู งานประจำวัน → ภาษี & ประกันภัย
+          ยังไม่มีข้อมูลภาษี/ประกันของทะเบียนนี้ — เพิ่มได้ที่เมนู งานประจำวัน → ภาษี & ประกันภัย
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-5 gap-3 mb-4">
-            {([
-              ["ประกันภัย", cycle.insuranceAmount],
-              ["พรบ", cycle.prbAmount],
-              ["ภาษีทะเบียน", cycle.taxAmount],
-              ["ตรวจสภาพ", cycle.inspectionCost],
-              ["รวมทั้งสิ้น", cycle.totalCost],
-            ] as [string, number | undefined][]).map(([label, val]) => (
-              <div key={label}>
-                <p className="text-xs text-zinc-400 mb-1">{label}</p>
-                <p className={`text-sm font-semibold ${label === "รวมทั้งสิ้น" ? "text-emerald-600" : ""}`}>
-                  {val ? formatMoney(val) : "-"}
-                </p>
-              </div>
-            ))}
+          <div className="grid grid-cols-4 gap-3 mb-3">
+            {shown.map(([t, it]) => {
+              const expired = it?.expiryDate ? it.expiryDate < today : false
+              return (
+                <div key={t} className="rounded-lg border border-zinc-100 dark:border-zinc-800 p-2.5">
+                  <p className="text-xs text-zinc-400 mb-1">{IT_LABELS[t]}</p>
+                  <p className="text-sm font-semibold">{it?.amount ? formatMoney(it.amount) : "-"}</p>
+                  <p className={`text-[11px] mt-0.5 ${expired ? "text-red-600 font-medium" : "text-zinc-500"}`}>
+                    {it?.expiryDate ? `หมดอายุ ${formatDate(it.expiryDate)}` : "ไม่มีข้อมูล"}
+                  </p>
+                </div>
+              )
+            })}
           </div>
-          <div className="grid grid-cols-4 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
-            <div><span className="text-zinc-400">บริษัทประกัน </span>{cycle.insuranceCompany || cycle.insurer || "-"}</div>
-            <div><span className="text-zinc-400">คุ้มครอง </span>{formatDate(cycle.effectiveDate)} – <span className={expired ? "text-red-600 font-medium" : ""}>{formatDate(cycle.expiryDate)}</span></div>
-            <div><span className="text-zinc-400">เรียกเก็บ </span>{cycle.installmentCount ?? 0} งวด × {formatMoney(cycle.monthlyInstallment ?? 0)}/เดือน</div>
-            <div />
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
+            <div><span className="text-zinc-400">รวมทั้งสิ้น </span><span className="text-emerald-600 font-semibold">{formatMoney(totalAmount)}</span></div>
+            <div><span className="text-zinc-400">หักเงินเดือนรวม </span>{totalMonthly ? `${formatMoney(totalMonthly)}/เดือน` : "-"}</div>
+            <div><span className="text-zinc-400">บริษัทประกัน </span>{latest["insurance"]?.company || "-"}</div>
           </div>
         </>
       )}
