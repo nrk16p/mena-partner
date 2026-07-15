@@ -676,6 +676,38 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
   const [deleting, setDeleting] = useState<string | null>(null)
   const [formPanel, setFormPanel] = useState<{ itemType: ItemType; item: Item | null; mode: "renew" | "edit" } | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
+  // convert รายการ → หนี้ผ่อนใน driver_ledger (ล้างงวดหักฝั่งนี้อัตโนมัติ กันหักซ้ำ)
+  const [convertFor, setConvertFor] = useState<{ item: Item; count: string; start: string } | null>(null)
+  const [converting, setConverting] = useState(false)
+
+  async function submitConvert() {
+    if (!convertFor) return
+    const count = Number(convertFor.count)
+    if (!count || count < 1) { alert("ระบุจำนวนงวด"); return }
+    setConverting(true)
+    try {
+      const res = await fetch("/api/ledger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          convertFrom: { type: "insurance_item", itemId: convertFor.item._id },
+          installmentCount: count,
+          startMonth: convertFor.start,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error((d as { error?: string }).error ?? "สร้างหนี้ไม่สำเร็จ")
+      }
+      setConvertFor(null)
+      loadHistory(); onChanged()
+      alert("ตั้งหนี้ผ่อนเรียบร้อย — ดูได้ที่เมนู หนี้สิน & เงินสะสม")
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setConverting(false)
+    }
+  }
 
   const loadHistory = useCallback(() => {
     fetch(`/api/insurance-tax?plate=${encodeURIComponent(row.licensePlate)}`)
@@ -795,6 +827,19 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
                         {it ? <RefreshCw className="w-3 h-3" /> : <PlusCircle className="w-3 h-3" />}
                         {it ? "ต่ออายุ" : "เพิ่มข้อมูล"}
                       </button>
+                      {it && !!it.amount && (
+                        <button
+                          type="button"
+                          title="แปลงเป็นหนี้ผ่อน หักเงินเดือนผ่านระบบหนี้สิน (ยกเลิกงวดหักของรายการนี้)"
+                          onClick={() => {
+                            const ym = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 7)
+                            setConvertFor({ item: it, count: String(it.installmentCount ?? 12), start: ym })
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 px-2 py-1 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-950/60 whitespace-nowrap"
+                        >
+                          <Layers className="w-3 h-3" /> ตั้งหนี้ผ่อน
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -937,7 +982,58 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
         </div>
 
         {/* ฟอร์มเดี่ยว (ซ้อนบน drawer) */}
-        {formPanel && (
+        {/* convert → driver_ledger */}
+      {convertFor && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center" onClick={() => setConvertFor(null)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-5 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100">
+              ตั้งหนี้ผ่อน — {ITEM_LABEL[convertFor.item.itemType]} {formatMoney(convertFor.item.amount ?? 0)} บาท
+            </div>
+            <p className="text-[11px] text-zinc-400">
+              ระบบจะสร้างหนี้ใน "หนี้สิน & เงินสะสม" และยกเลิกงวดหักของรายการนี้ (หักผ่านระบบหนี้ทางเดียว)
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">จำนวนงวด (เดือน)</label>
+                <Input
+                  type="number" min="1"
+                  value={convertFor.count}
+                  onChange={(e) => setConvertFor((p) => p ? { ...p, count: e.target.value } : p)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">เริ่มหักเดือน</label>
+                <input
+                  type="month"
+                  value={convertFor.start}
+                  onChange={(e) => setConvertFor((p) => p ? { ...p, start: e.target.value } : p)}
+                  className="w-full h-9 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-sm"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-zinc-500">
+              หัก/เดือน ≈ {formatMoney(Math.round(((convertFor.item.amount ?? 0) / Math.max(1, Number(convertFor.count) || 1)) * 100) / 100)} บาท
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button" disabled={converting} onClick={submitConvert}
+                className="flex-1 h-9 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {converting ? "กำลังสร้าง..." : "สร้างหนี้ผ่อน"}
+              </button>
+              <button type="button" onClick={() => setConvertFor(null)} className="h-9 px-4 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm">
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {formPanel && (
           <ItemFormPanel
             row={row}
             itemType={formPanel.itemType}

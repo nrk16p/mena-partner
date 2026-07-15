@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
 import { nextMonth } from "@/lib/utils"
 import { getInsuranceDeductionMap, normPlateIT } from "@/lib/insurance-tax"
+import { getLedgerDeductions } from "@/lib/driver-ledger"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -81,6 +82,13 @@ export async function POST(req: NextRequest) {
     db, month, contracts.map((c) => c.licensePlate as string).filter(Boolean)
   )
 
+  // 5.5 ยอดหักจาก ledger กลาง (หนี้/เงินสะสม พขร.) ต่อสัญญา — loop ได้ที่ขนาดนี้
+  const ledgerMap = new Map<string, number>()
+  for (const code of pendingCodes) {
+    const items = await getLedgerDeductions(db, code, month)
+    ledgerMap.set(code, Math.round(items.reduce((s, i) => s + i.amount, 0) * 100) / 100)
+  }
+
   // 6. Build payroll entries
   const now = new Date().toISOString()
   const docs = pending.map((d) => {
@@ -94,8 +102,9 @@ export async function POST(req: NextRequest) {
       ? insuranceMap.get(normPlateIT(contract.licensePlate as string)) ?? null
       : null
     const taxInsurance  = cycleDeduction ?? ((contract?.monthlyInsuranceFee as number) ?? 0)
+    const ledgerDeduction = ledgerMap.get(code) ?? 0
     const totalIncome   = transportFee
-    const totalDeductions = mgmtFee8pct + installment + taxInsurance
+    const totalDeductions = mgmtFee8pct + installment + taxInsurance + ledgerDeduction
     return {
       contractCode: code,
       month,
@@ -118,6 +127,7 @@ export async function POST(req: NextRequest) {
       installment,
       repairInstallment:      0,
       downPaymentInstallment: 0,
+      ledgerDeduction,
       totalIncome,
       totalDeductions,
       netPay: totalIncome - totalDeductions,

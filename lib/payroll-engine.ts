@@ -1,6 +1,7 @@
 import type { Db } from "mongodb"
 import { nextMonth } from "@/lib/utils"
 import { getInsuranceDeductionForPlate } from "@/lib/insurance-tax"
+import { getLedgerDeductions } from "@/lib/driver-ledger"
 
 export interface PayrollResult {
   contractCode: string
@@ -26,6 +27,8 @@ export interface PayrollResult {
   downPaymentInstallment: number
   otherDeductWHT: number
   otherDeductNoWHT: number
+  ledgerDeduction: number
+  ledgerItems: { entryId: string; debtCode: string; label: string; amount: number }[]
   totalIncome: number
   totalDeductions: number
   netPay: number
@@ -99,12 +102,16 @@ export async function calculatePayrollEntry(
   const otherDeductNoWHT = (adjRec?.otherDeductNoWHT as number) ?? 0
   const downPaymentInstallment = 0
 
+  // ledger กลาง (หนี้/เงินสะสม พขร.) — ยอดหักของเดือนนี้ตาม balance ปัจจุบัน
+  const ledgerItems     = await getLedgerDeductions(db, contractCode, month)
+  const ledgerDeduction = Math.round(ledgerItems.reduce((s, i) => s + i.amount, 0) * 100) / 100
+
   const totalIncome = transportFee + ot + otherIncomeWHT + otherIncomeNoWHT
   const totalDeductions =
     fuel + gps + repairInHouse + repairOutside + mgmtFee8pct +
     labor + tire + tirePatch + carWash +
     taxInsurance + installment + repairInstallment + downPaymentInstallment +
-    otherDeductWHT + otherDeductNoWHT
+    otherDeductWHT + otherDeductNoWHT + ledgerDeduction
 
   return {
     contractCode,
@@ -130,6 +137,8 @@ export async function calculatePayrollEntry(
     downPaymentInstallment,
     otherDeductWHT,
     otherDeductNoWHT,
+    ledgerDeduction,
+    ledgerItems,
     totalIncome: Math.round(totalIncome * 100) / 100,
     totalDeductions: Math.round(totalDeductions * 100) / 100,
     netPay: Math.round((totalIncome - totalDeductions) * 100) / 100,

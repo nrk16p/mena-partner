@@ -62,6 +62,11 @@ function ensureIndexes(client: MongoClient): Promise<unknown> {
     // vehicle_insurance_tax = รอบต่อภาษี/ประกันรายทะเบียน — join ด้วย platePlain, แจ้งเตือนตาม expiryDate
     db.collection("vehicle_insurance_tax").createIndex({ platePlain: 1, createdAt: -1 }),
     db.collection("vehicle_insurance_tax").createIndex({ expiryDate: 1 }),
+    // driver_ledger = สมุดหนี้/เงินสะสม พขร. — payments/skips unique ต่อ (entry, เดือน) กันหักซ้ำ
+    db.collection("driver_ledger").createIndex({ contractCode: 1, status: 1 }),
+    db.collection("driver_ledger").createIndex({ debtCode: 1 }, { unique: true }),
+    db.collection("ledger_payments").createIndex({ entryId: 1, month: 1 }, { unique: true }),
+    db.collection("ledger_skips").createIndex({ entryId: 1, month: 1 }, { unique: true }),
   ]).catch(() => { /* non-fatal: index creation errors don't block the app */ })
 }
 

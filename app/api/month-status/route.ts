@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { settleLedgerMonth } from "@/lib/driver-ledger"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -71,5 +72,21 @@ export async function POST(req: NextRequest) {
     { upsert: true }
   )
 
-  return NextResponse.json({ ok: true, month, phase })
+  // ── ปิดเดือน: phase → approved/locked → ตัดยอด ledger (หนี้/เงินสะสม พขร.) ──
+  // idempotent: settleLedgerMonth ข้าม (entryId, month) ที่ตัดไปแล้ว จึงยิงซ้ำได้
+  let ledgerSettlement: { contracts: number; settled: number; total: number } | undefined
+  if (phase === "approved" || phase === "locked") {
+    const codes: string[] = await db.collection("driver_ledger")
+      .distinct("contractCode", { status: "active", startMonth: { $lte: month } })
+    let settled = 0
+    let total   = 0
+    for (const code of codes) {
+      const r = await settleLedgerMonth(db, code, month, `month-close:${month}`)
+      settled += r.settled
+      total   += r.total
+    }
+    ledgerSettlement = { contracts: codes.length, settled, total: Math.round(total * 100) / 100 }
+  }
+
+  return NextResponse.json({ ok: true, month, phase, ...(ledgerSettlement ? { ledgerSettlement } : {}) })
 }
