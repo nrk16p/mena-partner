@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCircle2 } from "lucide-react"
+import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCircle2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
@@ -64,6 +64,26 @@ export default function ContractsPage() {
       })
       if (!put.ok) throw new Error("บันทึกไฟล์แนบไม่สำเร็จ")
       setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: url } : x)))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  // ลบไฟล์แนบ (เคลียร์ field ใน contract — ไฟล์ใน storage คงอยู่เผื่อกู้คืน)
+  async function removeAttachment(c: Contract, field: AttachField, full: string) {
+    if (!confirm(`ลบ${full}ของสัญญา ${c.contractCode}?`)) return
+    const key = `${c._id}:${field}`
+    setUploading(key)
+    try {
+      const res = await fetch(`/api/contracts/${c._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: "" }),
+      })
+      if (!res.ok) throw new Error("ลบไฟล์แนบไม่สำเร็จ")
+      setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: "" } : x)))
     } catch (err) {
       alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
     } finally {
@@ -324,16 +344,31 @@ export default function ContractsPage() {
                         const url  = c[field]
                         const busy = uploading === `${c._id}:${field}`
                         if (url) return (
-                          <a
+                          <span
                             key={field}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={`เปิด${full}`}
-                            className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                            className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 pl-1.5 pr-0.5 py-0.5 rounded"
                           >
-                            <FileText className="w-2.5 h-2.5" /> {label}
-                          </a>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={`เปิด${full}`}
+                              className="inline-flex items-center gap-1 hover:underline"
+                            >
+                              <FileText className="w-2.5 h-2.5" /> {label}
+                            </a>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                title={`ลบ${full}`}
+                                disabled={busy}
+                                onClick={() => removeAttachment(c, field, full)}
+                                className="ml-0.5 text-emerald-400 hover:text-red-500 disabled:opacity-40"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </span>
                         )
                         if (!isAdmin) return (
                           <span
