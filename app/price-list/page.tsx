@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
 import { useSession } from "next-auth/react"
-import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock } from "lucide-react"
+import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { PriceHistoryDrawer } from "@/components/price-history-drawer"
@@ -182,6 +182,170 @@ function PayBar({ down, finance }: { down: number; finance: number }) {
   )
 }
 
+
+// ── ฟอร์มเพิ่ม/แก้ไขราคาขาย (ทุก user ที่ login ใช้ได้) ──
+const PRICE_FIELDS: { key: string; label: string }[] = [
+  { key: "totalSalePrice",       label: "ราคาขายรวม (บาท)" },
+  { key: "downPayment",          label: "เงินดาวน์รวม (บาท)" },
+  { key: "cashDown",             label: "ดาวน์ชำระแล้ว (บาท)" },
+  { key: "remainingInstallment", label: "ดาวน์คงเหลือ (บาท)" },
+  { key: "downInstallmentCount", label: "จำนวนงวดดาวน์ (เดือน)" },
+  { key: "downInstallmentAmt",   label: "ค่างวดดาวน์/เดือน (บาท)" },
+  { key: "financeAmount",        label: "ยอดไฟแนนซ์ (บาท)" },
+  { key: "financeInstallments",  label: "จำนวนงวดไฟแนนซ์ (เดือน)" },
+  { key: "monthlyPayment",       label: "ค่างวด/เดือน (บาท)" },
+]
+
+function PriceFormPanel({ mode, row, existingPlates, onClose, onSaved }: {
+  mode: "add" | "edit"
+  row?: PriceRow
+  existingPlates: Set<string>
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [plate, setPlate] = useState(row?.licensePlate ?? "")
+  const [plateOptions, setPlateOptions] = useState<string[]>([])
+  const [f, setF] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
+    for (const { key } of PRICE_FIELDS) {
+      const v = row?.[key as keyof PriceRow]
+      init[key] = v === null || v === undefined ? "" : String(v)
+    }
+    return init
+  })
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState("")
+
+  // ทะเบียนจาก vehicle_master ที่ยังไม่มีราคา (เฉพาะโหมดเพิ่ม)
+  useEffect(() => {
+    if (mode !== "add") return
+    fetch("/api/vehicles")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((vs: { licensePlate?: string }[]) =>
+        setPlateOptions(
+          vs.map((v) => v.licensePlate ?? "").filter((p) => p && !existingPlates.has(p)).sort()
+        ))
+      .catch(() => setPlateOptions([]))
+  }, [mode, existingPlates])
+
+  const num = (k: string) => { const n = Number(f[k]); return f[k] !== "" && Number.isFinite(n) ? n : null }
+
+  // auto-calc: กรอกช่องต้นทางแล้วช่องปลายทางเติมให้เอง (ถ้าผู้ใช้ยังไม่พิมพ์ทับ)
+  function setField(k: string, v: string) {
+    setTouched((t) => ({ ...t, [k]: true }))
+    setF((prev) => {
+      const next = { ...prev, [k]: v }
+      const n = (kk: string) => { const x = Number(next[kk]); return next[kk] !== "" && Number.isFinite(x) ? x : null }
+      const auto = (kk: string, val: number | null) => {
+        if (val === null || touched[kk]) return
+        next[kk] = String(Math.round(val * 100) / 100)
+      }
+      const total = n("totalSalePrice"), down = n("downPayment"), cash = n("cashDown")
+      const downCnt = n("downInstallmentCount"), fin = n("financeAmount"), finCnt = n("financeInstallments")
+      if (total !== null && down !== null) auto("financeAmount", total - down)
+      if (down !== null && cash !== null) auto("remainingInstallment", down - cash)
+      const remain = n("remainingInstallment")
+      if (remain !== null && downCnt) auto("downInstallmentAmt", remain / downCnt)
+      const fin2 = n("financeAmount")
+      if ((fin ?? fin2) !== null && finCnt) auto("monthlyPayment", (fin2 ?? fin)! / finCnt)
+      return next
+    })
+  }
+
+  async function handleSave() {
+    setErr("")
+    if (!plate) { setErr("เลือกทะเบียนรถก่อน"); return }
+    setSaving(true)
+    try {
+      const payload: Record<string, unknown> = { licensePlate: plate }
+      for (const { key } of PRICE_FIELDS) payload[key] = num(key)
+      const res = mode === "add"
+        ? await fetch("/api/price-list", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        : await fetch(`/api/price-list/${encodeURIComponent(plate)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error((d as { error?: string }).error ?? "บันทึกไม่สำเร็จ")
+      }
+      onSaved()
+      onClose()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div
+        className="relative w-full max-w-md h-full bg-white dark:bg-zinc-900 shadow-2xl overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-4 py-3 flex items-center justify-between">
+          <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100">
+            {mode === "add" ? "เพิ่มราคาขาย" : `แก้ไขราคาขาย — ${plate}`}
+          </div>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          {mode === "add" && (
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">ทะเบียนรถ (เฉพาะคันที่ยังไม่มีราคา)</label>
+              <select
+                value={plate}
+                onChange={(e) => setPlate(e.target.value)}
+                className="w-full h-9 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-sm"
+              >
+                <option value="">— เลือกทะเบียน —</option>
+                {plateOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          )}
+          {mode === "edit" && row?.status === "contract" && (
+            <div className="text-[11px] bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 rounded-lg px-3 py-2">
+              ทะเบียนนี้ติดสัญญาอยู่ — การแก้ราคาไม่กระทบสัญญาเดิม (สัญญาเก็บตัวเลข ณ วันทำสัญญาแล้ว)
+              มีผลเฉพาะสัญญาใหม่เท่านั้น
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            {PRICE_FIELDS.map(({ key, label }) => (
+              <div key={key} className="space-y-1">
+                <label className="text-xs text-zinc-500">{label}</label>
+                <input
+                  type="number" step="any" min="0"
+                  value={f[key]}
+                  onChange={(e) => setField(key, e.target.value)}
+                  className="w-full h-9 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-sm tabular-nums"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-zinc-400">
+            ระบบเติมให้อัตโนมัติ: ไฟแนนซ์ = ราคารวม − ดาวน์ · ดาวน์คงเหลือ = ดาวน์ − ชำระแล้ว ·
+            ค่างวด = ยอด ÷ จำนวนงวด (พิมพ์ทับได้)
+          </p>
+          {err && <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">{err}</div>}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button" disabled={saving} onClick={handleSave}
+              className="flex-1 h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50"
+            >
+              {saving ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+            <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm">
+              ยกเลิก
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const STATUS_CONFIG = {
   contract: { label: "ติดสัญญา", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" },
   active:   { label: "ว่าง",     cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" },
@@ -207,12 +371,14 @@ export default function PriceListPage() {
   const [saleFilter,    setSaleFilter]    = useState("")
   const [editingPlate,  setEditingPlate]  = useState<string | null>(null)
   const [historyPlate,  setHistoryPlate]  = useState<string | null>(null)
+  const [priceForm, setPriceForm] = useState<{ mode: "add" } | { mode: "edit"; row: PriceRow } | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch("/api/price-list")
       .then((r) => r.ok ? r.json() : [])
       .then((data) => { setRows(data); setLoading(false) })
   }, [])
+  useEffect(() => { load() }, [load])
 
   const installmentGroups = useMemo(() =>
     Array.from(new Set(rows.map((r) => r.financeInstallments)))
@@ -281,9 +447,18 @@ export default function PriceListPage() {
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Master Price List</h1>
           <p className="text-xs text-zinc-400 mt-0.5">ราคาขาย / เงินดาวน์ / ค่างวดไฟแนนซ์ ต่อทะเบียนรถ</p>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-zinc-400 font-medium">
-          <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" />เงินดาวน์</span>
-          <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" />ไฟแนนซ์</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[11px] text-zinc-400 font-medium">
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" />เงินดาวน์</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" />ไฟแนนซ์</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPriceForm({ mode: "add" })}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3.5 py-2"
+          >
+            <PlusCircle className="w-3.5 h-3.5" /> เพิ่มราคาขาย
+          </button>
         </div>
       </div>
 
@@ -638,6 +813,14 @@ export default function PriceListPage() {
                           >
                             <Clock className="w-3 h-3 inline" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setPriceForm({ mode: "edit", row: r })}
+                            title="แก้ไขราคาขาย"
+                            className="ml-1 align-middle text-zinc-300 hover:text-emerald-600 dark:text-zinc-600 dark:hover:text-emerald-400"
+                          >
+                            <Pencil className="w-3 h-3 inline" />
+                          </button>
                           {isRepair && r.repairEnd && dLeft !== null && (
                             <div
                               className={`text-[9px] font-semibold mt-0.5 tabular-nums ${
@@ -699,6 +882,17 @@ export default function PriceListPage() {
       </div>
 
       <PriceHistoryDrawer plate={historyPlate} onClose={() => setHistoryPlate(null)} />
+      {/* ฟอร์มเพิ่ม/แก้ไขราคาขาย */}
+      {priceForm && (
+        <PriceFormPanel
+          mode={priceForm.mode}
+          row={priceForm.mode === "edit" ? priceForm.row : undefined}
+          existingPlates={new Set(rows.map((r) => r.licensePlate))}
+          onClose={() => setPriceForm(null)}
+          onSaved={load}
+        />
+      )}
+
     </div>
   )
 }

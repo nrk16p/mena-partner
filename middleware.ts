@@ -24,8 +24,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Write routes: admin only
-  if (!READ_METHODS.has(request.method) && token.role !== "admin") {
+  // Write routes: admin only — ยกเว้นเส้นทางที่อนุญาตให้ user ทั่วไปเขียนได้
+  // (price-list: เพิ่ม/แก้ราคา + สถานะความพร้อมขาย — ตามข้อกำหนด 2026-07-15)
+  const userWritable = pathname.startsWith("/api/price-list")
+  if (!READ_METHODS.has(request.method) && token.role !== "admin" && !userWritable) {
     return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 })
   }
 
