@@ -1513,6 +1513,7 @@ function MergedTab() {
   const [promos,    setPromos]    = useState<PlatePromo[]>([])
   const [loading,   setLoading]   = useState(true)
   const [q,         setQ]         = useState("")
+  const [typeFilter, setTypeFilter] = useState("")
 
   useEffect(() => {
     Promise.all([
@@ -1558,12 +1559,12 @@ function MergedTab() {
   }
 
   const term = q.trim().toLowerCase()
-  const filtered = term
-    ? debts.filter((d) =>
-        [d.debtAcceptanceNo, d.employeeCode, d.employeeName, d.licensePlate, d.truckNumber, d.repairOrderNo]
-          .some((v) => (v ?? "").toLowerCase().includes(term))
-      )
-    : debts
+  const filtered = debts.filter((d) => {
+    if (typeFilter && d.repairType !== typeFilter) return false
+    if (term && ![d.debtAcceptanceNo, d.employeeCode, d.employeeName, d.licensePlate, d.truckNumber, d.repairOrderNo]
+      .some((v) => (v ?? "").toLowerCase().includes(term))) return false
+    return true
+  })
 
   const withDetail = filtered.filter((d) => (byMr[d.repairOrderNo] ?? []).length > 0).length
 
@@ -1587,9 +1588,22 @@ function MergedTab() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex flex-wrap gap-2">
+      {/* Search + filter ประเภท */}
+      <div className="flex flex-wrap gap-2 items-center">
         <SearchBar value={q} onChange={setQ} placeholder="ค้นหาเลขที่ใบ ชื่อพนักงาน ทะเบียน MR..." />
+        <div className="flex gap-1.5">
+          {([["", "ทั้งหมด"], ["repair", "ซ่อม"], ["tire", "ยาง"], ["accident", "อุบัติเหตุ"]] as [string, string][]).map(([val, lbl]) => (
+            <button key={val} onClick={() => setTypeFilter(val)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                typeFilter === val
+                  ? "bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent"
+                  : "bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+              }`}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
