@@ -228,6 +228,8 @@ export interface RepairClaim {
   contractCode: string
   date: string
   description: string
+  /** เลขที่ใบ MR (ใช้จับคู่กับรายการเบิกคลัง) — เดิมเก็บใน description */
+  mr?: string
   amount: number
   /** ทีมยืนยันตัดงบโปรฯ แล้ว — ประวัติเก่าที่ไม่มี field นี้ = รอยืนยัน (ไม่ตัดงบ) */
   confirmed?: boolean

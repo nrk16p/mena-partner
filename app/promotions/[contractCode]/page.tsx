@@ -17,9 +17,13 @@ export default function PromoDetailPage() {
   const [loading, setLoading] = useState(true)
 
   const [rDate, setRDate]   = useState("")
+  const [rMr, setRMr]       = useState("")
   const [rDesc, setRDesc]   = useState("")
   const [rAmt, setRAmt]     = useState("")
   const [rSaving, setRSaving] = useState(false)
+
+  // เลข MR ของ claim (ใช้จับคู่รายการเบิกคลัง) — field mr ก่อน fallback description
+  const claimMr = (c: RepairClaim) => (c.mr ?? c.description ?? "").trim()
 
   const currentYear = new Date().getFullYear()
   const [pmYear, setPmYear]   = useState(String(currentYear))
@@ -49,9 +53,9 @@ export default function PromoDetailPage() {
       const r = await fetch("/api/promotions/repair", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contractCode, date: rDate, description: rDesc, amount: Number(rAmt) }),
+        body: JSON.stringify({ contractCode, date: rDate, mr: rMr, description: rDesc, amount: Number(rAmt) }),
       })
-      if (r.ok) { setRDate(""); setRDesc(""); setRAmt(""); await load() }
+      if (r.ok) { setRDate(""); setRMr(""); setRDesc(""); setRAmt(""); await load() }
     } catch {} finally { setRSaving(false) }
   }
 
@@ -154,7 +158,7 @@ export default function PromoDetailPage() {
           </p>
           {(() => {
             const uncovered = data.repairClaims.filter(
-              (c) => !c.confirmed && !data.dedupedMrs?.includes((c.description ?? "").trim())
+              (c) => !c.confirmed && !data.dedupedMrs?.includes(claimMr(c))
             )
             const reserves = uncovered.filter((c) => c.reserve)
             const pending  = uncovered.filter((c) => !c.reserve)
@@ -195,12 +199,15 @@ export default function PromoDetailPage() {
               ) : (
                 <>
                   {data.repairClaims.map((c: RepairClaim) => {
-                    const coveredByStock = data.dedupedMrs?.includes((c.description ?? "").trim())
+                    const coveredByStock = !!claimMr(c) && data.dedupedMrs?.includes(claimMr(c))
                     const counted = coveredByStock || c.confirmed === true
                     return (
                       <tr key={c._id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${!counted ? "opacity-80" : ""}`}>
                         <td className="px-3 py-2 text-zinc-500">{c.date}</td>
                         <td className="px-3 py-2">
+                          {claimMr(c) && (
+                            <span className="mr-1.5 font-mono text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded px-1.5 py-0.5">MR {claimMr(c)}</span>
+                          )}
                           {c.description}
                           {coveredByStock ? (
                             <span
@@ -270,10 +277,14 @@ export default function PromoDetailPage() {
         {/* Add repair form */}
         <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 space-y-3">
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึกการซ่อม (จองงบ reserve — อิงจากใบ MR · ยังไม่ตัดงบจริงจนกดเปลี่ยนเป็น actual)</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">วันที่ซ่อม</Label>
               <Input type="date" value={rDate} onChange={(e) => setRDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">เลขที่ MR</Label>
+              <Input placeholder="เช่น MR-xxxxx" value={rMr} onChange={(e) => setRMr(e.target.value)} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">รายละเอียด</Label>
@@ -284,6 +295,7 @@ export default function PromoDetailPage() {
               <Input type="number" min="0" step="0.01" placeholder="0" value={rAmt} onChange={(e) => setRAmt(e.target.value)} />
             </div>
           </div>
+          <p className="text-[11px] text-zinc-400">ระบุเลขที่ MR เพื่อให้ระบบจับคู่กับรายการเบิกคลังอัตโนมัติ (ถ้ามี MR ตรงกัน → ตัดงบจากคลังให้)</p>
           <Button
             onClick={handleRepairSave}
             disabled={rSaving || !rDate || !rDesc || !rAmt}

@@ -5,7 +5,7 @@ const DB = process.env.MONGO_DB ?? "mena_partner"
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { contractCode, date, description, amount } = body
+  const { contractCode, date, description, mr, amount } = body
   if (!contractCode || !date || !description || amount == null) {
     return NextResponse.json({ error: "missing required fields" }, { status: 400 })
   }
@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     contractCode: String(contractCode),
     date: String(date),
     description: String(description),
+    mr: mr ? String(mr).trim() : "",
     amount: Number(amount),
     // บันทึกจากหน้าโปรโมชั่นโดยทีม = "จองงบ (reserve)" อิงจากใบ MR — ยังไม่ตัดงบจริง
     // จนกว่าจะกด "เปลี่ยนเป็น actual" (ตัดงบถาวร) หรือ MR ถูกจับคู่กับรายการเบิกคลัง

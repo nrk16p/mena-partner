@@ -148,7 +148,8 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
   interface ClaimRow { mr: string; date: string; amount: number; contractCode: string; confirmed: boolean }
   const claimByMr = new Map<string, ClaimRow>()
   for (const c of claims) {
-    const mr = String(c.description ?? "").trim()
+    // ใช้ field mr ก่อน (บันทึกใหม่) fallback description (ประวัติเก่าที่เก็บ MR ใน description)
+    const mr = String(c.mr ?? c.description ?? "").trim()
     const key = mr || `claim:${c._id}`
     claimByMr.set(key, {
       mr,
