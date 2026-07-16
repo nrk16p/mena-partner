@@ -63,7 +63,7 @@ export default function PromoDetailPage() {
 
   // กติกา: ทีมต้องระบุ (ยืนยัน) ก่อน งบโปรฯ ถึงถูกตัด — ยืนยันแล้วถาวร ยกเลิกไม่ได้
   const handleConfirmRepair = async (id: string) => {
-    if (!confirm("ยืนยันตัดงบโปรโมชั่นสำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
+    if (!confirm("เปลี่ยนเป็น actual — ตัดงบโปรโมชั่นสำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
     const r = await fetch(`/api/promotions/repair/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -153,16 +153,28 @@ export default function PromoDetailPage() {
             คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.repairRemaining)}</span>
           </p>
           {(() => {
-            const pending = data.repairClaims.filter(
+            const uncovered = data.repairClaims.filter(
               (c) => !c.confirmed && !data.dedupedMrs?.includes((c.description ?? "").trim())
             )
-            const pendingTotal = pending.reduce((s, c) => s + (c.amount ?? 0), 0)
-            return pending.length > 0 ? (
-              <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
-                ⚠ ประวัติค่าซ่อมรอทีมยืนยัน {pending.length} รายการ รวม {formatMoney(pendingTotal)} บาท —
-                <b> ยังไม่ถูกหักจากวงเงิน</b> จนกว่าจะกด “ยืนยันตัดงบ” หรือติ๊กหักจากรายการเบิกในหน้า ค่าใช้จ่ายรถ
-              </p>
-            ) : null
+            const reserves = uncovered.filter((c) => c.reserve)
+            const pending  = uncovered.filter((c) => !c.reserve)
+            const sum = (arr: typeof uncovered) => arr.reduce((s, c) => s + (c.amount ?? 0), 0)
+            return (
+              <>
+                {reserves.length > 0 && (
+                  <p className="text-xs text-blue-700 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                    🔖 จองงบ (reserve) {reserves.length} รายการ รวม {formatMoney(sum(reserves))} บาท —
+                    <b> ยังไม่ตัดจากวงเงินจริง</b> กด “เปลี่ยนเป็น actual” เมื่อยืนยันจากใบ MR (หรือลบทิ้งได้)
+                  </p>
+                )}
+                {pending.length > 0 && (
+                  <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                    ⚠ ประวัติค่าซ่อมรอทีมยืนยัน {pending.length} รายการ รวม {formatMoney(sum(pending))} บาท —
+                    <b> ยังไม่ถูกหักจากวงเงิน</b> จนกว่าจะกด “ยืนยันตัดงบ” หรือติ๊กหักจากรายการเบิกในหน้า ค่าใช้จ่ายรถ
+                  </p>
+                )}
+              </>
+            )
           })()}
         </div>
 
@@ -201,6 +213,13 @@ export default function PromoDetailPage() {
                             <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
                               ✓ ยืนยันตัดงบแล้ว · ยกเลิกไม่ได้
                             </span>
+                          ) : c.reserve ? (
+                            <span
+                              title="จองงบ (reserve) — บันทึกด้วยมืออิงจากใบ MR ยังไม่ตัดงบจริง"
+                              className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-800 rounded px-1.5 py-0.5"
+                            >
+                              จองงบ (reserve) — ยังไม่ตัดจริง
+                            </span>
                           ) : (
                             <span
                               title="ประวัติค่าซ่อม — ยังไม่ตัดงบโปรฯ จนกว่าทีมจะยืนยัน"
@@ -213,9 +232,11 @@ export default function PromoDetailPage() {
                         <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(c.amount)}</td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
                           {!coveredByStock && !c.confirmed && (
-                            <button onClick={() => handleConfirmRepair(c._id!)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>
+                            <button onClick={() => handleConfirmRepair(c._id!)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">
+                              {c.reserve ? "เปลี่ยนเป็น actual" : "ยืนยันตัดงบ"}
+                            </button>
                           )}
-                          {/* ยืนยันแล้ว = ถาวร ลบไม่ได้ (กันตัดงบแล้วหาย) */}
+                          {/* ยืนยันแล้ว = ถาวร ลบไม่ได้ (กันตัดงบแล้วหาย) — reserve/รอยืนยัน ลบได้ */}
                           {!c.confirmed && (
                             <button onClick={() => handleRepairDelete(c._id!)} className="text-xs text-red-400 hover:text-red-600">ลบ</button>
                           )}
@@ -248,7 +269,7 @@ export default function PromoDetailPage() {
 
         {/* Add repair form */}
         <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 space-y-3">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึกการซ่อม (บันทึกโดยทีม = ยืนยันตัดงบทันที)</p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึกการซ่อม (จองงบ reserve — อิงจากใบ MR · ยังไม่ตัดงบจริงจนกดเปลี่ยนเป็น actual)</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">วันที่ซ่อม</Label>

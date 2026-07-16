@@ -16,9 +16,10 @@ export async function POST(req: Request) {
     date: String(date),
     description: String(description),
     amount: Number(amount),
-    // บันทึกจากหน้าโปรโมชั่นโดยทีม = ระบุแล้ว → ตัดงบทันที
-    // (ประวัติเก่าจาก Excel ไม่มี field นี้ = รอยืนยัน ไม่ตัดงบ)
-    confirmed: true,
+    // บันทึกจากหน้าโปรโมชั่นโดยทีม = "จองงบ (reserve)" อิงจากใบ MR — ยังไม่ตัดงบจริง
+    // จนกว่าจะกด "เปลี่ยนเป็น actual" (ตัดงบถาวร) หรือ MR ถูกจับคู่กับรายการเบิกคลัง
+    confirmed: false,
+    reserve: true,
     createdAt: new Date(),
   }
   const result = await db.collection("repair_claims").insertOne(doc)

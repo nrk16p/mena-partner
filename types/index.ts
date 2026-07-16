@@ -231,6 +231,8 @@ export interface RepairClaim {
   amount: number
   /** ทีมยืนยันตัดงบโปรฯ แล้ว — ประวัติเก่าที่ไม่มี field นี้ = รอยืนยัน (ไม่ตัดงบ) */
   confirmed?: boolean
+  /** จองงบ (reserve) — บันทึกซ่อมด้วยมือ อิงจากใบ MR ยังไม่ตัดงบจริง จนกว่าจะเปลี่ยนเป็น actual */
+  reserve?: boolean
   createdAt?: string
 }
 

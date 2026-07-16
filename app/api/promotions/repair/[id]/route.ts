@@ -22,9 +22,10 @@ export async function PATCH(
   }
   const client = await clientPromise
   const db = client.db(DB)
+  // ยืนยัน = เปลี่ยน reserve → actual (ตัดงบถาวร): เคลียร์ flag reserve ด้วย
   const result = await db.collection("repair_claims").updateOne(
     { _id: oid },
-    { $set: { confirmed: body.confirmed, confirmedAt: body.confirmed ? new Date() : null } }
+    { $set: { confirmed: body.confirmed, reserve: false, confirmedAt: body.confirmed ? new Date() : null } }
   )
   if (result.matchedCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 })
   return NextResponse.json({ ok: true })
