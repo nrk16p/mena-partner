@@ -206,9 +206,18 @@ export default function PromoDetailPage() {
                         <td className="px-3 py-2 text-zinc-500">{c.date}</td>
                         <td className="px-3 py-2">
                           {claimMr(c) && (
-                            <span className="mr-1.5 font-mono text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded px-1.5 py-0.5">MR {claimMr(c)}</span>
+                            <Link
+                              href={`/vehicle-cost?tab=merged&q=${encodeURIComponent(claimMr(c))}`}
+                              title="ดูรายละเอียด ใบรับสภาพหนี้ + รายการเบิก (WD) ของ MR นี้"
+                              className="mr-1.5 font-mono text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                            >
+                              MR {claimMr(c)} →
+                            </Link>
                           )}
-                          {c.description}
+                          {/* แสดง description เฉพาะเมื่อไม่ซ้ำกับ MR (ประวัติเก่าเก็บ MR ไว้ใน description) */}
+                          {c.description && c.description.trim() !== claimMr(c) && (
+                            <span>{c.description}</span>
+                          )}
                           {coveredByStock ? (
                             <span
                               title="ทีมติ๊กหักโปรฯ จากรายการเบิกคลังแล้ว — ตัดงบจากคลัง (นับครั้งเดียว)"

@@ -1507,12 +1507,12 @@ function ReceiptModal({ doc, items, movementTotal, repairDeduct, pmDeduct, drive
   )
 }
 
-function MergedTab() {
+function MergedTab({ initialQ = "" }: { initialQ?: string }) {
   const [debts,     setDebts]     = useState<DebtDoc[]>([])
   const [movements, setMovements] = useState<StockMovement[]>([])
   const [promos,    setPromos]    = useState<PlatePromo[]>([])
   const [loading,   setLoading]   = useState(true)
-  const [q,         setQ]         = useState("")
+  const [q,         setQ]         = useState(initialQ)
   const [typeFilter, setTypeFilter] = useState("")
 
   useEffect(() => {
@@ -1644,11 +1644,15 @@ export default function VehicleCostPage() {
   const isAdmin = session?.user?.role === "admin"
   const [tab,       setTab]       = useState<PageTab>("cost")
   const [contracts, setContracts] = useState<Contract[]>([])
+  const [initialQ,  setInitialQ]  = useState("")
 
-  // deep-link support: /vehicle-cost?tab=merged (linked from promotions pages)
+  // deep-link support: /vehicle-cost?tab=merged&q=<MR> (linked from promotions pages)
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab")
+    const sp = new URLSearchParams(window.location.search)
+    const t = sp.get("tab")
     if (t === "cost" || t === "debt" || t === "movement" || t === "merged") setTab(t)
+    const q = sp.get("q")
+    if (q) setInitialQ(q)
   }, [])
 
   useEffect(() => {
@@ -1691,7 +1695,7 @@ export default function VehicleCostPage() {
       {tab === "cost"     && <CostTab isAdmin={isAdmin} contracts={contracts} />}
       {tab === "debt"     && <DebtTab />}
       {tab === "movement" && <MovementTab />}
-      {tab === "merged"   && <MergedTab />}
+      {tab === "merged"   && <MergedTab initialQ={initialQ} />}
     </div>
   )
 }
