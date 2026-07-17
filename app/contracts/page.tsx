@@ -332,13 +332,6 @@ export default function ContractsPage() {
                   {/* ── เอกสารแนบ: ดูไฟล์ที่แนบแล้ว / แอดมินแนบไฟล์ได้จากหน้านี้ ── */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <Link
-                        href={`/contracts/${c._id}/document`}
-                        title="เอกสารสัญญา (PDF)"
-                        className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 shrink-0"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </Link>
                       {ATTACH_DOCS.map(({ field, label, full }) => {
                         const url  = c[field]
                         const busy = uploading === `${c._id}:${field}`
