@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2, Upload, X, Clock } from "lucide-react"
 import { SearchCombobox } from "@/components/search-combobox"
 import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
 import { ContractDocument, PromotionAttachment, normPlate, type PromoMaster } from "@/components/contract-document"
@@ -542,6 +542,7 @@ export default function ContractDetailPage() {
 
       {/* ภาษี & ประกันภัย — ย้ายไปจัดการตามทะเบียนรถที่ /insurance-tax (การ์ดนี้ read-only) */}
       {step === 0 && <InsuranceTaxCard plate={form.licensePlate} />}
+      {step === 0 && <ContractAttachments contractId={id} />}
 
       {error && <div className="mb-4 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</div>}
 
@@ -933,6 +934,160 @@ function InsuranceTaxCard({ plate }: { plate?: string }) {
             <div><span className="text-zinc-400">บริษัทประกัน </span>{latest["insurance"]?.company || "-"}</div>
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+// ── เอกสารแนบ 5 ชนิด (แนบ/ลบ ได้ทุก user + บันทึก audit ว่าใครลบเมื่อไหร่) ──
+const ATTACH_DOCS_DETAIL = [
+  { field: "saleContractUrl",      label: "สัญญาซื้อขาย" },
+  { field: "promotionDocUrl",      label: "เอกสารแนบท้าย" },
+  { field: "hireContractUrl",      label: "สัญญาว่าจ้าง" },
+  { field: "guaranteeContractUrl", label: "สัญญาค้ำประกัน" },
+  { field: "creditorDocUrl",       label: "เปิดเจ้าหนี้" },
+] as const
+
+type AttachHistory = {
+  action: string
+  changes: Record<string, { from: unknown; to: unknown }>
+  editedBy: { email: string; name?: string }
+  editedAt: string
+}
+
+function ContractAttachments({ contractId }: { contractId: string }) {
+  const [urls, setUrls] = useState<Record<string, string>>({})
+  const [history, setHistory] = useState<AttachHistory[]>([])
+  const [busy, setBusy] = useState<string | null>(null)
+  const [showLog, setShowLog] = useState(false)
+
+  const load = () => {
+    fetch(`/api/contracts/${contractId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c: Record<string, string> | null) => {
+        if (c) setUrls(Object.fromEntries(ATTACH_DOCS_DETAIL.map((d) => [d.field, c[d.field] ?? ""])))
+      })
+    fetch(`/api/contracts/${contractId}/attachment`)
+      .then((r) => (r.ok ? r.json() : { history: [] }))
+      .then((d: { history?: AttachHistory[] }) => setHistory(d.history ?? []))
+      .catch(() => {})
+  }
+  useEffect(() => { load() }, [contractId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function patch(field: string, url: string) {
+    const res = await fetch(`/api/contracts/${contractId}/attachment`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ field, url }),
+    })
+    if (!res.ok) throw new Error("บันทึกไฟล์แนบไม่สำเร็จ")
+    load()
+  }
+
+  async function upload(field: string, label: string, file: File) {
+    setBusy(field)
+    try {
+      const fd = new FormData()
+      fd.append("file", file); fd.append("folder", "contracts")
+      const up = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!up.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
+      const { url } = await up.json()
+      await patch(field, url)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+    } finally { setBusy(null) }
+  }
+
+  async function remove(field: string, label: string) {
+    if (!confirm(`ลบ${label}?`)) return
+    setBusy(field)
+    try { await patch(field, "") }
+    catch (e) { alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด") }
+    finally { setBusy(null) }
+  }
+
+  const fmtTime = (iso: string) => {
+    try {
+      return new Intl.DateTimeFormat("th-TH", {
+        dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok",
+      }).format(new Date(iso))
+    } catch { return iso }
+  }
+  const labelOf = (field: string) => ATTACH_DOCS_DETAIL.find((d) => d.field === field)?.label ?? field
+
+  const removeLog = history.filter((h) => h.action === "remove")
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">เอกสารแนบ (PDF / รูปภาพ)</h2>
+        {history.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowLog((v) => !v)}
+            className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+          >
+            <Clock className="w-3.5 h-3.5" /> ประวัติ ({history.length})
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+        {ATTACH_DOCS_DETAIL.map(({ field, label }) => {
+          const url = urls[field]
+          const isBusy = busy === field
+          return (
+            <div key={field} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300 truncate">{label}</span>
+              {url ? (
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <a href={url} target="_blank" rel="noreferrer" title={`เปิด${label}`}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:underline">
+                    <FileText className="w-3 h-3" /> เปิด
+                  </a>
+                  <button type="button" disabled={isBusy} onClick={() => remove(field, label)}
+                    title={`ลบ${label}`} className="text-zinc-300 hover:text-red-500 disabled:opacity-40">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ) : (
+                <label title={`แนบ${label}`}
+                  className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-dashed cursor-pointer shrink-0 ${
+                    isBusy ? "border-blue-300 text-blue-600" : "border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-emerald-400 hover:text-emerald-600"
+                  }`}>
+                  {isBusy ? <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Upload className="w-3 h-3" />}
+                  แนบไฟล์
+                  <input type="file" accept="image/*,.pdf" className="hidden" disabled={isBusy}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(field, label, f); e.target.value = "" }} />
+                </label>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {removeLog.length > 0 && !showLog && (
+        <p className="text-[11px] text-zinc-400 mt-3">
+          ลบล่าสุด: {labelOf(Object.keys(removeLog[0].changes)[0])} โดย {removeLog[0].editedBy.name || removeLog[0].editedBy.email} · {fmtTime(removeLog[0].editedAt)}
+        </p>
+      )}
+
+      {showLog && (
+        <div className="mt-3 border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-1.5 max-h-56 overflow-y-auto">
+          {history.map((h, i) => {
+            const field = Object.keys(h.changes)[0]
+            return (
+              <div key={i} className="flex items-center gap-2 text-[11px] text-zinc-500">
+                <span className={`inline-block w-12 shrink-0 font-semibold ${h.action === "remove" ? "text-red-500" : "text-emerald-600"}`}>
+                  {h.action === "remove" ? "ลบ" : "แนบ"}
+                </span>
+                <span className="text-zinc-700 dark:text-zinc-300 shrink-0 w-24 truncate">{labelOf(field)}</span>
+                <span className="text-zinc-500 truncate flex-1">{h.editedBy.name || h.editedBy.email}</span>
+                <span className="text-zinc-400 shrink-0">{fmtTime(h.editedAt)}</span>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
