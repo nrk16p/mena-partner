@@ -176,7 +176,8 @@ export default function ContractsPage() {
             <button
               type="button"
               onClick={handleExportExcel}
-              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 transition-colors"
+              title="ดาวน์โหลดเป็น Excel (.xlsx)"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg px-3 py-2 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors"
             >
               <Download className="w-3.5 h-3.5" /> Excel
             </button>

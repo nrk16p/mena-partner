@@ -516,14 +516,6 @@ export default function VehiclesPage() {
           <p className="text-xs text-zinc-400 mt-0.5">{activeCount} ใช้งาน · {inactiveCount} ไม่ใช้งาน</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg h-9 px-3 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
-            title="ดาวน์โหลดเป็น Excel (.xlsx)"
-          >
-            <Download className="w-3.5 h-3.5" /> Excel
-          </button>
           <Button
             variant="outline"
             className="h-9 text-sm gap-1.5"
@@ -537,6 +529,14 @@ export default function VehiclesPage() {
               <>⟳ ดึงข้อมูลจาก ATMS</>
             )}
           </Button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg h-9 px-3 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+            title="ดาวน์โหลดเป็น Excel (.xlsx)"
+          >
+            <Download className="w-3.5 h-3.5" /> Excel
+          </button>
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
             onClick={() => setPanel("new")}
