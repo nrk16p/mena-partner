@@ -960,6 +960,7 @@ function ContractAttachments({ contractId }: { contractId: string }) {
   const [history, setHistory] = useState<AttachHistory[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [showLog, setShowLog] = useState(false)
+  const [confirmField, setConfirmField] = useState<string | null>(null)  // field ที่กำลังรอยืนยันลบ
 
   const load = () => {
     fetch(`/api/contracts/${contractId}`)
@@ -998,8 +999,8 @@ function ContractAttachments({ contractId }: { contractId: string }) {
     } finally { setBusy(null) }
   }
 
-  async function remove(field: string, label: string) {
-    if (!confirm(`ลบ${label}?`)) return
+  async function remove(field: string) {
+    setConfirmField(null)
     setBusy(field)
     try { await patch(field, "") }
     catch (e) { alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด") }
@@ -1040,16 +1041,27 @@ function ContractAttachments({ contractId }: { contractId: string }) {
             <div key={field} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2">
               <span className="text-xs text-zinc-600 dark:text-zinc-300 truncate">{label}</span>
               {url ? (
-                <span className="flex items-center gap-1.5 shrink-0">
-                  <a href={url} target="_blank" rel="noreferrer" title={`เปิด${label}`}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:underline">
-                    <FileText className="w-3 h-3" /> เปิด
-                  </a>
-                  <button type="button" disabled={isBusy} onClick={() => remove(field, label)}
-                    title={`ลบ${label}`} className="text-zinc-300 hover:text-red-500 disabled:opacity-40">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </span>
+                confirmField === field ? (
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <button type="button" disabled={isBusy} onClick={() => remove(field)}
+                      className="text-[11px] font-semibold text-white bg-red-500 hover:bg-red-600 rounded px-2 py-0.5 disabled:opacity-40">
+                      ยืนยันลบ
+                    </button>
+                    <button type="button" onClick={() => setConfirmField(null)}
+                      className="text-[11px] text-zinc-400 hover:text-zinc-600">ยกเลิก</button>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <a href={url} target="_blank" rel="noreferrer" title={`เปิด${label}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:underline">
+                      <FileText className="w-3 h-3" /> เปิด
+                    </a>
+                    <button type="button" disabled={isBusy} onClick={() => setConfirmField(field)}
+                      title={`ลบ${label}`} className="text-zinc-300 hover:text-red-500 disabled:opacity-40">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                )
               ) : (
                 <label title={`แนบ${label}`}
                   className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-dashed cursor-pointer shrink-0 ${

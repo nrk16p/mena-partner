@@ -45,6 +45,7 @@ export default function ContractsPage() {
   const [docFilter, setDocFilter] = useState("")   // "" ทั้งหมด | "complete" ครบ | "incomplete" ไม่ครบ
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)   // `${contractId}:${field}`
+  const [confirmDel, setConfirmDel] = useState<string | null>(null) // `${contractId}:${field}` ที่รอยืนยันลบ
 
   async function uploadAttachment(c: Contract, field: AttachField, file: File) {
     const key = `${c._id}:${field}`
@@ -71,8 +72,8 @@ export default function ContractsPage() {
   }
 
   // ลบไฟล์แนบ (เคลียร์ field ใน contract — ไฟล์ใน storage คงอยู่เผื่อกู้คืน)
-  async function removeAttachment(c: Contract, field: AttachField, full: string) {
-    if (!confirm(`ลบ${full}ของสัญญา ${c.contractCode}?`)) return
+  async function removeAttachment(c: Contract, field: AttachField) {
+    setConfirmDel(null)
     const key = `${c._id}:${field}`
     setUploading(key)
     try {
@@ -334,8 +335,17 @@ export default function ContractsPage() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {ATTACH_DOCS.map(({ field, label, full }) => {
                         const url  = c[field]
-                        const busy = uploading === `${c._id}:${field}`
+                        const key  = `${c._id}:${field}`
+                        const busy = uploading === key
                         if (url) return (
+                          confirmDel === key ? (
+                            <span key={field} className="inline-flex items-center gap-1 text-[10px] font-medium bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded pl-1.5 pr-0.5 py-0.5">
+                              <button type="button" disabled={busy} onClick={() => removeAttachment(c, field)}
+                                className="font-semibold text-white bg-red-500 hover:bg-red-600 rounded px-1.5 py-0.5 disabled:opacity-40">ยืนยันลบ</button>
+                              <button type="button" onClick={() => setConfirmDel(null)}
+                                className="text-zinc-400 hover:text-zinc-600 px-0.5">ยกเลิก</button>
+                            </span>
+                          ) : (
                           <span
                             key={field}
                             className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 pl-1.5 pr-0.5 py-0.5 rounded"
@@ -353,12 +363,13 @@ export default function ContractsPage() {
                               type="button"
                               title={`ลบ${full}`}
                               disabled={busy}
-                              onClick={() => removeAttachment(c, field, full)}
+                              onClick={() => setConfirmDel(key)}
                               className="ml-0.5 text-emerald-400 hover:text-red-500 disabled:opacity-40"
                             >
                               <X className="w-2.5 h-2.5" />
                             </button>
                           </span>
+                          )
                         )
                         return (
                           <label
