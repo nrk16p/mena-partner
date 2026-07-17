@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react"
 import { useSession } from "next-auth/react"
-import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil } from "lucide-react"
+import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { PriceHistoryDrawer } from "@/components/price-history-drawer"
+import { exportToExcel, todayStamp } from "@/lib/export-excel"
 
 type SaleStatus = "ready" | "repair15" | "repair30" | "review"
 
@@ -419,6 +420,25 @@ export default function PriceListPage() {
   const contractCount  = rows.filter((r) => r.status === "contract").length
   const availableCount = rows.filter((r) => r.status === "active").length
 
+  // ── Export Excel — เฉพาะแถวที่กรองอยู่ (respect search + status + sale + งวด filters) ──
+  async function handleExportExcel() {
+    const rows_ = filtered.map((r) => ({
+      "ทะเบียน":            r.licensePlate,
+      "สถานะ":             STATUS_CONFIG[r.status]?.label ?? r.status,
+      "ความพร้อมขาย":       r.status === "contract" ? "ขายแล้ว" : r.saleStatus ? SALE_STATUS_CONFIG[r.saleStatus].label : "",
+      "ราคาขายรวม":         r.totalSalePrice,
+      "เงินดาวน์รวม":        r.downPayment,
+      "ดาวน์ชำระแล้ว":       r.cashDown,
+      "ดาวน์คงเหลือ":        r.remainingInstallment,
+      "จำนวนงวดดาวน์":       r.downInstallmentCount,
+      "ค่างวดดาวน์":         r.downInstallmentAmt,
+      "ยอดไฟแนนซ์":         r.financeAmount,
+      "จำนวนงวดไฟแนนซ์":     r.financeInstallments,
+      "ค่างวด/เดือน":        r.monthlyPayment,
+    }))
+    await exportToExcel([{ name: "ราคาขาย", rows: rows_ }], `price-list-${todayStamp()}`)
+  }
+
   // สัดส่วนความพร้อมขายของฝูงรถ (แยกกลุ่มไม่ซ้ำ รวม = จำนวนคันทั้งหมด)
   const soldCount   = contractCount
   const readyCount  = rows.filter((r) => r.status !== "contract" && r.saleStatus === "ready").length
@@ -452,6 +472,14 @@ export default function PriceListPage() {
             <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" />เงินดาวน์</span>
             <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" />ไฟแนนซ์</span>
           </div>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg px-3.5 py-2 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+            title="ดาวน์โหลดเป็น Excel (.xlsx)"
+          >
+            <Download className="w-3.5 h-3.5" /> Excel
+          </button>
           <button
             type="button"
             onClick={() => setPriceForm({ mode: "add" })}

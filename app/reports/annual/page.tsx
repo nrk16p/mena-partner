@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Download } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
+import { exportToExcel } from "@/lib/export-excel"
 
 type Row = {
   contractCode: string
@@ -88,22 +89,21 @@ export default function AnnualReportPage() {
       })
     : []
 
-  function exportCsv() {
+  async function exportExcel() {
     if (!data) return
-    const header = ["รหัส","ชื่อคนขับ","แพล้นท์","เบอร์รถ","เดือนที่บันทึก","วันทำงาน","เที่ยวทั้งปี","รายรับรวม","รายหักรวม","รับสุทธิรวม"]
-    const rows = sorted.map((r) => [
-      r.contractCode, r.driverName, r.plant, r.truckNumber,
-      r.months, r.workingDays, r.tripCountActual,
-      r.totalIncome, r.totalDeductions, r.netPay,
-    ])
-    const csv = [header, ...rows].map((row) => row.map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")).join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `annual-${year}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const rows = sorted.map((r) => ({
+      "รหัส": r.contractCode,
+      "ชื่อคนขับ": r.driverName,
+      "แพล้นท์": r.plant,
+      "เบอร์รถ": r.truckNumber,
+      "เดือนที่บันทึก": r.months,
+      "วันทำงาน": r.workingDays,
+      "เที่ยวทั้งปี": r.tripCountActual,
+      "รายรับรวม": r.totalIncome,
+      "รายหักรวม": r.totalDeductions,
+      "รับสุทธิรวม": r.netPay,
+    }))
+    await exportToExcel([{ name: `รายงานปี ${year}`, rows }], `annual-${year}`)
   }
 
   return (
@@ -119,12 +119,12 @@ export default function AnnualReportPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={exportCsv}
+            onClick={exportExcel}
             disabled={!data}
             className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2 disabled:opacity-40"
           >
             <Download className="w-3.5 h-3.5" />
-            ดาวน์โหลด CSV
+            Excel
           </button>
           <select
             value={year}

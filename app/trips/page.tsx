@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { formatMoney, formatMonth } from "@/lib/utils"
+import { exportToExcel } from "@/lib/export-excel"
 import type { Trip } from "@/types"
 
 function buildMonthOptions() {
@@ -77,23 +78,22 @@ export default function TripsPage() {
 
   const pg = usePagination(items, 50, [month, q, plant])
 
-  function handleExportCSV() {
+  async function handleExportExcel() {
     if (items.length === 0) return
-    const headers = ["รหัสสัญญา","วันที่","เลขที่ LDT","แพล้นท์","บริการ","Route","ปลายทาง","อำเภอ","จังหวัด","โซน","ค่าเที่ยว"]
-    const rows = items.map((t) => [
-      t.contractCode, t.date?.slice(0,10) ?? "", t.ldtNumber,
-      t.plant, t.serviceType, t.routeCode,
-      t.destinationName, t.district, t.province, t.zone,
-      t.tripFee,
-    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
-    const csv = [headers.join(","), ...rows].join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `trips-${month}${q ? "-" + q : ""}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const rows = items.map((t) => ({
+      "รหัสสัญญา": t.contractCode,
+      "วันที่": t.date?.slice(0, 10) ?? "",
+      "เลขที่ LDT": t.ldtNumber,
+      "แพล้นท์": t.plant,
+      "บริการ": t.serviceType,
+      "Route": t.routeCode,
+      "ปลายทาง": t.destinationName,
+      "อำเภอ": t.district,
+      "จังหวัด": t.province,
+      "โซน": t.zone,
+      "ค่าเที่ยว": t.tripFee,
+    }))
+    await exportToExcel([{ name: "รายเที่ยว", rows }], `trips-${month}${q ? "-" + q : ""}`)
   }
 
   async function handleBulkDelete() {
@@ -144,12 +144,12 @@ export default function TripsPage() {
             {items.length > 0 && (
               <button
                 type="button"
-                onClick={handleExportCSV}
+                onClick={handleExportExcel}
                 className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
-                title={`ดาวน์โหลด ${items.length} รายการเป็น CSV`}
+                title={`ดาวน์โหลด ${items.length} รายการเป็น Excel`}
               >
                 <Download className="w-3.5 h-3.5" />
-                CSV
+                Excel
               </button>
             )}
             <Link

@@ -7,6 +7,7 @@ import { Search, Printer, ChevronRight, Zap, Trash2, Download } from "lucide-rea
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { formatMonth, formatMoney, prevMonth as getPrevMonth } from "@/lib/utils"
+import { exportToExcel } from "@/lib/export-excel"
 import type { Driver, PayrollEntry } from "@/types"
 import { useSession } from "next-auth/react"
 
@@ -104,50 +105,42 @@ export default function PayrollPage() {
     } finally { setLoading(false) }
   }
 
-  function handleExportCSV() {
+  async function handleExportExcel() {
     if (!month || entries.length === 0) return
-    const headers = ["รหัส","ชื่อ","แพล้นท์","เที่ยว","วันทำงาน","ค่าขนส่ง","OT","รับอื่นๆ WHT","รับอื่นๆ ไม่WHT","รวมรับ","เชื้อเพลิง","GPS","ซ่อมใน","ซ่อมนอก","ค่าดำเนินการ8%","ค่าแรง","ยาง","ปะยาง","ล้างรถ","ต่อภาษี","ค่างวด","ผ่อนซ่อม","ดาวน์","รวมหัก","สุทธิ"]
     const driverMap = Object.fromEntries(drivers.map((d) => [d.contractCode, d]))
 
     const rows = entries.map((e) => {
       const d = driverMap[e.contractCode]
-      return [
-        e.contractCode,
-        d?.driverName ?? "",
-        d?.plant ?? "",
-        e.tripCount,
-        e.workingDays,
-        e.transportFee,
-        e.ot,
-        e.otherIncomeWHT,
-        e.otherIncomeNoWHT,
-        e.totalIncome,
-        e.fuel,
-        e.gps,
-        e.repairInHouse,
-        e.repairOutside,
-        e.mgmtFee8pct,
-        e.labor,
-        e.tire,
-        e.tirePatch,
-        e.carWash,
-        e.taxInsurance,
-        e.installment,
-        e.repairInstallment,
-        e.downPaymentInstallment,
-        e.totalDeductions,
-        e.netPay,
-      ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")
+      return {
+        "รหัส": e.contractCode,
+        "ชื่อ": d?.driverName ?? "",
+        "แพล้นท์": d?.plant ?? "",
+        "เที่ยว": e.tripCount,
+        "วันทำงาน": e.workingDays,
+        "ค่าขนส่ง": e.transportFee,
+        "OT": e.ot,
+        "รับอื่นๆ WHT": e.otherIncomeWHT,
+        "รับอื่นๆ ไม่WHT": e.otherIncomeNoWHT,
+        "รวมรับ": e.totalIncome,
+        "เชื้อเพลิง": e.fuel,
+        "GPS": e.gps,
+        "ซ่อมใน": e.repairInHouse,
+        "ซ่อมนอก": e.repairOutside,
+        "ค่าดำเนินการ8%": e.mgmtFee8pct,
+        "ค่าแรง": e.labor,
+        "ยาง": e.tire,
+        "ปะยาง": e.tirePatch,
+        "ล้างรถ": e.carWash,
+        "ต่อภาษี": e.taxInsurance,
+        "ค่างวด": e.installment,
+        "ผ่อนซ่อม": e.repairInstallment,
+        "ดาวน์": e.downPaymentInstallment,
+        "รวมหัก": e.totalDeductions,
+        "สุทธิ": e.netPay,
+      }
     })
 
-    const csv = [headers.join(","), ...rows].join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `payroll-${month}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    await exportToExcel([{ name: "เงินเดือน", rows }], `payroll-${month}`)
   }
 
   return (
@@ -188,11 +181,11 @@ export default function PayrollPage() {
           {month && recorded > 0 && (
             <button
               type="button"
-              onClick={handleExportCSV}
+              onClick={handleExportExcel}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2"
             >
               <Download className="w-3.5 h-3.5" />
-              CSV
+              Excel
             </button>
           )}
           {month && recorded > 0 && (

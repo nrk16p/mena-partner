@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Search, Download, Printer, CalendarDays } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { formatMoney, formatMonth } from "@/lib/utils"
+import { exportToExcel } from "@/lib/export-excel"
 
 type TrendPoint = {
   month: string
@@ -109,21 +110,21 @@ export default function ReportsPage() {
     return <span className="text-emerald-500 ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
   }
 
-  function exportCsv() {
+  async function exportExcel() {
     if (!data) return
-    const header = ["รหัส","ชื่อคนขับ","เบอร์รถ","แพล้นท์","เที่ยว","ค่าขนส่ง(เที่ยว)","วันทำงาน","รายรับ","รายหัก","รับสุทธิ"]
-    const rows = filtered.map((r) => [
-      r.contractCode, r.driverName, r.truckNumber, r.plant,
-      r.tripCount, r.totalTripFee, r.workingDays, r.totalIncome, r.totalDeductions, r.netPay,
-    ])
-    const csv = [header, ...rows].map((row) => row.map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")).join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `payroll-${month}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const rows = filtered.map((r) => ({
+      "รหัส": r.contractCode,
+      "ชื่อคนขับ": r.driverName,
+      "เบอร์รถ": r.truckNumber,
+      "แพล้นท์": r.plant,
+      "เที่ยว": r.tripCount,
+      "ค่าขนส่ง(เที่ยว)": r.totalTripFee,
+      "วันทำงาน": r.workingDays,
+      "รายรับ": r.totalIncome,
+      "รายหัก": r.totalDeductions,
+      "รับสุทธิ": r.netPay,
+    }))
+    await exportToExcel([{ name: "สรุปเงินเดือน", rows }], `payroll-${month}`)
   }
 
   return (
@@ -151,12 +152,12 @@ export default function ReportsPage() {
             รายงานประจำปี
           </Link>
           <button
-            onClick={exportCsv}
+            onClick={exportExcel}
             disabled={!data}
             className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg px-3 py-2 disabled:opacity-40"
           >
             <Download className="w-3.5 h-3.5" />
-            ดาวน์โหลด CSV
+            Excel
           </button>
           <select
             value={month ?? ""}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { formatMoney } from "@/lib/utils"
 import { missingDocFields } from "@/lib/contract-doc"
+import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import type { Contract } from "@/types"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -110,32 +111,33 @@ export default function ContractsPage() {
   const d60 = new Date(); d60.setDate(d60.getDate() + 60)
   const in60 = d60.toISOString().slice(0, 10)
 
-  function handleExportCSV() {
+  async function handleExportExcel() {
     if (!visible.length) return
-    const headers = [
-      "รหัส","ชื่อผู้เช่าซื้อ","ทะเบียน","เบอร์รถ","ยี่ห้อ","รุ่น",
-      "วันที่ทำสัญญา","วันที่เริ่ม","ราคารถ","เงินดาวน์","ค่างวด/เดือน","จำนวนงวด",
-      "บริษัทประกัน","วันต่อภาษี","วันหมดอายุ","สถานะ","ข้อมูลครบ","เอกสารแนบ",
-    ]
     const rows = visible.map((c) => {
       const missing = missingDocFields(c)
       const attached = ATTACH_DOCS.filter(({ field }) => c[field]).length
-      return [
-        c.contractCode, c.buyerName, c.licensePlate, c.truckNumber,
-        c.vehicleBrand, c.vehicleModel ?? "",
-        c.contractDate?.slice(0, 10) ?? "", c.startDate?.slice(0, 10) ?? "",
-        c.totalPrice, c.downPayment, c.monthlyInstallment, c.totalInstallments,
-        c.insurer ?? "", c.taxRenewalDate ?? "", c.taxExpiryDate ?? "", c.status,
-        missing.length === 0 ? "ครบ" : `ขาด ${missing.length}`,
-        `${attached}/${ATTACH_DOCS.length}`,
-      ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(",")
+      return {
+        "รหัส": c.contractCode,
+        "ชื่อผู้เช่าซื้อ": c.buyerName,
+        "ทะเบียน": c.licensePlate,
+        "เบอร์รถ": c.truckNumber,
+        "ยี่ห้อ": c.vehicleBrand,
+        "รุ่น": c.vehicleModel ?? "",
+        "วันที่ทำสัญญา": c.contractDate?.slice(0, 10) ?? "",
+        "วันที่เริ่ม": c.startDate?.slice(0, 10) ?? "",
+        "ราคารถ": c.totalPrice,
+        "เงินดาวน์": c.downPayment,
+        "ค่างวด/เดือน": c.monthlyInstallment,
+        "จำนวนงวด": c.totalInstallments,
+        "บริษัทประกัน": c.insurer ?? "",
+        "วันต่อภาษี": c.taxRenewalDate ?? "",
+        "วันหมดอายุ": c.taxExpiryDate ?? "",
+        "สถานะ": c.status,
+        "ข้อมูลครบ": missing.length === 0 ? "ครบ" : `ขาด ${missing.length}`,
+        "เอกสารแนบ": `${attached}/${ATTACH_DOCS.length}`,
+      }
     })
-    const csv = [headers.join(","), ...rows].join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a"); a.href = url
-    a.download = `contracts-${statusFilter || "all"}.csv`; a.click()
-    URL.revokeObjectURL(url)
+    await exportToExcel([{ name: "สัญญา", rows }], `contracts-${todayStamp()}`)
   }
 
   // ── กรองตามความครบถ้วนของข้อมูลเอกสาร (เกณฑ์เดียวกับคอลัมน์ "ข้อมูลครบ") ──
@@ -173,10 +175,10 @@ export default function ContractsPage() {
           {items.length > 0 && (
             <button
               type="button"
-              onClick={handleExportCSV}
+              onClick={handleExportExcel}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 transition-colors"
             >
-              <Download className="w-3.5 h-3.5" /> CSV
+              <Download className="w-3.5 h-3.5" /> Excel
             </button>
           )}
           {session?.user?.role === "admin" && (

@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import {
   Wrench, Settings2, Circle, Plus, Trash2, ChevronDown, ChevronRight,
-  Search, X, Check, FileText, ShieldCheck, Upload,
+  Search, X, Check, FileText, ShieldCheck, Upload, Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DebtImport, StockImport } from "@/components/excel-import"
+import { exportToExcel, todayStamp } from "@/lib/export-excel"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -392,6 +393,23 @@ function CostTab({ isAdmin, contracts }: { isAdmin: boolean; contracts: Contract
     load()
   }
 
+  // Export Excel — แถวที่กรองอยู่ของแท็บนี้ (respect ค้นหา + ประเภท)
+  async function handleExport() {
+    const rows = groups.flatMap((g) =>
+      g.entries.map((e) => ({
+        "รหัสสัญญา":    g.contractCode,
+        "ทะเบียน":     g.licensePlate,
+        "เบอร์รถ":      g.truckNumber,
+        "คนขับ":       g.driverName,
+        "วันที่":       thaiDate(e.date),
+        "ประเภท":      CAT_CONFIG[e.category]?.label ?? e.category,
+        "รายละเอียด":   e.description,
+        "จำนวนเงิน":    e.amount,
+      })),
+    )
+    await exportToExcel([{ name: "ค่าซ่อม / บำรุง / ยาง", rows }], `vehicle-cost-cost-${todayStamp()}`)
+  }
+
   const totalRepair      = groups.reduce((s, g) => s + g.repairTotal,      0)
   const totalMaintenance = groups.reduce((s, g) => s + g.maintenanceTotal, 0)
   const totalTire        = groups.reduce((s, g) => s + g.tireTotal,        0)
@@ -430,8 +448,16 @@ function CostTab({ isAdmin, contracts }: { isAdmin: boolean; contracts: Contract
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors"
+          title="ดาวน์โหลดเป็น Excel (.xlsx)"
+        >
+          <Download className="w-3.5 h-3.5" /> Excel
+        </button>
         {isAdmin && (
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5 ml-auto" onClick={() => { setModalCode(undefined); setShowModal(true) }}>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5" onClick={() => { setModalCode(undefined); setShowModal(true) }}>
             <Plus className="w-3.5 h-3.5" />เพิ่มรายการ
           </Button>
         )}
@@ -564,6 +590,23 @@ function DebtTab() {
   const totalLiability   = docs.reduce((s, d) => s + d.liabilityAmount,    0)
   const totalOutstanding = docs.reduce((s, d) => s + d.outstandingBalance,  0)
 
+  // Export Excel — แถวที่กรองอยู่ของแท็บนี้ (respect ค้นหา + ประเภท)
+  async function handleExport() {
+    const rows = docs.map((d) => ({
+      "เลขที่ใบ":   d.debtAcceptanceNo,
+      "วันที่":     thaiDate(d.issueDate),
+      "รหัสพนง.":   d.employeeCode,
+      "ชื่อ":       d.employeeName,
+      "ทะเบียน":    d.licensePlate,
+      "ประเภท":     REPAIR_TYPE_CONFIG[d.repairType]?.label ?? d.repairType,
+      "ยอดรับผิด":  d.liabilityAmount,
+      "งวด":        d.installmentCount,
+      "งวดละ":      d.monthlyInstallment,
+      "คงค้าง":     d.outstandingBalance,
+    }))
+    await exportToExcel([{ name: "ใบรับสภาพหนี้", rows }], `vehicle-cost-debt-${todayStamp()}`)
+  }
+
   return (
     <div className="space-y-5">
       {/* KPI */}
@@ -607,8 +650,16 @@ function DebtTab() {
         </div>
         <button
           type="button"
+          onClick={handleExport}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors"
+          title="ดาวน์โหลดเป็น Excel (.xlsx)"
+        >
+          <Download className="w-3.5 h-3.5" /> Excel
+        </button>
+        <button
+          type="button"
           onClick={() => setShowImport((v) => !v)}
-          className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
             showImport
               ? "bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent"
               : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
@@ -780,6 +831,24 @@ function MovementTab() {
   const totalAmount = movements.reduce((s, m) => s + (m.amount ?? 0), 0)
   const totalIssue  = movements.reduce((s, m) => s + (m.issueQty ?? 0), 0)
 
+  // Export Excel — แถวที่กรองอยู่ของแท็บนี้ (respect ค้นหา + กลุ่มสินค้า)
+  async function handleExport() {
+    const rows = movements.map((m) => ({
+      "วันที่":   thaiDate(m.date),
+      "WD":       m.wd,
+      "MR":       m.mr,
+      "สินค้า":   m.itemName,
+      "รหัส":     m.itemCode,
+      "กลุ่ม":     m.itemGroup,
+      "เลขรถ":    m.truckNumber,
+      "ทะเบียน":  m.licensePlate,
+      "จ่าย":     m.issueQty,
+      "ราคาทุน":  m.unitCost,
+      "ยอดเงิน":  m.amount,
+    }))
+    await exportToExcel([{ name: "การเคลื่อนไหวของสินค้า", rows }], `vehicle-cost-movement-${todayStamp()}`)
+  }
+
   return (
     <div className="space-y-5">
       {/* KPI */}
@@ -832,8 +901,16 @@ function MovementTab() {
         </div>
         <button
           type="button"
+          onClick={handleExport}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors"
+          title="ดาวน์โหลดเป็น Excel (.xlsx)"
+        >
+          <Download className="w-3.5 h-3.5" /> Excel
+        </button>
+        <button
+          type="button"
           onClick={() => setShowImport((v) => !v)}
-          className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
             showImport
               ? "bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent"
               : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
@@ -1568,6 +1645,31 @@ function MergedTab({ initialQ = "" }: { initialQ?: string }) {
 
   const withDetail = filtered.filter((d) => (byMr[d.repairOrderNo] ?? []).length > 0).length
 
+  // Export Excel — ใบรับสภาพหนี้ที่กรองอยู่ + สรุปยอดเบิก/หักโปรฯ ที่บันทึกไว้
+  async function handleExport() {
+    const rows = filtered.map((d) => {
+      const ms = byMr[d.repairOrderNo] ?? []
+      const movementTotal = ms.reduce((s, m) => s + (m.amount ?? 0), 0)
+      const repairDeduct  = ms.filter((m) => savedSel(m) === "repair").reduce((s, m) => s + (m.amount ?? 0), 0)
+      const pmDeduct      = ms.filter((m) => isPm(savedSel(m))).reduce((s, m) => s + (m.amount ?? 0), 0)
+      return {
+        "เลขที่ใบ":     d.debtAcceptanceNo,
+        "วันที่":       thaiDate(d.issueDate),
+        "ชื่อ":         d.employeeName,
+        "ทะเบียน":      d.licensePlate,
+        "เบอร์รถ":       d.truckNumber,
+        "ประเภท":       REPAIR_TYPE_CONFIG[d.repairType]?.label ?? d.repairType,
+        "ยอดรับผิด":    d.liabilityAmount,
+        "รายการเบิก":   ms.length,
+        "ยอดเบิกรวม":   movementTotal,
+        "หักโปรซ่อม":   repairDeduct,
+        "หักโปรPM":     pmDeduct,
+        "ยอดสุทธิ":     movementTotal - repairDeduct - pmDeduct,
+      }
+    })
+    await exportToExcel([{ name: "ใบรับสภาพหนี้ + รายละเอียด", rows }], `vehicle-cost-merged-${todayStamp()}`)
+  }
+
   return (
     <div className="space-y-5">
       {/* KPI */}
@@ -1604,6 +1706,14 @@ function MergedTab({ initialQ = "" }: { initialQ?: string }) {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors"
+          title="ดาวน์โหลดเป็น Excel (.xlsx)"
+        >
+          <Download className="w-3.5 h-3.5" /> Excel
+        </button>
       </div>
 
       {loading ? (

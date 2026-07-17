@@ -13,6 +13,7 @@ import { ShieldCheck, Search, Download, Settings2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { formatMoney } from "@/lib/utils"
+import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import {
   ITEM_TYPES, ITEM_LABEL, ITEM_COL_LABEL, STATUS_LABEL, STATUS_COLOR, STATUS_DOT, STATUS_TEXT,
   STATUS_TABS, ITEM_TABS, EMPTY_COUNTS, fmt, shortThaiDate, normalizeRow, sumAmounts, sumMonthly,
@@ -81,28 +82,26 @@ function InsuranceTaxContent() {
     return c
   }, [counts, items, itemFilter])
 
-  function handleExportCSV() {
+  async function handleExportExcel() {
     if (!visible.length) return
-    const headers = [
-      "ทะเบียน", "เบอร์รถ", "คนขับ",
-      ...ITEM_TYPES.flatMap((t) => [`วันหมด${ITEM_LABEL[t]}`, `จำนวนเงิน${ITEM_LABEL[t]}`, `หัก/เดือน${ITEM_LABEL[t]}`]),
-      "รวมค่าใช้จ่าย", "หัก/เดือนรวม", "สถานะรวม",
-    ]
-    const rows = visible.map((r) => [
-      r.licensePlate, r.truckNumber ?? "", r.driverName ?? "",
-      ...ITEM_TYPES.flatMap((t) => {
+    const rows = visible.map((r) => {
+      const row: Record<string, unknown> = {
+        "ทะเบียน": r.licensePlate,
+        "เบอร์รถ": r.truckNumber ?? "",
+        "คนขับ": r.driverName ?? "",
+      }
+      for (const t of ITEM_TYPES) {
         const it = r.items[t]
-        return [it?.expiryDate?.slice(0, 10) ?? "", it?.amount ?? "", it?.monthlyInstallment ?? ""]
-      }),
-      sumAmounts(r) ?? "", sumMonthly(r) ?? "",
-      STATUS_LABEL[r.worstStatus] ?? r.worstStatus,
-    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
-    const csv = [headers.join(","), ...rows].join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a"); a.href = url
-    a.download = `insurance-tax-${itemFilter || "all"}-${statusFilter || "all"}.csv`; a.click()
-    URL.revokeObjectURL(url)
+        row[`วันหมด${ITEM_LABEL[t]}`]   = it?.expiryDate?.slice(0, 10) ?? ""
+        row[`จำนวนเงิน${ITEM_LABEL[t]}`] = it?.amount ?? ""
+        row[`หัก/เดือน${ITEM_LABEL[t]}`] = it?.monthlyInstallment ?? ""
+      }
+      row["รวมค่าใช้จ่าย"] = sumAmounts(r) ?? ""
+      row["หัก/เดือนรวม"]  = sumMonthly(r) ?? ""
+      row["สถานะรวม"]      = STATUS_LABEL[r.worstStatus] ?? r.worstStatus
+      return row
+    })
+    await exportToExcel([{ name: "ภาษี & ประกันภัย", rows }], `insurance-tax-${todayStamp()}`)
   }
 
   const KPI = [
@@ -134,10 +133,10 @@ function InsuranceTaxContent() {
         {items.length > 0 && (
           <button
             type="button"
-            onClick={handleExportCSV}
+            onClick={handleExportExcel}
             className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 transition-colors"
           >
-            <Download className="w-3.5 h-3.5" /> CSV
+            <Download className="w-3.5 h-3.5" /> Excel
           </button>
         )}
       </div>

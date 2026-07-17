@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { formatMoney, formatMonth } from "@/lib/utils"
+import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import type { Contract } from "@/types"
 
 /* ────────────────────────────── types ────────────────────────────── */
@@ -223,29 +224,26 @@ export default function DriverLedgerPage() {
 
   const manageEntry = manageId ? items.find((e) => e._id === manageId) ?? null : null
 
-  function handleExportCSV() {
+  async function handleExportExcel() {
     if (!visible.length) return
-    const headers = [
-      "รหัส", "ชนิด", "ประเภท", "ชื่อ พขร.", "ทะเบียน", "สัญญา",
-      "ยอดตั้งต้น/เป้า", "หัก/เดือน", "งวดที่ชำระแล้ว", "ชำระ/สะสมแล้ว", "ถอนแล้ว", "คงเหลือ", "เดือนเริ่ม", "สถานะ", "หมายเหตุ",
-    ]
-    const rows = visible.map((e) => [
-      e.debtCode,
-      e.kind === "debt" ? "หนี้" : "เงินสะสม",
-      SOURCE_LABEL[e.source?.type] ?? e.source?.type ?? "",
-      e.driverName ?? "", e.licensePlate ?? "", e.contractCode ?? "",
-      e.kind === "debt" ? (e.principal ?? "") : (e.targetAmount ?? ""),
-      e.monthlyAmount, e.monthsPaid, e.paidAmount,
-      e.kind === "deposit" ? (e.withdrawnAmount ?? 0) : "",
-      e.kind === "debt" ? debtRemaining(e) : depositBalance(e),
-      e.startMonth, STATUS_LABEL[e.status], e.notes ?? "",
-    ].map((v) => (typeof v === "string" && v.includes(",")) ? `"${v}"` : v).join(","))
-    const csv = [headers.join(","), ...rows].join("\n")
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a"); a.href = url
-    a.download = `driver-ledger-${tab || "all"}.csv`; a.click()
-    URL.revokeObjectURL(url)
+    const rows = visible.map((e) => ({
+      "รหัส": e.debtCode,
+      "ชนิด": e.kind === "debt" ? "หนี้" : "เงินสะสม",
+      "ประเภท": SOURCE_LABEL[e.source?.type] ?? e.source?.type ?? "",
+      "ชื่อ พขร.": e.driverName ?? "",
+      "ทะเบียน": e.licensePlate ?? "",
+      "สัญญา": e.contractCode ?? "",
+      "ยอดตั้งต้น/เป้า": e.kind === "debt" ? (e.principal ?? "") : (e.targetAmount ?? ""),
+      "หัก/เดือน": e.monthlyAmount,
+      "งวดที่ชำระแล้ว": e.monthsPaid,
+      "ชำระ/สะสมแล้ว": e.paidAmount,
+      "ถอนแล้ว": e.kind === "deposit" ? (e.withdrawnAmount ?? 0) : "",
+      "คงเหลือ": e.kind === "debt" ? debtRemaining(e) : depositBalance(e),
+      "เดือนเริ่ม": e.startMonth,
+      "สถานะ": STATUS_LABEL[e.status],
+      "หมายเหตุ": e.notes ?? "",
+    }))
+    await exportToExcel([{ name: "หนี้สิน & เงินสะสม", rows }], `driver-ledger-${todayStamp()}`)
   }
 
   const KPI = [
@@ -276,10 +274,10 @@ export default function DriverLedgerPage() {
           {items.length > 0 && (
             <button
               type="button"
-              onClick={handleExportCSV}
+              onClick={handleExportExcel}
               className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 transition-colors"
             >
-              <Download className="w-3.5 h-3.5" /> CSV
+              <Download className="w-3.5 h-3.5" /> Excel
             </button>
           )}
           <Button onClick={() => setShowAdd(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">

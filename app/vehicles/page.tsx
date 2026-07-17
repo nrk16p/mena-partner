@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
-import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink, Hash, Wrench } from "lucide-react"
+import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink, Hash, Wrench, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
+import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import type { Vehicle } from "@/types"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -484,6 +485,26 @@ export default function VehiclesPage() {
   const showPanel     = panel !== null
   const editVehicle   = panel === "new" ? null : panel
 
+  // ── Export Excel — เฉพาะแถวที่กรองอยู่ (respect search + status + type filters) ──
+  async function handleExportExcel() {
+    const rows = filtered.map((v) => ({
+      "เบอร์รถ":       v.truckNumber   ?? "",
+      "ประเภท":        vType(v) === "trailer" ? "Trailer" : "Mixer",
+      "ทะเบียนรถ":     v.licensePlate  ?? "",
+      "ประเภทรถ":      v.vehicleType   ?? "",
+      "ลักษณะ":        v.characteristic ?? "",
+      "ยี่ห้อ":        v.brand         ?? "",
+      "รุ่น":          v.model         ?? "",
+      "สีรถ":          v.color         ?? "",
+      "วันจดทะเบียน":  v.registrationDate ?? "",
+      "เลขตัวถัง":     v.chassisNumber ?? "",
+      "เลขเครื่อง":    v.engineNumber  ?? "",
+      "กำลังเครื่อง":  v.engineSize    ?? "",
+      "สถานะ":         v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน",
+    }))
+    await exportToExcel([{ name: "ทะเบียนรถ", rows }], `vehicles-${todayStamp()}`)
+  }
+
   return (
     <div className="max-w-[1400px] mx-auto py-6 px-4 space-y-5">
 
@@ -495,6 +516,14 @@ export default function VehiclesPage() {
           <p className="text-xs text-zinc-400 mt-0.5">{activeCount} ใช้งาน · {inactiveCount} ไม่ใช้งาน</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg h-9 px-3 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+            title="ดาวน์โหลดเป็น Excel (.xlsx)"
+          >
+            <Download className="w-3.5 h-3.5" /> Excel
+          </button>
           <Button
             variant="outline"
             className="h-9 text-sm gap-1.5"
