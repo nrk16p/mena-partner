@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import Link from "next/link"
 import {
   ChevronRight, ChevronDown, Gift, Wrench, Settings2,
-  Plus, Power, PowerOff, Trash2, Search, X, Check, Car, ExternalLink,
+  Plus, Power, PowerOff, Trash2, Search, X, Check, Car, ExternalLink, Download,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
@@ -610,6 +610,42 @@ export default function PromotionsPage() {
     setExpanded((prev) => new Set([...prev, plate]))
   }
 
+  // Export Excel — 2 ชีต: งบโปรฯ ต่อทะเบียน + รายการโปรฯ ทั้งหมด (lazy import xlsx กัน bundle)
+  async function handleExportExcel() {
+    const XLSX = await import("xlsx")
+    const rows = filteredPlates.map((plate) => {
+      const b = budgetMap[plate]
+      return {
+        "ทะเบียน": plate,
+        "รหัสสัญญา": b?.contractCode ?? "",
+        "คนขับ": b?.driverName ?? "",
+        "วงเงินซ่อม": b?.repairBudget ?? 0,
+        "ซ่อมใช้ไป": b?.repairUsed ?? 0,
+        "ซ่อมคงเหลือ": b?.repairRemaining ?? 0,
+        "เพดาน PM/ปี": b?.annualPmCap ?? 0,
+        "PM ใช้ไปปีนี้": b?.pmUsedThisYear ?? 0,
+        "PM คงเหลือ": b?.pmRemainingThisYear ?? 0,
+        "จำนวนโปรฯ": (data[plate] ?? []).length,
+        "โปรฯ ใช้งาน": (data[plate] ?? []).filter((e) => e.active).length,
+      }
+    })
+    const entryRows = filteredPlates.flatMap((plate) =>
+      (data[plate] ?? []).map((e) => ({
+        "ทะเบียน": plate,
+        "ประเภท": TYPE_META[e.proType as ProType]?.label ?? e.proType,
+        "ชื่อโปรโมชั่น": e.label ?? "",
+        "สถานะ": e.active ? "ใช้งาน" : "ระงับ",
+        "เหตุผลที่ระงับ": e.disabledReason ?? "",
+        "รายละเอียด": Object.entries(e.details ?? {}).map(([k, v]) => `${k}: ${v}`).join(" · "),
+      }))
+    )
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "งบโปรโมชั่น")
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(entryRows), "รายการโปรโมชั่น")
+    const today = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `promotions-${today}.xlsx`)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <div className="text-xs text-zinc-400 animate-pulse">กำลังโหลดข้อมูล...</div>
@@ -626,12 +662,22 @@ export default function PromotionsPage() {
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">จัดการโปรโมชั่น</h1>
           <p className="text-xs text-zinc-400 mt-0.5">สิทธิ์โปรโมชั่นต่อทะเบียนรถ — เพิ่ม / ระงับสิทธิ์ / จัดการได้ต่อคัน</p>
         </div>
-        <Button
-          className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 gap-1.5"
-          onClick={() => setShowModal(true)}
-        >
-          <Plus className="w-4 h-4" />เพิ่มรถ / โปรโมชั่น
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg h-9 px-3 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+            title="ดาวน์โหลดเป็น Excel (.xlsx)"
+          >
+            <Download className="w-3.5 h-3.5" /> Excel
+          </button>
+          <Button
+            className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 gap-1.5"
+            onClick={() => setShowModal(true)}
+          >
+            <Plus className="w-4 h-4" />เพิ่มรถ / โปรโมชั่น
+          </Button>
+        </div>
       </div>
 
       {/* KPI strip */}
