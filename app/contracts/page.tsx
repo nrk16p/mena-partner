@@ -45,7 +45,6 @@ export default function ContractsPage() {
   const [docFilter, setDocFilter] = useState("")   // "" ทั้งหมด | "complete" ครบ | "incomplete" ไม่ครบ
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)   // `${contractId}:${field}`
-  const isAdmin = session?.user?.role === "admin"
 
   async function uploadAttachment(c: Contract, field: AttachField, file: File) {
     const key = `${c._id}:${field}`
@@ -57,10 +56,10 @@ export default function ContractsPage() {
       const up = await fetch("/api/upload", { method: "POST", body: fd })
       if (!up.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
       const { url } = await up.json()
-      const put = await fetch(`/api/contracts/${c._id}`, {
-        method: "PUT",
+      const put = await fetch(`/api/contracts/${c._id}/attachment`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: url }),
+        body: JSON.stringify({ field, url }),
       })
       if (!put.ok) throw new Error("บันทึกไฟล์แนบไม่สำเร็จ")
       setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: url } : x)))
@@ -77,10 +76,10 @@ export default function ContractsPage() {
     const key = `${c._id}:${field}`
     setUploading(key)
     try {
-      const res = await fetch(`/api/contracts/${c._id}`, {
-        method: "PUT",
+      const res = await fetch(`/api/contracts/${c._id}/attachment`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: "" }),
+        body: JSON.stringify({ field, url: "" }),
       })
       if (!res.ok) throw new Error("ลบไฟล์แนบไม่สำเร็จ")
       setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: "" } : x)))
@@ -357,26 +356,15 @@ export default function ContractsPage() {
                             >
                               <FileText className="w-2.5 h-2.5" /> {label}
                             </a>
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                title={`ลบ${full}`}
-                                disabled={busy}
-                                onClick={() => removeAttachment(c, field, full)}
-                                className="ml-0.5 text-emerald-400 hover:text-red-500 disabled:opacity-40"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                          </span>
-                        )
-                        if (!isAdmin) return (
-                          <span
-                            key={field}
-                            title={`ยังไม่ได้แนบ${full}`}
-                            className="inline-flex items-center text-[10px] text-zinc-300 dark:text-zinc-600 border border-dashed border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded"
-                          >
-                            {label}
+                            <button
+                              type="button"
+                              title={`ลบ${full}`}
+                              disabled={busy}
+                              onClick={() => removeAttachment(c, field, full)}
+                              className="ml-0.5 text-emerald-400 hover:text-red-500 disabled:opacity-40"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
                           </span>
                         )
                         return (
