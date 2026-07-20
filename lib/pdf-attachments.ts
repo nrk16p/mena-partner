@@ -9,12 +9,52 @@ import { pageFooter } from "@/lib/contract-pdfmake-helpers"
 // pdfmake ฝังได้เฉพาะ JPEG / PNG — ชนิดอื่น (เช่น PDF/HEIC) ข้าม (ยังเปิดดูได้จากลิงก์เอกสารแนบ)
 const IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png"])
 
+type Entry = { url?: string; heading: string }
+
 /**
- * ต่อ "เอกสารแนบของพนักงานขับรถ" (บัตร ปชช./ใบขับขี่/ทะเบียนบ้าน/ไฟล์แนบอื่น)
- * เป็นหน้าใหม่ท้าย PDF สัญญา — แก้ docDef.content โดยตรง
+ * รายการเอกสารแนบท้าย PDF ต่อชนิดสัญญา (ตามที่ตกลง 2026-07-20):
+ *   sale      → ผู้ซื้อ: บัตร ปชช · ใบขับขี่ · ทะเบียนบ้าน
+ *   hire      → ผู้ซื้อ: บัตร ปชช · ใบขับขี่ · ทะเบียนบ้าน · หน้าบุ๊คแบงค์
+ *   guarantee → ผู้ซื้อ (บัตร/ใบขับขี่/ทะเบียนบ้าน) + ผู้ค้ำ (บัตร/ทะเบียนบ้าน/สลิป/หนังสือรับรอง)
+ *   creditor / promotion → ไม่แนบ
  */
-export async function appendDriverAttachments(db: Db, contract: Contract, docDef: any): Promise<void> {
-  // หา driver: driverId ก่อน → contractCode → ทะเบียน
+function buildEntries(type: string, driver: any, contract: Contract): Entry[] {
+  const dn = `${driver?.firstName ?? ""} ${driver?.lastName ?? ""}`.trim() || (contract.buyerName ?? "")
+  const gn = contract.guarantorName ?? "ผู้ค้ำประกัน"
+  const buyer = (label: string, url?: string): Entry => ({ url, heading: `เอกสารผู้ซื้อ: ${label}${dn ? ` — ${dn}` : ""}` })
+  const guar  = (label: string, url?: string): Entry => ({ url, heading: `เอกสารผู้ค้ำ: ${label}${gn ? ` — ${gn}` : ""}` })
+
+  const buyerBase: Entry[] = [
+    buyer("สำเนาบัตรประชาชน", driver?.idCardUrl),
+    buyer("สำเนาใบขับขี่",    driver?.licenseUrl),
+    buyer("สำเนาทะเบียนบ้าน",  driver?.houseRegUrl),
+  ]
+
+  if (type === "sale") return buyerBase
+  if (type === "hire") return [...buyerBase, buyer("หน้าบุ๊คแบงค์", driver?.bankBookUrl)]
+  if (type === "guarantee") {
+    return [
+      ...buyerBase,
+      guar("สำเนาบัตรประชาชน",       contract.guarantorIdCardUrl),
+      guar("สำเนาทะเบียนบ้าน",        contract.guarantorHouseRegUrl),
+      guar("สลิปเงินเดือน",           contract.guarantorSalaryUrl),
+      guar("หนังสือรับรองการทำงาน",   contract.guarantorWorkCertUrl),
+    ]
+  }
+  return [] // creditor / promotion → ไม่แนบ
+}
+
+/**
+ * ต่อเอกสารแนบเป็นหน้าใหม่ท้าย PDF สัญญา (แก้ docDef.content โดยตรง)
+ * type = ชนิดสัญญา (sale / hire / guarantee / creditor / promotion)
+ */
+export async function appendContractAttachments(
+  db: Db, contract: Contract, docDef: any, type: string,
+): Promise<void> {
+  const entries = buildEntries(type, null, contract) // placeholder — เติม driver แล้ว rebuild
+  if (entries.length === 0) return // creditor/promotion — ไม่ต้องหา driver
+
+  // หา driver: driverId ก่อน → contractCode
   let driver: any = null
   const driverId = (contract as any).driverId as string | undefined
   if (driverId && ObjectId.isValid(driverId)) {
@@ -23,24 +63,14 @@ export async function appendDriverAttachments(db: Db, contract: Contract, docDef
   if (!driver && contract.contractCode) {
     driver = await db.collection("drivers").findOne({ contractCode: contract.contractCode })
   }
-  if (!driver) return
 
-  const items: { url: string; label: string }[] = [
-    { url: driver.idCardUrl,  label: "สำเนาบัตรประชาชน" },
-    { url: driver.licenseUrl, label: "สำเนาใบขับขี่" },
-    { url: driver.houseRegUrl, label: "สำเนาทะเบียนบ้าน" },
-    ...(Array.isArray(driver.attachments)
-      ? driver.attachments.map((u: string, i: number) => ({ url: u, label: `เอกสารแนบเพิ่มเติม ${i + 1}` }))
-      : []),
-  ].filter((x) => x.url)
-  if (items.length === 0) return
-
-  const name = `${driver.firstName ?? ""} ${driver.lastName ?? ""}`.trim() || (contract.buyerName ?? "")
+  const real = buildEntries(type, driver, contract).filter((e) => e.url)
+  if (real.length === 0) return
 
   let appended = 0
-  for (const it of items) {
+  for (const e of real) {
     try {
-      const res = await fetch(it.url)
+      const res = await fetch(e.url!)
       if (!res.ok) continue
       const ct = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase()
       if (!IMG_TYPES.has(ct)) continue
@@ -48,14 +78,7 @@ export async function appendDriverAttachments(db: Db, contract: Contract, docDef
       if (buf.length === 0) continue
       const dataUri = `data:${ct === "image/jpg" ? "image/jpeg" : ct};base64,${buf.toString("base64")}`
       docDef.content.push(
-        {
-          text: `เอกสารแนบ: ${it.label}${name ? ` — ${name}` : ""}`,
-          bold: true,
-          fontSize: 16,
-          pageBreak: "before",
-          margin: [0, 0, 0, 12],
-        },
-        // A4 content ~ 493 x 760pt (หัก margin + heading) — fit ให้พอดีหน้า ไม่ล้น
+        { text: e.heading, bold: true, fontSize: 16, pageBreak: "before", margin: [0, 0, 0, 12] },
         { image: dataUri, fit: [490, 680], alignment: "center" },
       )
       appended++
@@ -64,7 +87,6 @@ export async function appendDriverAttachments(db: Db, contract: Contract, docDef
     }
   }
 
-  // ถ้ายังไม่มี footer (บางชนิด) ให้ใส่ footer เลขที่สัญญา (sale มีอยู่แล้ว)
   if (appended > 0 && !docDef.footer) {
     docDef.footer = pageFooter(contract.contractCode ?? "")
   }

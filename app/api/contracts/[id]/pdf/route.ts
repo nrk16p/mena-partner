@@ -5,7 +5,7 @@ import type { Contract } from "@/types"
 import { normPlate, type PromoMasterData } from "@/lib/contract-docx"
 import { renderPdfmake } from "@/lib/pdfmake-printer"
 import { PDFMAKE_DOCS, PDF_FILENAME, type PdfmakeType } from "@/lib/contract-pdfmake"
-import { appendDriverAttachments } from "@/lib/pdf-attachments"
+import { appendContractAttachments } from "@/lib/pdf-attachments"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -29,10 +29,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     const docDef = builder(contract, promo)
-    // ต่อเอกสารแนบของ พขร. เป็นหน้าท้าย (ยกเว้นเอกสารแนบท้ายโปรฯ ที่เป็น annex)
-    if (type !== "promotion") {
-      await appendDriverAttachments(db, contract, docDef)
-    }
+    // ต่อเอกสารแนบท้าย PDF ตามชนิดสัญญา (sale/hire/guarantee — creditor/promotion ไม่แนบ)
+    await appendContractAttachments(db, contract, docDef, type)
     const pdf = await renderPdfmake(docDef)
     const filename = (PDF_FILENAME[type] ?? PDF_FILENAME.sale)(contract)
     return new NextResponse(new Uint8Array(pdf), {

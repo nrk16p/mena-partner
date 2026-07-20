@@ -106,6 +106,11 @@ export interface Contract {
   guarantorName?:       string
   guarantorNationalId?: string
   guarantorAddress?:    string
+  // เอกสารแนบผู้ค้ำ (ต่อท้าย PDF สัญญาค้ำประกัน) — รูป jpg/png
+  guarantorIdCardUrl?:   string  // บัตรประชาชนผู้ค้ำ
+  guarantorHouseRegUrl?: string  // ทะเบียนบ้านผู้ค้ำ
+  guarantorSalaryUrl?:   string  // สลิปเงินเดือนผู้ค้ำ
+  guarantorWorkCertUrl?: string  // หนังสือรับรองการทำงานผู้ค้ำ
   // ข้อมูลเปิดเจ้าหนี้ — ใช้ในเอกสารเปิดเจ้าหนี้รายใหม่
   buyerNameEn?:        string  // ชื่อเจ้าหนี้ (ภาษาอังกฤษ)
   email?:              string  // Email ผู้ติดต่อ
@@ -137,6 +142,7 @@ export interface Driver {
   idCardUrl?:      string   // URL ภาพบัตรประชาชน
   licenseUrl?:     string   // URL ใบขับขี่
   houseRegUrl?:    string   // URL ทะเบียนบ้าน
+  bankBookUrl?:    string   // URL หน้าบุ๊คแบงค์ (ใช้แนบท้ายสัญญาว่าจ้าง)
   licenseNumber?:  string   // เลขบัตรใบขับขี่
   licenseType?:    string   // ประเภทใบขับขี่
   licenseExpiry?:  string   // วันหมดอายุ YYYY-MM-DD
