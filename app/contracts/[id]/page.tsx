@@ -104,6 +104,22 @@ export default function ContractDetailPage() {
   const [pullDriverId, setPullDriverId] = useState("")
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [pullVehicleId, setPullVehicleId] = useState("")
+  const [guarUp, setGuarUp] = useState<string | null>(null)  // field เอกสารผู้ค้ำที่กำลังอัปโหลด
+
+  // อัปโหลดเอกสารผู้ค้ำ → เก็บ url ลง form (บันทึกพร้อมฟอร์มสัญญา)
+  async function uploadGuarantorDoc(field: keyof Contract, file: File) {
+    setGuarUp(field as string)
+    try {
+      const fd = new FormData()
+      fd.append("file", file); fd.append("folder", "guarantors")
+      const up = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!up.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
+      const { url } = await up.json()
+      setForm((p) => p ? { ...p, [field]: url } : p)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+    } finally { setGuarUp(null) }
+  }
 
   // เปลี่ยน step → สลับ preview ไปเอกสารที่เกี่ยวข้อง
   useEffect(() => {
@@ -691,6 +707,45 @@ export default function ContractDetailPage() {
                 {dateOrInput(key)}
               </div>
             ))}
+          </div>
+
+          {/* เอกสารผู้ค้ำ — แนบท้าย PDF สัญญาค้ำประกัน (รูป jpg/png) */}
+          <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <p className="text-xs font-semibold text-zinc-500 mb-2">เอกสารผู้ค้ำ (แนบท้าย PDF สัญญาค้ำประกัน)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {([
+                { key: "guarantorIdCardUrl",   label: "บัตรประชาชน" },
+                { key: "guarantorHouseRegUrl", label: "ทะเบียนบ้าน" },
+                { key: "guarantorSalaryUrl",   label: "สลิปเงินเดือน" },
+                { key: "guarantorWorkCertUrl", label: "หนังสือรับรองงาน" },
+              ] as { key: keyof Contract; label: string }[]).map(({ key, label }) => {
+                const url = form[key] as string | undefined
+                const isBusy = guarUp === key
+                return (
+                  <div key={key} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-300 truncate">{label}</span>
+                    {url ? (
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:underline">
+                          <FileText className="w-3 h-3" /> เปิด
+                        </a>
+                        <button type="button" title={`ลบ${label}`}
+                          onClick={() => setForm((p) => p ? { ...p, [key]: "" } : p)}
+                          className="text-zinc-300 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                      </span>
+                    ) : (
+                      <label className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded border border-dashed cursor-pointer shrink-0 ${isBusy ? "border-blue-300 text-blue-600" : "border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-emerald-400 hover:text-emerald-600"}`}>
+                        {isBusy ? <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Upload className="w-3 h-3" />}
+                        แนบไฟล์
+                        <input type="file" accept="image/*,.pdf" className="hidden" disabled={isBusy}
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadGuarantorDoc(key, f); e.target.value = "" }} />
+                      </label>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-2">* รูป jpg/png จะถูกต่อเป็นหน้าท้าย PDF สัญญาค้ำประกัน (บันทึกสัญญาก่อนจึงจะมีผล)</p>
           </div>
         </div>
         )}

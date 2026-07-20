@@ -59,6 +59,7 @@ interface FormData {
   idCardUrl:       string
   licenseUrl:      string
   houseRegUrl:     string
+  bankBookUrl:     string
   licenseNumber:   string
   licenseType:     string
   licenseExpiry:   string
@@ -70,7 +71,7 @@ const EMPTY_FORM: FormData = {
   bankName: "", accountNumber: "",
   isTruckOwner: false, isDriver: true,
   startDate: "", endDate: "", status: "active",
-  idCardUrl: "", licenseUrl: "", houseRegUrl: "",
+  idCardUrl: "", licenseUrl: "", houseRegUrl: "", bankBookUrl: "",
   licenseNumber: "", licenseType: "", licenseExpiry: "",
 }
 
@@ -103,6 +104,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
         idCardUrl:      driver.idCardUrl     ?? "",
         licenseUrl:     driver.licenseUrl    ?? "",
         houseRegUrl:    driver.houseRegUrl   ?? "",
+        bankBookUrl:    driver.bankBookUrl   ?? "",
         licenseNumber:  driver.licenseNumber ?? "",
         licenseType:    driver.licenseType   ?? "",
         licenseExpiry:  driver.licenseExpiry ?? "",
@@ -122,7 +124,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
     setForm((p) => ({ ...p, [field]: val }))
   }
 
-  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl", file: File) {
+  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl", file: File) {
     setUploadingDoc(field); setError("")
     try {
       const fd = new FormData()
@@ -274,7 +276,8 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
               { field: "idCardUrl",   label: "บัตรประชาชน" },
               { field: "licenseUrl",  label: "ใบขับขี่" },
               { field: "houseRegUrl", label: "ทะเบียนบ้าน" },
-            ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl"; label: string }[]).map(({ field, label }) => {
+              { field: "bankBookUrl", label: "หน้าบุ๊คแบงค์" },
+            ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl"; label: string }[]).map(({ field, label }) => {
               const url  = form[field]
               const busy = uploadingDoc === field
               return (
