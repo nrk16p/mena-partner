@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check, X, Phone, Landmark, AlertTriangle, CheckCircle2, Truck, IdCard } from "lucide-react"
+import { ActivityHistory } from "@/components/activity-history"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -371,10 +372,18 @@ export default function DriverDetailPage() {
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 space-y-4">
 
-      {/* Back */}
-      <Link href="/drivers" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" />กลับรายการพนักงาน
-      </Link>
+      {/* Back + ประวัติการแก้ไข (เลขบัญชี/บัตร ปชช อ่อนไหว) */}
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/drivers" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" />กลับรายการพนักงาน
+        </Link>
+        <ActivityHistory
+          entity="driver"
+          entityId={id}
+          fieldLabels={{ accountNumber: "เลขที่บัญชี", bankName: "ธนาคาร", nationalId: "เลขบัตร ปชช.", firstName: "ชื่อ", lastName: "นามสกุล", status: "สถานะ" }}
+          actionLabels={{ edit: "แก้ไขข้อมูล" }}
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] gap-4 items-start">
 

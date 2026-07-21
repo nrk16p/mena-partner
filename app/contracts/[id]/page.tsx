@@ -17,7 +17,18 @@ import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
 import { Label } from "@/components/ui/label"
 import { formatMoney, formatDate } from "@/lib/utils"
+import { ActivityHistory } from "@/components/activity-history"
 import type { Contract, Driver, Vehicle } from "@/types"
+
+const CONTRACT_FIELD_LABELS: Record<string, string> = {
+  contractDate: "วันที่ทำสัญญา", startDate: "วันที่เริ่ม", buyerName: "ชื่อผู้เช่าซื้อ",
+  driverName: "ชื่อผู้ขับขี่", licensePlate: "ทะเบียนรถ", truckNumber: "เบอร์รถ",
+  totalPrice: "ราคาขายรถ", downPayment: "เงินดาวน์รวม", cashDown: "ดาวน์ชำระแล้ว",
+  remainingInstallment: "ดาวน์คงเหลือ", downInstallmentAmt: "ค่างวดดาวน์", downInstallmentCount: "จำนวนงวดดาวน์",
+  financeAmount: "ยอดไฟแนนซ์", monthlyInstallment: "ค่างวด/เดือน", totalInstallments: "จำนวนงวดรวม",
+  accountNumber: "เลขที่บัญชี", bankName: "ธนาคาร", nationalId: "เลขบัตร ปชช.", status: "สถานะ",
+  guarantorName: "ชื่อผู้ค้ำ", guarantorNationalId: "เลขบัตรผู้ค้ำ",
+}
 
 type FieldSpec = { key: keyof Contract; label: string; type?: string; readOnly?: boolean }
 
@@ -421,6 +432,19 @@ export default function ContractDetailPage() {
           >
             <BarChart3 className="w-3.5 h-3.5" /> โปรโมชั่น
           </Link>
+          <ActivityHistory
+            entity="contract"
+            entityId={form.contractCode}
+            fieldLabels={CONTRACT_FIELD_LABELS}
+            actionLabels={{ edit: "แก้ไขสัญญา" }}
+          />
+          <ActivityHistory
+            entity="contract_attachment"
+            entityId={form.contractCode}
+            label="ประวัติเอกสารแนบ"
+            fieldLabels={{ saleContractUrl: "สัญญาซื้อขาย", promotionDocUrl: "แนบท้าย", hireContractUrl: "ว่าจ้าง", guaranteeContractUrl: "ค้ำประกัน", creditorDocUrl: "เปิดเจ้าหนี้" }}
+            actionLabels={{ attach: "แนบไฟล์", remove: "ลบไฟล์" }}
+          />
           <Link
             href={`/contracts/${id}/document`}
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"

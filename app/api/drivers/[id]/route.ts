@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { diffFields, logActivity } from "@/lib/activity-log"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "drivers"
 
 type Ctx = { params: Promise<{ id: string }> }
+
+// field อ่อนไหว (โกงเงินเดือนได้) — log เฉพาะพวกนี้ ไม่ log ที่อยู่/เบอร์
+const AUDIT_FIELDS = ["accountNumber", "bankName", "nationalId", "firstName", "lastName", "status"]
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const { id } = await params
@@ -83,14 +89,28 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   }
 
   const client = await clientPromise
-  const result = await client.db(DB).collection(COLL)
-    .findOneAndUpdate(
-      { _id: new ObjectId(id) },
-      { $set },
-      { returnDocument: "after" }
-    )
+  const col = client.db(DB).collection(COLL)
+  const before = await col.findOne({ _id: new ObjectId(id) })
+  const result = await col.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set },
+    { returnDocument: "after" }
+  )
 
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  // audit: log เฉพาะ field อ่อนไหว (เลขบัญชี/ธนาคาร/บัตร ปชช/ชื่อ/สถานะ)
+  const changes = diffFields(before, $set, AUDIT_FIELDS)
+  if (Object.keys(changes).length > 0) {
+    const session = await getServerSession(authOptions)
+    await logActivity({
+      entity: "driver",
+      entityId: id,
+      action: "edit",
+      changes,
+      editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+    })
+  }
   return NextResponse.json(result)
 }
 
