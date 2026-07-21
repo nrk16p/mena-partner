@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { logActivity } from "@/lib/activity-log"
 import { normPlateIT } from "@/lib/insurance-tax"
 import {
   LEDGER_KINDS,
@@ -262,6 +263,19 @@ export async function POST(req: NextRequest) {
       }
     )
   }
+
+  await logActivity({
+    entity: "driver_ledger",
+    entityId: debtCode,
+    action: "create",
+    changes: {
+      kind:          { from: null, to: entry.kind },
+      source:        { from: null, to: entry.source?.type ?? null },
+      ...(entry.principal != null ? { principal: { from: null, to: entry.principal } } : {}),
+      monthlyAmount: { from: null, to: entry.monthlyAmount },
+    },
+    editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+  })
 
   return NextResponse.json({ ...entry, _id: result.insertedId.toString() }, { status: 201 })
 }

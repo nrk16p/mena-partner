@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { logActivity } from "@/lib/activity-log"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -84,6 +85,17 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     at: now,
   }
   const result = await db.collection("ledger_withdrawals").insertOne(withdrawal)
+
+  await logActivity({
+    entity: "driver_ledger",
+    entityId: (entry.debtCode as string) ?? "",
+    action: "withdraw",
+    changes: {
+      ถอนเงินสะสม: { from: null, to: rounded },
+      ...(withdrawal.note ? { หมายเหตุ: { from: null, to: withdrawal.note } } : {}),
+    },
+    editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+  })
 
   const balance = ((updated.paidAmount as number) ?? 0) - ((updated.withdrawnAmount as number) ?? 0)
   return NextResponse.json(

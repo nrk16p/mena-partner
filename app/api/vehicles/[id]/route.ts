@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { diffFields, logActivity } from "@/lib/activity-log"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "vehicle_master"
+
+const AUDIT_FIELDS = ["truckType", "status", "licensePlate", "brand", "model"]
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -52,14 +57,28 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.registrationDocUrl   !== undefined) $set.registrationDocUrl   = str(body.registrationDocUrl)
 
   const client = await clientPromise
-  const result = await client.db(DB).collection(COLL)
-    .findOneAndUpdate(
-      { _id: new ObjectId(id) },
-      { $set },
-      { returnDocument: "after" }
-    )
+  const col = client.db(DB).collection(COLL)
+  const before = await col.findOne({ _id: new ObjectId(id) })
+  const result = await col.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set },
+    { returnDocument: "after" }
+  )
 
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  // audit: log เฉพาะ ประเภท/สถานะ/ทะเบียน/ยี่ห้อ/รุ่น ที่เปลี่ยน
+  const changes = diffFields(before, $set, AUDIT_FIELDS)
+  if (Object.keys(changes).length > 0) {
+    const session = await getServerSession(authOptions)
+    await logActivity({
+      entity: "vehicle",
+      entityId: id,
+      action: "edit",
+      changes,
+      editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+    })
+  }
   return NextResponse.json(result)
 }
 

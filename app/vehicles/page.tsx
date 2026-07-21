@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
+import { ActivityHistory } from "@/components/activity-history"
 import type { Vehicle } from "@/types"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -222,6 +223,16 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
                     {[form.brand, form.vehicleType, form.characteristic].filter(Boolean).join(" · ") || "ยังไม่มีรายละเอียดรถ"}
                   </p>
                 </div>
+                {isEdit && vehicle?._id && (
+                  <div className="shrink-0">
+                    <ActivityHistory
+                      entity="vehicle"
+                      entityId={vehicle._id}
+                      fieldLabels={{ truckType: "ประเภท (Mixer/Trailer)", status: "สถานะ", licensePlate: "ทะเบียน", brand: "ยี่ห้อ", model: "รุ่น" }}
+                      actionLabels={{ edit: "แก้ไข" }}
+                    />
+                  </div>
+                )}
               </div>
               {/* status toggle */}
               <div className="shrink-0 flex items-center gap-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5">

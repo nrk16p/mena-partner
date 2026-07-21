@@ -12,6 +12,7 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { ArrowLeft, ShieldCheck } from "lucide-react"
 import { ManageDrawer, normalizeRow, STATUS_LABEL, STATUS_COLOR, type Row } from "../shared"
+import { ActivityHistory } from "@/components/activity-history"
 
 export default function InsuranceTaxPlatePage() {
   const { plate } = useParams<{ plate: string }>()
@@ -68,6 +69,17 @@ export default function InsuranceTaxPlatePage() {
             {[row?.truckNumber, row?.driverName, row?.contractCode].filter(Boolean).join(" · ") || "จัดการภาษี & ประกันภัยของทะเบียนนี้"}
           </p>
         </div>
+        {row && (
+          <ActivityHistory
+            entity="insurance_tax"
+            entityId={row.platePlain}
+            fieldLabels={{
+              amount: "จำนวนเงิน", effectiveDate: "วันเริ่ม", expiryDate: "วันหมดอายุ", company: "บริษัท",
+              monthlyInstallment: "หัก/เดือน", installmentCount: "จำนวนงวด", status: "สถานะ",
+            }}
+            actionLabels={{ edit: "แก้ไข", add: "เพิ่ม/ต่ออายุ" }}
+          />
+        )}
       </div>
 
       {row === undefined ? (

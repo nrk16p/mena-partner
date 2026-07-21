@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { diffFields, logActivity } from "@/lib/activity-log"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "driver_ledger"
@@ -43,12 +46,28 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const client = await clientPromise
   const col    = client.db(DB).collection(COLL)
+
+  const before = await col.findOne({ _id: new ObjectId(id) })
+  if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
   const result = await col.findOneAndUpdate(
     { _id: new ObjectId(id) },
     { $set: { ...update, updatedAt: new Date().toISOString() } },
     { returnDocument: "after" }
   )
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  const changes = diffFields(before, result, ["monthlyAmount", "targetAmount", "notes", "status"])
+  if (Object.keys(changes).length > 0) {
+    const session = await getServerSession(authOptions)
+    await logActivity({
+      entity: "driver_ledger",
+      entityId: (before.debtCode as string) ?? "",
+      action: "edit",
+      changes,
+      editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+    })
+  }
 
   return NextResponse.json({ ...result, _id: result._id.toString() })
 }

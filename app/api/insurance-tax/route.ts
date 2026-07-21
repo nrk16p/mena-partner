@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { logActivity } from "@/lib/activity-log"
 import {
   normPlateIT,
   cycleDisplayStatus,
@@ -132,6 +135,22 @@ export async function POST(req: NextRequest) {
   const licensePlate = body.licensePlate as string
   const platePlain   = normPlateIT(licensePlate) || licensePlate
 
+  const session = await getServerSession(authOptions)
+  const editedBy = { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined }
+  const logAdd = (d: InsuranceItem) =>
+    logActivity({
+      entity: "insurance_tax",
+      entityId: platePlain,
+      action: "add",
+      changes: {
+        ประเภท:       { from: null, to: d.itemType },
+        ...(d.amount != null ? { amount: { from: null, to: d.amount } } : {}),
+        ...(d.effectiveDate ? { effectiveDate: { from: null, to: d.effectiveDate } } : {}),
+        ...(d.expiryDate ? { expiryDate: { from: null, to: d.expiryDate } } : {}),
+      },
+      editedBy,
+    })
+
   // ── bulk: ต่อทั้งชุด (สูงสุด 4 รายการ คนละ itemType) ─────────────────────
   if (body.bulk === true) {
     if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 4) {
@@ -152,6 +171,7 @@ export async function POST(req: NextRequest) {
     )
     const res = await col.insertMany(docs as never[])
     const inserted = docs.map((d: InsuranceItem, i: number) => ({ ...d, _id: res.insertedIds[i] }))
+    await Promise.all(docs.map((d: InsuranceItem) => logAdd(d)))
     return NextResponse.json({ inserted }, { status: 201 })
   }
 
@@ -172,5 +192,6 @@ export async function POST(req: NextRequest) {
   )
 
   const result = await col.insertOne(doc as never)
+  await logAdd(doc)
   return NextResponse.json({ ...doc, _id: result.insertedId }, { status: 201 })
 }

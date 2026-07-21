@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { ActivityHistory } from "@/components/activity-history"
 import { ArrowLeft, Warehouse } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -111,6 +112,10 @@ export default function PromoDetailPage() {
   const repairPct = data.repairBudget > 0 ? Math.min(100, (data.repairUsed / data.repairBudget) * 100) : 0
   const pmPct     = data.annualPmCap > 0  ? Math.min(100, (data.pmUsedThisYear / data.annualPmCap) * 100) : 0
   const repairBarColor = repairPct >= 90 ? "bg-red-500" : repairPct >= 60 ? "bg-amber-500" : "bg-emerald-500"
+  // ยอดจองงบ (reserve) — ยังไม่ตัดจริง แต่กันวงเงินไว้ก่อน
+  const reserveTotal = data.repairClaims
+    .filter((c) => c.reserve && !c.confirmed && !data.dedupedMrs?.includes(claimMr(c)))
+    .reduce((s, c) => s + (c.amount ?? 0), 0)
   const pmBarColor     = pmPct >= 90     ? "bg-red-500" : pmPct >= 60     ? "bg-amber-500" : "bg-blue-500"
 
   return (
@@ -129,12 +134,20 @@ export default function PromoDetailPage() {
               {data.contractCode} · {data.licensePlate} · {data.truckNumber}
             </p>
           </div>
-          <Link
-            href="/vehicle-cost?tab=merged"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 border border-emerald-200 dark:border-emerald-900 rounded-lg px-3 py-1.5"
-          >
-            <Warehouse className="w-3.5 h-3.5" /> จัดการหักโปรฯ จากรายการเบิก (ค่าใช้จ่ายรถ)
-          </Link>
+          <div className="flex items-center gap-2">
+            <ActivityHistory
+              entity="promotion"
+              entityId={data.contractCode}
+              label="ประวัติตัดงบ"
+              actionLabels={{ confirm_repair: "ยืนยันตัดงบซ่อม", confirm_pm: "ยืนยันตัดเพดาน PM" }}
+            />
+            <Link
+              href="/vehicle-cost?tab=merged"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 border border-emerald-200 dark:border-emerald-900 rounded-lg px-3 py-1.5"
+            >
+              <Warehouse className="w-3.5 h-3.5" /> จัดการหักโปรฯ จากรายการเบิก (ค่าใช้จ่ายรถ)
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -147,14 +160,22 @@ export default function PromoDetailPage() {
         {/* Budget bar */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-zinc-600">
-            <span>ใช้ไป <span className="font-semibold text-red-500">{formatMoney(data.repairUsed)}</span></span>
+            <span>
+              ใช้ไป <span className="font-semibold text-red-500">{formatMoney(data.repairUsed)}</span>
+              {reserveTotal > 0 && <> · จองไว้ <span className="font-semibold text-blue-600">{formatMoney(reserveTotal)}</span></>}
+            </span>
             <span>วงเงิน {formatMoney(data.repairBudget)}</span>
           </div>
-          <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${repairBarColor}`} style={{ width: `${repairPct}%` }} />
+          <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
+            <div className={`h-full transition-all ${repairBarColor}`} style={{ width: `${repairPct}%` }} />
+            {reserveTotal > 0 && data.repairBudget > 0 && (
+              <div className="h-full bg-blue-300 dark:bg-blue-500/50 transition-all" title="จองงบ (reserve)"
+                style={{ width: `${Math.min(100 - repairPct, (reserveTotal / data.repairBudget) * 100)}%` }} />
+            )}
           </div>
           <p className="text-sm text-right text-zinc-500">
             คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.repairRemaining)}</span>
+            {reserveTotal > 0 && <> · หลังกันจอง <span className="font-semibold text-blue-600">{formatMoney(data.repairRemaining - reserveTotal)}</span></>}
           </p>
           {(() => {
             const uncovered = data.repairClaims.filter(

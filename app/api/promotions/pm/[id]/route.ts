@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { logActivity } from "@/lib/activity-log"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -22,11 +25,29 @@ export async function PATCH(
   }
   const client = await clientPromise
   const db = client.db(DB)
-  const result = await db.collection("pm_records").updateOne(
+  const before = await db.collection("pm_records").findOne({ _id: oid })
+  if (!before) return NextResponse.json({ error: "not found" }, { status: 404 })
+
+  await db.collection("pm_records").updateOne(
     { _id: oid },
     { $set: { confirmed: body.confirmed, confirmedAt: body.confirmed ? new Date() : null } }
   )
-  if (result.matchedCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 })
+
+  // audit: ใครยืนยันตัดเพดาน PM (ถาวร) เมื่อไหร่
+  if (body.confirmed) {
+    const session = await getServerSession(authOptions)
+    await logActivity({
+      entity: "promotion",
+      entityId: (before.contractCode as string) ?? "",
+      action: "confirm_pm",
+      changes: {
+        ยืนยันตัดเพดาน: { from: "รอยืนยัน", to: "actual (ตัดถาวร)" },
+        ประเภท: { from: null, to: (before.type as string) ?? "" },
+        ยอด: { from: null, to: before.amount ?? 0 },
+      },
+      editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+    })
+  }
   return NextResponse.json({ ok: true })
 }
 

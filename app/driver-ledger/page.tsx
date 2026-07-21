@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
+import { ActivityHistory } from "@/components/activity-history"
 import { formatMoney, formatMonth } from "@/lib/utils"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import type { Contract } from "@/types"
@@ -609,9 +610,18 @@ function ManageDrawer({ entry, onClose, onChanged }: {
               {[entry.driverName, entry.licensePlate, entry.contractCode].filter(Boolean).join(" · ") || "—"}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 shrink-0">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <ActivityHistory
+              entity="driver_ledger"
+              entityId={entry.debtCode}
+              label="ประวัติ"
+              fieldLabels={{ monthlyAmount: "หัก/เดือน", targetAmount: "เป้าสะสม", notes: "หมายเหตุ", status: "สถานะ" }}
+              actionLabels={{ edit: "แก้ไข", skip: "ข้ามงวด", override: "หักบางส่วน", withdraw: "ถอนเงินสะสม", create: "สร้างรายการ" }}
+            />
+            <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="p-4 space-y-5">

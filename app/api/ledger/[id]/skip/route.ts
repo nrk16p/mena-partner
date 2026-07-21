@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { logActivity } from "@/lib/activity-log"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -60,6 +61,18 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     },
     { upsert: true }
   )
+
+  const reason = (body.reason as string | undefined)?.trim() ?? ""
+  await logActivity({
+    entity: "driver_ledger",
+    entityId: (entry.debtCode as string) ?? "",
+    action: overrideAmount && overrideAmount > 0 ? "override" : "skip",
+    changes: {
+      [month]: { from: null, to: overrideAmount && overrideAmount > 0 ? overrideAmount : "ข้ามงวด" },
+      ...(reason ? { เหตุผล: { from: null, to: reason } } : {}),
+    },
+    editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
+  })
 
   return NextResponse.json({ ok: true, entryId: id, month, overrideAmount })
 }
