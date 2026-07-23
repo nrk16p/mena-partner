@@ -3,20 +3,27 @@ import clientPromise from "@/lib/mongo"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "contracts"
-const PREFIX = "MTL-"
 
+/**
+ * รหัสสัญญาถัดไป = เลขสูงสุดในระบบ + 1 (ใช้ prefix ของตัวเลขสูงสุด เช่น MTM192 → MTM193)
+ * รองรับรูปแบบ <ตัวอักษร><ตัวเลข> เช่น MTM192 / MTL067
+ */
 export async function GET() {
   const client = await clientPromise
   const codes  = await client.db(DB).collection(COLL)
-    .find({ contractCode: { $regex: `^${PREFIX}` } }, { projection: { contractCode: 1 } })
+    .find({}, { projection: { contractCode: 1 } })
     .toArray()
 
   let max = 0
+  let prefix = "MTM"
   for (const c of codes) {
-    const n = parseInt((c.contractCode as string).replace(PREFIX, ""), 10)
-    if (!isNaN(n) && n > max) max = n
+    const code = String(c.contractCode ?? "").trim()
+    const m = code.match(/^([A-Za-z]+)[-\s]?(\d+)$/)
+    if (!m) continue
+    const n = parseInt(m[2], 10)
+    if (!isNaN(n) && n > max) { max = n; prefix = m[1] }
   }
 
-  const next = `${PREFIX}${String(max + 1).padStart(3, "0")}`
+  const next = `${prefix}${String(max + 1).padStart(3, "0")}`
   return NextResponse.json({ code: next })
 }

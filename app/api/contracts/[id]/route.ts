@@ -78,10 +78,12 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   return NextResponse.json(result)
 }
 
+// สัญญาลบถาวรไม่ได้ — ใช้ "ยกเลิกสัญญา" (เปลี่ยนสถานะเป็น terminated) แทน
+// เพื่อรักษาประวัติ/หลักฐาน (audit, เงินเดือน, หนี้ที่อ้างถึงสัญญานี้)
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const { id } = await params
-  const client = await clientPromise
-  const col    = client.db(DB).collection(COLL)
-  await col.deleteOne({ _id: new ObjectId(id) })
-  return NextResponse.json({ ok: true })
+  await params
+  return NextResponse.json(
+    { error: "ลบสัญญาถาวรไม่ได้ — กรุณาใช้ ‘ยกเลิกสัญญา’ (เปลี่ยนสถานะเป็นยกเลิก) แทน" },
+    { status: 405 },
+  )
 }
