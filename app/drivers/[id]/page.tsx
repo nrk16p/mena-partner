@@ -72,6 +72,7 @@ interface DriverForm {
   houseRegUrl:   string
   bankBookUrl:   string
   tax50BisUrl:   string
+  photoUrl:      string
   licenseNumber: string
   licenseType:   string
   licenseExpiry: string
@@ -104,6 +105,7 @@ function toForm(d: Driver): DriverForm {
     houseRegUrl:   d.houseRegUrl   ?? "",
     bankBookUrl:   d.bankBookUrl   ?? "",
     tax50BisUrl:   d.tax50BisUrl   ?? "",
+    photoUrl:      d.photoUrl      ?? "",
     licenseNumber: d.licenseNumber ?? "",
     licenseType:   d.licenseType   ?? "",
     licenseExpiry: d.licenseExpiry ?? "",
@@ -283,7 +285,7 @@ export default function DriverDetailPage() {
     setForm((p) => p ? { ...p, [k]: v } : p)
   }
 
-  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl", file: File) {
+  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl" | "photoUrl", file: File) {
     setUploadingDoc(field); setError("")
     try {
       const fd = new FormData()
@@ -347,6 +349,7 @@ export default function DriverDetailPage() {
     bankName: driver.bankName ?? "", accountNumber: driver.accountNumber ?? "",
     licenseExpiry: driver.licenseExpiry ?? "", status: driver.status ?? "active",
     isDriver: driver.isDriver ?? false, isTruckOwner: driver.isTruckOwner ?? false,
+    photoUrl: driver.photoUrl ?? "",
   }
 
   const fullName = `${v.firstName} ${v.lastName}`.trim()
@@ -397,9 +400,28 @@ export default function DriverDetailPage() {
           {/* Profile card */}
           <Card>
             <div className="flex flex-col items-center text-center">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold ${avatarColor(v.firstName)}`}>
-                {initial}
-              </div>
+              {(() => {
+                const photo = editing && form ? form.photoUrl : v.photoUrl
+                const busy = uploadingDoc === "photoUrl"
+                const avatar = photo ? (
+                  <img src={photo} alt={fullName} className="w-20 h-20 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                ) : (
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold ${avatarColor(v.firstName)}`}>
+                    {initial}
+                  </div>
+                )
+                if (!editing) return avatar
+                return (
+                  <label className="relative cursor-pointer group" title="อัปโหลด/เปลี่ยนรูปโปรไฟล์">
+                    {avatar}
+                    <span className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-semibold">
+                      {busy ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (photo ? "เปลี่ยนรูป" : "＋ รูป")}
+                    </span>
+                    <input type="file" accept="image/*" className="hidden" disabled={busy}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDoc("photoUrl", f); e.target.value = "" }} />
+                  </label>
+                )
+              })()}
               <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 mt-3">{fullName || "—"}</h1>
               {driver.staffCode && <p className="text-xs text-zinc-400 font-mono mt-0.5">{editing && form ? form.staffCode : driver.staffCode}</p>}
 

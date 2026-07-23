@@ -144,6 +144,7 @@ export interface Driver {
   houseRegUrl?:    string   // URL ทะเบียนบ้าน
   bankBookUrl?:    string   // URL หน้าบุ๊คแบงค์ (ใช้แนบท้ายสัญญาว่าจ้าง)
   tax50BisUrl?:    string   // URL หนังสือรับรองหักภาษี ณ ที่จ่าย (50 ทวิ)
+  photoUrl?:       string   // URL รูปโปรไฟล์พนักงาน
   licenseNumber?:  string   // เลขบัตรใบขับขี่
   licenseType?:    string   // ประเภทใบขับขี่
   licenseExpiry?:  string   // วันหมดอายุ YYYY-MM-DD
