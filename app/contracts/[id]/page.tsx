@@ -59,15 +59,6 @@ const NUM_FIELDS: FieldSpec[] = [
   { key: "totalInstallments",   label: "จำนวนงวดรวม" },
 ]
 
-// ข้อมูลเปิดเจ้าหนี้ — ใช้ในเอกสารเปิดเจ้าหนี้รายใหม่
-const VENDOR_FIELDS: FieldSpec[] = [
-  { key: "buyerNameEn",        label: "ชื่อเจ้าหนี้ (ภาษาอังกฤษ)" },
-  { key: "email",              label: "Email ผู้ติดต่อ" },
-  { key: "bankBranch",         label: "สาขาธนาคาร" },
-  { key: "vendorCodeWinspeed", label: "รหัสเจ้าหนี้ Winspeed" },
-  { key: "vendorCodeAtms",     label: "รหัสเจ้าหนี้ ATMS" },
-]
-
 // ผู้ค้ำประกัน — ใช้ในเอกสารสัญญาค้ำประกัน (เว้นว่างได้ถ้าไม่มีผู้ค้ำ)
 const GUARANTOR_FIELDS: FieldSpec[] = [
   { key: "guarantorName",       label: "ชื่อ – นามสกุล ผู้ค้ำประกัน" },
@@ -95,7 +86,6 @@ const WIZARD_STEPS = [
   { title: "ข้อมูลหลัก",      desc: "สัญญา + ประกัน/ภาษี" },
   { title: "สัญญาซื้อขาย",    desc: "ผู้ซื้อ/รถ + การเงิน" },
   { title: "สัญญาค้ำประกัน",  desc: "ผู้ค้ำประกัน" },
-  { title: "เปิดเจ้าหนี้",    desc: "ข้อมูลผู้ขาย/บัญชี" },
   { title: "สรุป & บันทึก",   desc: "หมายเหตุ + ตรวจสอบ" },
 ]
 
@@ -134,7 +124,7 @@ export default function ContractDetailPage() {
 
   // เปลี่ยน step → สลับ preview ไปเอกสารที่เกี่ยวข้อง
   useEffect(() => {
-    setDocTab(step === 2 ? "guarantee" : step === 3 ? "vendor" : "sale")
+    setDocTab(step === 2 ? "guarantee" : "sale")
   }, [step])
 
   // คีย์ลัดโหลด PDF: กด 1–5 เปิดหน้าพิมพ์ (auto-print) — ข้ามเมื่อกำลังพิมพ์ในช่องกรอก
@@ -403,7 +393,6 @@ export default function ContractDetailPage() {
   // ผ่าน guard แล้ว form ไม่เป็น null; debounce อาจ lag ชั่วครู่ตอนโหลดครั้งแรก → fallback เป็น form
   const previewData = debouncedForm ?? form
 
-  const today = new Date().toISOString().slice(0, 10)
   const paid = form.totalPrice && form.downPayment && form.totalInstallments && form.monthlyInstallment
     ? form.downPayment + form.monthlyInstallment * form.totalInstallments
     : null
@@ -473,13 +462,14 @@ export default function ContractDetailPage() {
             <FileText className="w-3.5 h-3.5" /> สัญญาค้ำประกัน (PDF)
             <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">4</kbd>
           </Link>
-          <Link
-            href={`/contracts/${id}/vendor-document`}
+          <a
+            href="/vendor-open-form.pdf"
+            download="แบบฟอร์มเอกสารเปิดเจ้าหนี้รายใหม่.pdf"
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+            title="ดาวน์โหลดแบบฟอร์มเปิดเจ้าหนี้ (ฟอร์มเปล่า)"
           >
             <FileText className="w-3.5 h-3.5" /> เปิดเจ้าหนี้ (PDF)
-            <kbd className="ml-1 text-[9px] font-mono leading-none px-1 py-0.5 rounded bg-white/80 border border-emerald-300 text-emerald-700">5</kbd>
-          </Link>
+          </a>
         </div>
       </div>
 
@@ -670,35 +660,6 @@ export default function ContractDetailPage() {
         </div>
         )}
 
-        {step === 3 && (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
-          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ข้อมูลเปิดเจ้าหนี้ (สำหรับเอกสารเปิดเจ้าหนี้รายใหม่)</h2>
-          <p className="text-xs text-zinc-400 mb-4">ประเภทบัญชี + สาขาธนาคาร จำเป็นสำหรับแบบฟอร์มลงทะเบียนผู้ขาย — รหัสเจ้าหนี้เว้นว่างได้ (บัญชีกำหนดหลังเปิด)</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label className="text-xs">ประเภทบัญชี</Label>
-              <select
-                value={String(form.bankAccountType ?? "")}
-                disabled={!isAdmin}
-                onChange={(e) => setForm((p) => p ? { ...p, bankAccountType: e.target.value } : p)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm disabled:opacity-50"
-              >
-                <option value="">— เลือก —</option>
-                <option value="ออมทรัพย์">ออมทรัพย์</option>
-                <option value="กระแสรายวัน">กระแสรายวัน</option>
-                <option value="ประจำ">ประจำ</option>
-              </select>
-            </div>
-            {VENDOR_FIELDS.map(({ key, label }) => (
-              <div key={key} className="space-y-1">
-                <Label className="text-xs">{label}</Label>
-                <Input {...strField(key)} />
-              </div>
-            ))}
-          </div>
-        </div>
-        )}
-
         {step === 1 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ข้อมูลผู้ซื้อ / รถ (สำหรับเอกสารสัญญา)</h2>
@@ -788,7 +749,7 @@ export default function ContractDetailPage() {
         </div>
         )}
 
-        {step === 4 && (<>
+        {step === 3 && (<>
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">หมายเหตุ</h2>
           <textarea
