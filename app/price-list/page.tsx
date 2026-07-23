@@ -1,8 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useState, useMemo } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download } from "lucide-react"
+import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download, ExternalLink } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { PriceHistoryDrawer } from "@/components/price-history-drawer"
@@ -753,11 +754,16 @@ export default function PriceListPage() {
                 <tr key={r.licensePlate} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 transition-colors group">
                   <td className="w-0 p-0" />
 
-                  {/* License plate */}
+                  {/* License plate → jump to vehicle record */}
                   <td className="px-3 py-2 border-l border-zinc-50 dark:border-zinc-800/60">
-                    <span className="font-mono text-[12px] font-semibold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                    <Link
+                      href={`/vehicles?plate=${encodeURIComponent(r.licensePlate)}`}
+                      title="ดูข้อมูลรถคันนี้ในทะเบียนรถ"
+                      className="group/plate inline-flex items-center gap-1 font-mono text-[12px] font-semibold text-zinc-800 dark:text-zinc-200 whitespace-nowrap hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline"
+                    >
                       {r.licensePlate}
-                    </span>
+                      <ExternalLink className="w-3 h-3 text-zinc-300 dark:text-zinc-600 opacity-0 group-hover/plate:opacity-100 transition-opacity" />
+                    </Link>
                   </td>
 
                   {/* Down section */}

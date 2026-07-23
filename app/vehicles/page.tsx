@@ -444,15 +444,30 @@ export default function VehiclesPage() {
 
   useEffect(() => { load() }, [load])
 
-  // deep-link: /vehicles?edit=<id> → เปิด panel แก้ไขรถคันนั้นอัตโนมัติ
-  // (มาจากลิงก์ "ทะเบียนรถยังขาด … คลิกไปกรอก" ในหน้าสัญญา)
+  // deep-link:
+  //  • /vehicles?edit=<id>      → เปิด panel แก้ไขรถคันนั้น (จากหน้าสัญญา)
+  //  • /vehicles?plate=<ทะเบียน> → กรองตามทะเบียน + เปิด panel ถ้าเจอคันเดียว (จากหน้า Price List)
   const deepLinked = useRef(false)
+  const [deepLinkMiss, setDeepLinkMiss] = useState("")
   useEffect(() => {
     if (deepLinked.current || items.length === 0) return
-    const editId = new URLSearchParams(window.location.search).get("edit")
-    if (!editId) return
-    const v = items.find((x) => x._id === editId)
-    if (v) { deepLinked.current = true; setPanel(v); setQ(v.licensePlate ?? "") }
+    const params = new URLSearchParams(window.location.search)
+    const editId = params.get("edit")
+    const plate  = params.get("plate")?.trim()
+
+    if (editId) {
+      const v = items.find((x) => x._id === editId)
+      if (v) { deepLinked.current = true; setPanel(v); setQ(v.licensePlate ?? "") }
+      return
+    }
+
+    if (plate) {
+      deepLinked.current = true
+      setQ(plate)
+      const matches = items.filter((x) => (x.licensePlate ?? "").trim().toLowerCase() === plate.toLowerCase())
+      if (matches.length === 1) setPanel(matches[0])
+      else if (matches.length === 0) setDeepLinkMiss(plate)
+    }
   }, [items])
 
   const [syncing, setSyncing] = useState(false)
@@ -560,6 +575,12 @@ export default function VehiclesPage() {
       {syncResult && (
         <div className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
           {syncResult}
+        </div>
+      )}
+
+      {deepLinkMiss && (
+        <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+          ทะเบียน <span className="font-mono font-semibold">{deepLinkMiss}</span> ยังไม่มีในทะเบียนรถ — มีเฉพาะราคาขายในหน้า Price List
         </div>
       )}
 
