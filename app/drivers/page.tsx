@@ -118,6 +118,11 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
       })
     } else {
       setForm(EMPTY_FORM)
+      // เพิ่มพนักงานใหม่ → auto รหัสพนักงาน = ล่าสุด+1 (ชุดเดียวกับรหัสสัญญา) + ตั้งรหัสสัญญาให้ตรงกัน
+      fetch("/api/drivers/next-code")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d?.code) setForm((p) => ({ ...p, staffCode: d.code, contractCode: d.code })) })
+        .catch(() => {})
     }
     setError("")
   }, [driver])
@@ -247,8 +252,8 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">รหัสพนักงาน</label>
-              <Input placeholder="EMP-001" value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className="h-9 text-sm" />
+              <label className="block text-xs font-medium text-zinc-500 mb-1">รหัสพนักงาน <span className="text-zinc-300">(auto)</span></label>
+              <Input placeholder="MTM192" value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className="h-9 text-sm font-mono" />
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1.5">รหัสสัญญา</label>
