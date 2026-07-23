@@ -676,7 +676,14 @@ export default function DriversPage() {
                       {/* Contract code (ซ้ำกันได้) */}
                       <td className="px-3 py-2.5">
                         {d.contractCode
-                          ? <span className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">{d.contractCode}</span>
+                          ? <Link
+                              href={`/contracts?q=${encodeURIComponent(d.contractCode)}`}
+                              onClick={(e) => e.stopPropagation()}
+                              title={`ดูสัญญา ${d.contractCode}`}
+                              className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold hover:underline"
+                            >
+                              {d.contractCode}
+                            </Link>
                           : <span className="text-zinc-300">—</span>}
                       </td>
 

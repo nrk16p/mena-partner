@@ -41,7 +41,9 @@ type AttachField = (typeof ATTACH_DOCS)[number]["field"]
 export default function ContractsPage() {
   const { data: session } = useSession()
   const [items, setItems]   = useState<Contract[]>([])
-  const [q, setQ]           = useState("")
+  // prefill ค้นหาจาก ?q= (ลิงก์มาจากหน้าอื่น เช่น รหัสสัญญาในหน้า พขร.)
+  const [q, setQ]           = useState(() =>
+    typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("q") ?? "") : "")
   const [statusFilter, setStatusFilter] = useState("active")
   const [docFilter, setDocFilter] = useState("")   // "" ทั้งหมด | "complete" ครบ | "incomplete" ไม่ครบ
   const [attachFilter, setAttachFilter] = useState("")  // "" ทั้งหมด | "done" เอกสารครบ | "follow" ติดตามเอกสาร
