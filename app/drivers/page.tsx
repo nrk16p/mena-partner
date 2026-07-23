@@ -509,7 +509,7 @@ export default function DriversPage() {
   const [loading, setLoading]           = useState(true)
   const [panelDriver, setPanelDriver]   = useState<Driver | null | "new">(null)
   const [showImport, setShowImport]     = useState(false)
-  const [contractCodes, setContractCodes] = useState<Set<string>>(new Set())  // รหัสสัญญาที่มีจริง
+  const [contractMap, setContractMap]   = useState<Map<string, string>>(new Map())  // รหัสสัญญา → _id
   const [onlyMissing, setOnlyMissing]   = useState(false)   // แสดงเฉพาะคนที่หารหัสสัญญาไม่เจอ
 
   const load = useCallback(async () => {
@@ -524,19 +524,25 @@ export default function DriversPage() {
 
   useEffect(() => { load() }, [load])
 
-  // รหัสสัญญาที่มีจริงในระบบ — เอาไว้เช็คว่า พขร. คนไหนกรอกรหัสสัญญาที่ไม่พบ
+  // รหัสสัญญา → _id ในระบบ — ใช้ลิงก์ไปหน้าสัญญาตรงๆ + เช็ครหัสที่ไม่พบ
   useEffect(() => {
     fetch("/api/contracts")
       .then((r) => (r.ok ? r.json() : []))
-      .then((cs: { contractCode?: string }[]) =>
-        setContractCodes(new Set(cs.map((c) => (c.contractCode ?? "").trim()).filter(Boolean))))
+      .then((cs: { _id?: string; contractCode?: string }[]) => {
+        const m = new Map<string, string>()
+        for (const c of cs) {
+          const code = (c.contractCode ?? "").trim()
+          if (code && c._id) m.set(code, c._id)
+        }
+        setContractMap(m)
+      })
       .catch(() => {})
   }, [])
 
   // พขร. ที่กรอกรหัสสัญญาไว้ แต่หาไม่เจอในระบบ (รอตรวจสอบ)
   const isContractMissing = useCallback(
-    (d: Driver) => !!(d.contractCode ?? "").trim() && contractCodes.size > 0 && !contractCodes.has((d.contractCode ?? "").trim()),
-    [contractCodes],
+    (d: Driver) => !!(d.contractCode ?? "").trim() && contractMap.size > 0 && !contractMap.has((d.contractCode ?? "").trim()),
+    [contractMap],
   )
   const missingCount = useMemo(() => items.filter(isContractMissing).length, [items, isContractMissing])
 
@@ -717,9 +723,9 @@ export default function DriversPage() {
                                 <AlertTriangle className="w-3 h-3 shrink-0" /> {d.contractCode}
                               </span>
                             : <Link
-                                href={`/contracts?q=${encodeURIComponent(d.contractCode)}`}
+                                href={`/contracts/${contractMap.get(d.contractCode.trim())}`}
                                 onClick={(e) => e.stopPropagation()}
-                                title={`ดูสัญญา ${d.contractCode}`}
+                                title={`เปิดสัญญา ${d.contractCode}`}
                                 className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold hover:underline"
                               >
                                 {d.contractCode}
