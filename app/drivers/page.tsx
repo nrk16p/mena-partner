@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react"
 import Link from "next/link"
-import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2 } from "lucide-react"
+import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2, AlertTriangle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
@@ -509,6 +509,8 @@ export default function DriversPage() {
   const [loading, setLoading]           = useState(true)
   const [panelDriver, setPanelDriver]   = useState<Driver | null | "new">(null)
   const [showImport, setShowImport]     = useState(false)
+  const [contractCodes, setContractCodes] = useState<Set<string>>(new Set())  // รหัสสัญญาที่มีจริง
+  const [onlyMissing, setOnlyMissing]   = useState(false)   // แสดงเฉพาะคนที่หารหัสสัญญาไม่เจอ
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -522,10 +524,28 @@ export default function DriversPage() {
 
   useEffect(() => { load() }, [load])
 
+  // รหัสสัญญาที่มีจริงในระบบ — เอาไว้เช็คว่า พขร. คนไหนกรอกรหัสสัญญาที่ไม่พบ
+  useEffect(() => {
+    fetch("/api/contracts")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((cs: { contractCode?: string }[]) =>
+        setContractCodes(new Set(cs.map((c) => (c.contractCode ?? "").trim()).filter(Boolean))))
+      .catch(() => {})
+  }, [])
+
+  // พขร. ที่กรอกรหัสสัญญาไว้ แต่หาไม่เจอในระบบ (รอตรวจสอบ)
+  const isContractMissing = useCallback(
+    (d: Driver) => !!(d.contractCode ?? "").trim() && contractCodes.size > 0 && !contractCodes.has((d.contractCode ?? "").trim()),
+    [contractCodes],
+  )
+  const missingCount = useMemo(() => items.filter(isContractMissing).length, [items, isContractMissing])
+
   const filtered = useMemo(() => {
-    if (!q) return items
+    let res = items
+    if (onlyMissing) res = res.filter(isContractMissing)
+    if (!q) return res
     const lq = q.toLowerCase()
-    return items.filter((d) =>
+    return res.filter((d) =>
       `${d.firstName} ${d.lastName}`.toLowerCase().includes(lq) ||
       (d.nationalId ?? "").includes(q) ||
       (d.staffCode    ?? "").toLowerCase().includes(lq) ||
@@ -533,9 +553,9 @@ export default function DriversPage() {
       (d.phone      ?? "").includes(q) ||
       (d.address    ?? "").toLowerCase().includes(lq)
     )
-  }, [items, q])
+  }, [items, q, onlyMissing, isContractMissing])
 
-  const pg = usePagination(filtered, 50, [q, statusFilter])
+  const pg = usePagination(filtered, 50, [q, statusFilter, onlyMissing])
 
   const activeCount   = items.filter((d) => d.status === "active").length
   const inactiveCount = items.filter((d) => d.status !== "active").length
@@ -595,6 +615,19 @@ export default function DriversPage() {
             {f.label}
           </button>
         ))}
+        {missingCount > 0 && (
+          <button
+            onClick={() => setOnlyMissing((v) => !v)}
+            title="พขร. ที่กรอกรหัสสัญญาไว้ แต่หาไม่พบในระบบ"
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              onlyMissing
+                ? "bg-rose-600 text-white"
+                : "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
+            }`}
+          >
+            <AlertTriangle className="w-3 h-3" /> หารหัสสัญญาไม่เจอ ({missingCount})
+          </button>
+        )}
         <div className="flex-1" />
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
@@ -676,14 +709,21 @@ export default function DriversPage() {
                       {/* Contract code (ซ้ำกันได้) */}
                       <td className="px-3 py-2.5">
                         {d.contractCode
-                          ? <Link
-                              href={`/contracts?q=${encodeURIComponent(d.contractCode)}`}
-                              onClick={(e) => e.stopPropagation()}
-                              title={`ดูสัญญา ${d.contractCode}`}
-                              className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold hover:underline"
-                            >
-                              {d.contractCode}
-                            </Link>
+                          ? isContractMissing(d)
+                            ? <span
+                                title={`ไม่พบสัญญา ${d.contractCode} ในระบบ — ตรวจสอบรหัส`}
+                                className="inline-flex items-center gap-1 font-mono text-rose-600 dark:text-rose-400 font-semibold"
+                              >
+                                <AlertTriangle className="w-3 h-3 shrink-0" /> {d.contractCode}
+                              </span>
+                            : <Link
+                                href={`/contracts?q=${encodeURIComponent(d.contractCode)}`}
+                                onClick={(e) => e.stopPropagation()}
+                                title={`ดูสัญญา ${d.contractCode}`}
+                                className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold hover:underline"
+                              >
+                                {d.contractCode}
+                              </Link>
                           : <span className="text-zinc-300">—</span>}
                       </td>
 
