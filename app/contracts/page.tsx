@@ -44,6 +44,7 @@ export default function ContractsPage() {
   const [q, setQ]           = useState("")
   const [statusFilter, setStatusFilter] = useState("active")
   const [docFilter, setDocFilter] = useState("")   // "" ทั้งหมด | "complete" ครบ | "incomplete" ไม่ครบ
+  const [attachFilter, setAttachFilter] = useState("")  // "" ทั้งหมด | "done" เอกสารครบ | "follow" ติดตามเอกสาร
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)   // `${contractId}:${field}`
   const [confirmDel, setConfirmDel] = useState<string | null>(null) // `${contractId}:${field}` ที่รอยืนยันลบ
@@ -141,19 +142,22 @@ export default function ContractsPage() {
     await exportToExcel([{ name: "สัญญา", rows }], `contracts-${todayStamp()}`)
   }
 
-  // ── กรองตามความครบถ้วนของข้อมูลเอกสาร (เกณฑ์เดียวกับคอลัมน์ "ข้อมูลครบ") ──
-  const visible =
-    docFilter === ""
-      ? items
-      : items.filter((c) => (missingDocFields(c).length === 0) === (docFilter === "complete"))
+  // ── กรอง: ความครบข้อมูล + สถานะเอกสาร (สัญญาซื้อขายอัปโหลดแล้ว = เอกสารครบ) ──
+  const visible = items.filter((c) => {
+    if (docFilter && (missingDocFields(c).length === 0) !== (docFilter === "complete")) return false
+    if (attachFilter === "done"   && !c.saleContractUrl) return false
+    if (attachFilter === "follow" &&  c.saleContractUrl) return false
+    return true
+  })
 
-  const pg = usePagination(visible, 50, [q, statusFilter, docFilter])
+  const pg = usePagination(visible, 50, [q, statusFilter, docFilter, attachFilter])
 
   const counts = {
     active:     items.filter((c) => c.status === "active").length,
     completed:  items.filter((c) => c.status === "completed").length,
     terminated: items.filter((c) => c.status === "terminated").length,
     complete:   items.filter((c) => missingDocFields(c).length === 0).length,
+    docDone:    items.filter((c) => c.saleContractUrl).length,
   }
 
   return (
@@ -222,6 +226,26 @@ export default function ContractsPage() {
               onClick={() => setDocFilter(tab.key)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 docFilter === tab.key
+                  ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* กรองตามสถานะเอกสาร (สัญญาซื้อขายอัปโหลดแล้ว) */}
+        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+          {[
+            { key: "", label: "เอกสารทั้งหมด" },
+            { key: "done", label: `เอกสารครบ (${counts.docDone})` },
+            { key: "follow", label: `ติดตามเอกสาร (${items.length - counts.docDone})` },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setAttachFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                attachFilter === tab.key
                   ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
               }`}
