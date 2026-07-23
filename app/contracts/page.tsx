@@ -134,6 +134,7 @@ export default function ContractsPage() {
         "วันหมดอายุ": c.taxExpiryDate ?? "",
         "สถานะ": c.status,
         "ข้อมูลครบ": missing.length === 0 ? "ครบ" : `ขาด ${missing.length}`,
+        "สถานะเอกสาร": c.saleContractUrl ? "เอกสารครบ" : "ติดตามเอกสาร",
         "เอกสารแนบ": `${attached}/${ATTACH_DOCS.length}`,
       }
     })
@@ -253,6 +254,7 @@ export default function ContractsPage() {
               <th className="px-4 py-3 text-center font-semibold">ประกัน</th>
               <th className="px-4 py-3 text-center font-semibold">สถานะ</th>
               <th className="px-4 py-3 text-center font-semibold">ข้อมูลครบ</th>
+              <th className="px-4 py-3 text-center font-semibold">สถานะเอกสาร</th>
               <th className="px-4 py-3 text-left font-semibold">เอกสารแนบ</th>
             </tr>
           </thead>
@@ -331,6 +333,18 @@ export default function ContractsPage() {
                       >
                         <AlertTriangle className="w-3 h-3" /> ขาด {missing.length}
                       </Link>
+                    )}
+                  </td>
+                  {/* ── สถานะเอกสาร: อัปโหลดสัญญาซื้อขายแล้ว = เอกสารครบ / ยังไม่มี = ติดตามเอกสาร ── */}
+                  <td className="px-4 py-3 text-center">
+                    {c.saleContractUrl ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> เอกสารครบ
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400 px-2 py-0.5 rounded-full">
+                        <AlertTriangle className="w-3 h-3" /> ติดตามเอกสาร
+                      </span>
                     )}
                   </td>
                   {/* ── เอกสารแนบ: ดูไฟล์ที่แนบแล้ว / แอดมินแนบไฟล์ได้จากหน้านี้ ── */}
