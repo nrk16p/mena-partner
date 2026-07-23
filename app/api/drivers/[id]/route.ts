@@ -44,6 +44,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     licenseUrl?:     string | null
     houseRegUrl?:    string | null
     bankBookUrl?:    string | null
+    tax50BisUrl?:    string | null
     licenseNumber?:  string | null
     licenseType?:    string | null
     licenseExpiry?:  string | null
@@ -75,6 +76,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.licenseUrl     !== undefined) $set.licenseUrl     = body.licenseUrl?.trim()    ?? null
   if (body.houseRegUrl    !== undefined) $set.houseRegUrl    = body.houseRegUrl?.trim()   ?? null
   if (body.bankBookUrl    !== undefined) $set.bankBookUrl    = body.bankBookUrl?.trim()   ?? null
+  if (body.tax50BisUrl    !== undefined) $set.tax50BisUrl    = body.tax50BisUrl?.trim()   ?? null
   if (body.licenseNumber  !== undefined) $set.licenseNumber  = body.licenseNumber?.trim() ?? null
   if (body.licenseType    !== undefined) $set.licenseType    = body.licenseType?.trim()   ?? null
   if (body.licenseExpiry  !== undefined) $set.licenseExpiry  = body.licenseExpiry?.trim() ?? null

@@ -60,6 +60,7 @@ interface FormData {
   licenseUrl:      string
   houseRegUrl:     string
   bankBookUrl:     string
+  tax50BisUrl:     string
   licenseNumber:   string
   licenseType:     string
   licenseExpiry:   string
@@ -71,7 +72,7 @@ const EMPTY_FORM: FormData = {
   bankName: "", accountNumber: "",
   isTruckOwner: false, isDriver: true,
   startDate: "", endDate: "", status: "active",
-  idCardUrl: "", licenseUrl: "", houseRegUrl: "", bankBookUrl: "",
+  idCardUrl: "", licenseUrl: "", houseRegUrl: "", bankBookUrl: "", tax50BisUrl: "",
   licenseNumber: "", licenseType: "", licenseExpiry: "",
 }
 
@@ -105,6 +106,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
         licenseUrl:     driver.licenseUrl    ?? "",
         houseRegUrl:    driver.houseRegUrl   ?? "",
         bankBookUrl:    driver.bankBookUrl   ?? "",
+        tax50BisUrl:    driver.tax50BisUrl   ?? "",
         licenseNumber:  driver.licenseNumber ?? "",
         licenseType:    driver.licenseType   ?? "",
         licenseExpiry:  driver.licenseExpiry ?? "",
@@ -124,7 +126,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
     setForm((p) => ({ ...p, [field]: val }))
   }
 
-  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl", file: File) {
+  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl", file: File) {
     setUploadingDoc(field); setError("")
     try {
       const fd = new FormData()
@@ -277,7 +279,8 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
               { field: "licenseUrl",  label: "ใบขับขี่" },
               { field: "houseRegUrl", label: "ทะเบียนบ้าน" },
               { field: "bankBookUrl", label: "หน้าบุ๊คแบงค์" },
-            ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl"; label: string }[]).map(({ field, label }) => {
+              { field: "tax50BisUrl", label: "50 ทวิ" },
+            ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl"; label: string }[]).map(({ field, label }) => {
               const url  = form[field]
               const busy = uploadingDoc === field
               return (

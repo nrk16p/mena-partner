@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     licenseUrl?:     string
     houseRegUrl?:    string
     bankBookUrl?:    string
+    tax50BisUrl?:    string
     licenseNumber?:  string
     licenseType?:    string
     licenseExpiry?:  string
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
     licenseUrl:     body.licenseUrl?.trim()     ?? null,
     houseRegUrl:    body.houseRegUrl?.trim()    ?? null,
     bankBookUrl:    body.bankBookUrl?.trim()    ?? null,
+    tax50BisUrl:    body.tax50BisUrl?.trim()    ?? null,
     licenseNumber:  body.licenseNumber?.trim()  ?? null,
     licenseType:    body.licenseType?.trim()    ?? null,
     licenseExpiry:  body.licenseExpiry?.trim()  ?? null,

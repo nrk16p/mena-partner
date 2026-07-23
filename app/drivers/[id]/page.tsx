@@ -70,6 +70,8 @@ interface DriverForm {
   idCardUrl:     string
   licenseUrl:    string
   houseRegUrl:   string
+  bankBookUrl:   string
+  tax50BisUrl:   string
   licenseNumber: string
   licenseType:   string
   licenseExpiry: string
@@ -100,6 +102,8 @@ function toForm(d: Driver): DriverForm {
     idCardUrl:     d.idCardUrl     ?? "",
     licenseUrl:    d.licenseUrl    ?? "",
     houseRegUrl:   d.houseRegUrl   ?? "",
+    bankBookUrl:   d.bankBookUrl   ?? "",
+    tax50BisUrl:   d.tax50BisUrl   ?? "",
     licenseNumber: d.licenseNumber ?? "",
     licenseType:   d.licenseType   ?? "",
     licenseExpiry: d.licenseExpiry ?? "",
@@ -279,7 +283,7 @@ export default function DriverDetailPage() {
     setForm((p) => p ? { ...p, [k]: v } : p)
   }
 
-  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl", file: File) {
+  async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl", file: File) {
     setUploadingDoc(field); setError("")
     try {
       const fd = new FormData()
@@ -715,7 +719,9 @@ export default function DriverDetailPage() {
                   editing && form ? form.idCardUrl   : driver.idCardUrl,
                   editing && form ? form.licenseUrl  : driver.licenseUrl,
                   editing && form ? form.houseRegUrl : driver.houseRegUrl,
-                ].filter(Boolean).length}/3 ไฟล์
+                  editing && form ? form.bankBookUrl : driver.bankBookUrl,
+                  editing && form ? form.tax50BisUrl : driver.tax50BisUrl,
+                ].filter(Boolean).length}/5 ไฟล์
               </span>
             }
           >
@@ -724,7 +730,9 @@ export default function DriverDetailPage() {
                 { field: "idCardUrl",   label: "บัตรประชาชน" },
                 { field: "licenseUrl",  label: "ใบขับขี่" },
                 { field: "houseRegUrl", label: "ทะเบียนบ้าน" },
-              ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl"; label: string }[]).map(({ field, label }) => (
+                { field: "bankBookUrl", label: "หน้าบุ๊คแบงค์" },
+                { field: "tax50BisUrl", label: "50 ทวิ" },
+              ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl"; label: string }[]).map(({ field, label }) => (
                 <DocThumb
                   key={field}
                   url={editing && form ? form[field] : driver[field]}
