@@ -698,9 +698,11 @@ export default function DriversPage() {
                       {/* Name */}
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2.5">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 ${avatarColor(d.firstName ?? "")}`}>
-                            {initial}
-                          </div>
+                          {d.photoUrl
+                            ? <img src={d.photoUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700" />
+                            : <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 ${avatarColor(d.firstName ?? "")}`}>
+                                {initial}
+                              </div>}
                           <div className="min-w-0">
                             <p className="font-semibold text-zinc-800 dark:text-zinc-100 truncate">{fullName || "—"}</p>
                             {d.nationalId && (
