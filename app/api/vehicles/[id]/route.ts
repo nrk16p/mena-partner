@@ -8,6 +8,8 @@ import { diffFields, logActivity } from "@/lib/activity-log"
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "vehicle_master"
 
+const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim()
+
 const AUDIT_FIELDS = ["truckType", "status", "licensePlate", "brand", "model"]
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -58,6 +60,15 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const client = await clientPromise
   const col = client.db(DB).collection(COLL)
+
+  // กันทะเบียนซ้ำกับคันอื่น (เทียบแบบ normalize)
+  if (body.licensePlate !== undefined && normPlate(body.licensePlate)) {
+    const key = normPlate(body.licensePlate)
+    const rows = await col.find({}, { projection: { licensePlate: 1 } }).toArray()
+    const dup = rows.find((v) => normPlate(v.licensePlate as string) === key && v._id.toString() !== id)
+    if (dup) return NextResponse.json({ error: `ทะเบียน ${body.licensePlate} มีอยู่แล้วในระบบ` }, { status: 409 })
+  }
+
   const before = await col.findOne({ _id: new ObjectId(id) })
   const result = await col.findOneAndUpdate(
     { _id: new ObjectId(id) },

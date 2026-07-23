@@ -4,6 +4,19 @@ import clientPromise from "@/lib/mongo"
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "vehicle_master"
 
+// normalize ทะเบียน — ตัดคำนำหน้าที่ไม่ใช่เลข (สบ.71-1956 → 71-1956) เทียบกันแบบ digits
+const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim()
+
+/** หารถที่ทะเบียนซ้ำ (normalize) — คืน doc ถ้าเจอ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findPlateDuplicate(db: any, plate: string) {
+  const key = normPlate(plate)
+  if (!key) return null
+  const rows = await db.collection(COLL).find({}, { projection: { licensePlate: 1 } }).toArray()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return rows.find((v: any) => normPlate(v.licensePlate) === key) ?? null
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const q      = searchParams.get("q")?.trim() ?? ""
@@ -53,7 +66,16 @@ export async function POST(req: NextRequest) {
 
   const now = new Date()
   const client = await clientPromise
-  const result = await client.db(DB).collection(COLL).insertOne({
+  const db = client.db(DB)
+
+  // กันทะเบียนซ้ำ
+  const plate = body.licensePlate?.trim() ?? ""
+  if (plate) {
+    const dup = await findPlateDuplicate(db, plate)
+    if (dup) return NextResponse.json({ error: `ทะเบียน ${plate} มีอยู่แล้วในระบบ` }, { status: 409 })
+  }
+
+  const result = await db.collection(COLL).insertOne({
     truckType:            body.truckType === "trailer" ? "trailer" : "mixer",
     vehicleType:          body.vehicleType?.trim()          ?? null,
     characteristic:       body.characteristic?.trim()       ?? null,
