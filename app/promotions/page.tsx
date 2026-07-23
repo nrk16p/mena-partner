@@ -560,12 +560,16 @@ export default function PromotionsPage() {
   const existingPlates = useMemo(() => new Set(plates), [plates])
 
   const filteredPlates = useMemo(() => plates.filter((plate) => {
-    if (q && !plate.toLowerCase().includes(q.toLowerCase())) return false
+    if (q) {
+      const b = budgetMap[normPlate(plate)]
+      const hay = `${plate} ${b?.driverName ?? ""} ${b?.contractCode ?? ""}`.toLowerCase()
+      if (!hay.includes(q.toLowerCase())) return false
+    }
     const entries = data[plate] ?? []
     if (statusFilter === "active"   && !entries.some((e) => e.active))  return false
     if (statusFilter === "disabled" && !entries.some((e) => !e.active)) return false
     return true
-  }), [plates, data, q, statusFilter])
+  }), [plates, data, q, statusFilter, budgetMap])
 
   const pg = usePagination(filteredPlates, 50, [q, statusFilter])
 
@@ -718,10 +722,10 @@ export default function PromotionsPage() {
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
           <Input
-            placeholder="ค้นหาทะเบียน..."
+            placeholder="ค้นหาทะเบียน / ชื่อ พขร..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="h-8 w-48 text-xs pl-8"
+            className="h-8 w-56 text-xs pl-8"
           />
         </div>
       </div>
@@ -746,6 +750,15 @@ export default function PromotionsPage() {
                   {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </span>
                 <span className="font-mono text-sm font-bold text-zinc-800 dark:text-zinc-200 w-28 shrink-0">{plate}</span>
+
+                {budget?.driverName && (
+                  <span
+                    className="text-[11px] text-zinc-600 dark:text-zinc-300 truncate max-w-[150px] shrink-0 hidden sm:inline-flex items-center gap-1"
+                    title={`พขร. ${budget.driverName}`}
+                  >
+                    <span className="text-zinc-300 dark:text-zinc-600">·</span>{budget.driverName}
+                  </span>
+                )}
 
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   {entries.map((e) => (
