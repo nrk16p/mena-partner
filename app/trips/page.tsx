@@ -231,45 +231,59 @@ export default function TripsPage() {
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
-            <tr>
-              <th className="px-4 py-3 text-left">วันที่</th>
-              <th className="px-4 py-3 text-left">รหัส</th>
-              <th className="px-4 py-3 text-left">LDT</th>
-              <th className="px-4 py-3 text-left">แพล้นท์</th>
-              <th className="px-4 py-3 text-left">ปลายทาง</th>
-              <th className="px-4 py-3 text-left">จังหวัด</th>
-              <th className="px-4 py-3 text-right">ค่าเที่ยว</th>
-              {session?.user?.role === "admin" && <th className="px-4 py-3" />}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
-            ) : pg.paged.map((t) => (
-              <tr key={t._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                <td className="px-4 py-3 text-zinc-500 text-xs">{t.date?.slice(0, 10)}</td>
-                <td className="px-4 py-3 font-medium">{t.contractCode}</td>
-                <td className="px-4 py-3 font-mono text-xs">{t.ldtNumber}</td>
-                <td className="px-4 py-3 text-zinc-500">{t.plant}</td>
-                <td className="px-4 py-3">{t.destinationName}</td>
-                <td className="px-4 py-3 text-zinc-500">{t.province}</td>
-                <td className="px-4 py-3 text-right">{formatMoney(t.tripFee)}</td>
-                {session?.user?.role === "admin" && (
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <Link href={`/trips/${t._id}`} className="text-xs text-zinc-500 hover:underline">แก้ไข</Link>
-                      <button onClick={() => handleDelete(t._id!)} className="text-xs text-red-500 hover:underline">ลบ</button>
-                    </div>
-                  </td>
-                )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
+              <tr>
+                <th className="px-2.5 py-2 text-left whitespace-nowrap">วันที่</th>
+                <th className="px-2.5 py-2 text-left">รหัส / LDT</th>
+                <th className="px-2.5 py-2 text-left">แพล้นท์</th>
+                <th className="px-2.5 py-2 text-left">ปลายทาง / จังหวัด</th>
+                <th className="px-2.5 py-2 text-right">ค่าเที่ยว</th>
+                {session?.user?.role === "admin" && <th className="px-2.5 py-2" />}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {loading ? (
+                <tr><td colSpan={session?.user?.role === "admin" ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={session?.user?.role === "admin" ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
+              ) : pg.paged.map((t) => (
+                <tr key={t._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                  {/* วันที่ */}
+                  <td className="px-2.5 py-2 align-top text-zinc-500 tabular-nums whitespace-nowrap">{t.date?.slice(0, 10)}</td>
+
+                  {/* รหัส / LDT */}
+                  <td className="px-2.5 py-2 align-top">
+                    <div className="font-medium text-zinc-800 dark:text-zinc-100 truncate max-w-[120px]" title={t.contractCode}>{t.contractCode}</div>
+                    {t.ldtNumber && <div className="font-mono text-[10px] text-zinc-400 mt-0.5 truncate max-w-[120px]" title={t.ldtNumber}>{t.ldtNumber}</div>}
+                  </td>
+
+                  {/* แพล้นท์ */}
+                  <td className="px-2.5 py-2 align-top text-zinc-500 truncate max-w-[110px]" title={t.plant}>{t.plant}</td>
+
+                  {/* ปลายทาง / จังหวัด */}
+                  <td className="px-2.5 py-2 align-top">
+                    <div className="text-zinc-700 dark:text-zinc-200 truncate max-w-[220px]" title={t.destinationName}>{t.destinationName}</div>
+                    {t.province && <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[220px]" title={t.province}>{t.province}</div>}
+                  </td>
+
+                  {/* ค่าเที่ยว */}
+                  <td className="px-2.5 py-2 align-top text-right tabular-nums whitespace-nowrap">{formatMoney(t.tripFee)}</td>
+
+                  {session?.user?.role === "admin" && (
+                    <td className="px-2.5 py-2 align-top text-right">
+                      <div className="flex items-center justify-end gap-2.5">
+                        <Link href={`/trips/${t._id}`} className="text-xs text-zinc-500 hover:underline">แก้ไข</Link>
+                        <button onClick={() => handleDelete(t._id!)} className="text-xs text-red-500 hover:underline">ลบ</button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <PaginationBar {...pg} unit="เที่ยว" note="(API จำกัด 500 รายการล่าสุด)" />
       </div>
     </div>

@@ -211,20 +211,20 @@ export default function PromoDetailPage() {
           })()}
         </div>
 
-        {/* Repair history */}
-        <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
-          <table className="w-full text-sm">
+        {/* Repair history — คอลัมน์กระชับ: MR+วันที่ / รายละเอียด+สถานะ / ยอด / actions */}
+        <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 overflow-x-auto">
+          <table className="w-full text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
               <tr>
-                <th className="px-3 py-2 text-left">วันที่</th>
-                <th className="px-3 py-2 text-left">รายละเอียด</th>
-                <th className="px-3 py-2 text-right">ยอด</th>
-                <th className="px-3 py-2 w-8" />
+                <th className="px-2.5 py-2 text-left">MR / วันที่</th>
+                <th className="px-2.5 py-2 text-left">รายละเอียด / สถานะ</th>
+                <th className="px-2.5 py-2 text-right">ยอด</th>
+                <th className="px-2.5 py-2 w-8" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {data.repairClaims.length === 0 && (data.stockRepairs ?? []).length === 0 ? (
-                <tr><td colSpan={4} className="px-3 py-4 text-center text-zinc-400 text-xs">ยังไม่มีรายการซ่อม</td></tr>
+                <tr><td colSpan={4} className="px-2.5 py-4 text-center text-zinc-400 text-xs">ยังไม่มีรายการซ่อม</td></tr>
               ) : (
                 <>
                   {data.repairClaims.map((c: RepairClaim) => {
@@ -232,50 +232,58 @@ export default function PromoDetailPage() {
                     const counted = coveredByStock || c.confirmed === true
                     return (
                       <tr key={c._id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${!counted ? "opacity-80" : ""}`}>
-                        <td className="px-3 py-2 text-zinc-500">{c.date}</td>
-                        <td className="px-3 py-2">
-                          {claimMr(c) && (
+                        {/* MR / วันที่ */}
+                        <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                          {claimMr(c) ? (
                             <Link
                               href={`/vehicle-cost?tab=merged&q=${encodeURIComponent(claimMr(c))}`}
                               title="ดูรายละเอียด ใบรับสภาพหนี้ + รายการเบิก (WD) ของ MR นี้"
-                              className="mr-1.5 font-mono text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                              className="font-mono text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
                             >
                               MR {claimMr(c)} →
                             </Link>
+                          ) : (
+                            <span className="text-zinc-300">—</span>
                           )}
+                          <div className="text-[10px] text-zinc-400 mt-0.5 tabular-nums">{c.date || "—"}</div>
+                        </td>
+                        {/* รายละเอียด / สถานะ */}
+                        <td className="px-2.5 py-2 align-top">
                           {/* แสดง description เฉพาะเมื่อไม่ซ้ำกับ MR (ประวัติเก่าเก็บ MR ไว้ใน description) */}
                           {c.description && c.description.trim() !== claimMr(c) && (
-                            <span>{c.description}</span>
+                            <div className="truncate max-w-[240px]" title={c.description}>{c.description}</div>
                           )}
+                          <div className="mt-0.5">
                           {coveredByStock ? (
                             <span
                               title="ทีมติ๊กหักโปรฯ จากรายการเบิกคลังแล้ว — ตัดงบจากคลัง (นับครั้งเดียว)"
-                              className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5"
+                              className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5"
                             >
                               <Warehouse className="w-2.5 h-2.5" /> ตัดงบจากคลังแล้ว
                             </span>
                           ) : c.confirmed ? (
-                            <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
+                            <span className="inline-block text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
                               ✓ ยืนยันตัดงบแล้ว · ยกเลิกไม่ได้
                             </span>
                           ) : c.reserve ? (
                             <span
                               title="จองงบ (reserve) — บันทึกด้วยมืออิงจากใบ MR ยังไม่ตัดงบจริง"
-                              className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-800 rounded px-1.5 py-0.5"
+                              className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-800 rounded px-1.5 py-0.5"
                             >
                               จองงบ (reserve) — ยังไม่ตัดจริง
                             </span>
                           ) : (
                             <span
                               title="ประวัติค่าซ่อม — ยังไม่ตัดงบโปรฯ จนกว่าทีมจะยืนยัน"
-                              className="ml-2 text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5"
+                              className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5"
                             >
                               รอยืนยัน — ยังไม่ตัดงบ
                             </span>
                           )}
+                          </div>
                         </td>
-                        <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(c.amount)}</td>
-                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <td className={`px-2.5 py-2 text-right align-top font-medium tabular-nums whitespace-nowrap ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(c.amount)}</td>
+                        <td className="px-2.5 py-2 text-right align-top whitespace-nowrap">
                           {!coveredByStock && !c.confirmed && (
                             <button onClick={() => handleConfirmRepair(c._id!)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">
                               {c.reserve ? "เปลี่ยนเป็น actual" : "ยืนยันตัดงบ"}
@@ -292,16 +300,23 @@ export default function PromoDetailPage() {
                   {/* จากหน้า ค่าใช้จ่ายรถ (ติ๊กหักโปรฯ บนรายการเบิกคลัง) — จัดการที่หน้านั้น */}
                   {(data.stockRepairs ?? []).map((s) => (
                     <tr key={`stock-${s.mr}-${s.date}`} className="bg-emerald-50/40 dark:bg-emerald-950/10">
-                      <td className="px-3 py-2 text-zinc-500">{s.date}</td>
-                      <td className="px-3 py-2">
-                        <span className="inline-flex items-center gap-1">
-                          <Warehouse className="w-3 h-3 text-emerald-600" />
-                          {s.mr || "รายการเบิกคลัง"}
-                          {s.itemCount ? <span className="text-[10px] text-zinc-400">({s.itemCount} รายการ)</span> : null}
+                      {/* MR / วันที่ */}
+                      <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          <Warehouse className="w-2.5 h-2.5 text-emerald-600" />
+                          {s.mr || "เบิกคลัง"}
+                        </span>
+                        <div className="text-[10px] text-zinc-400 mt-0.5 tabular-nums">{s.date || "—"}</div>
+                      </td>
+                      {/* รายละเอียด / สถานะ */}
+                      <td className="px-2.5 py-2 align-top">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
+                          <Warehouse className="w-2.5 h-2.5" /> รายการเบิกคลัง
+                          {s.itemCount ? <span className="text-zinc-400 font-normal">({s.itemCount} รายการ)</span> : null}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">{formatMoney(s.amount)}</td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-2.5 py-2 text-right align-top font-medium tabular-nums whitespace-nowrap">{formatMoney(s.amount)}</td>
+                      <td className="px-2.5 py-2 text-right align-top">
                         <Link href="/vehicle-cost?tab=merged" className="text-[10px] text-emerald-600 hover:underline whitespace-nowrap">จัดการ →</Link>
                       </td>
                     </tr>
@@ -391,66 +406,78 @@ export default function PromoDetailPage() {
           })()}
         </div>
 
-        {/* PM history */}
-        <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
-          <table className="w-full text-sm">
+        {/* PM history — คอลัมน์กระชับ: ประเภท+สถานะ / วันที่+ปี / ยอด / หมายเหตุ / actions */}
+        <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 overflow-x-auto">
+          <table className="w-full text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
               <tr>
-                <th className="px-3 py-2 text-left">ปี</th>
-                <th className="px-3 py-2 text-left">ประเภท</th>
-                <th className="px-3 py-2 text-left">วันที่</th>
-                <th className="px-3 py-2 text-right">ยอด</th>
-                <th className="px-3 py-2 text-left">หมายเหตุ</th>
-                <th className="px-3 py-2 w-8" />
+                <th className="px-2.5 py-2 text-left">ประเภท / สถานะ</th>
+                <th className="px-2.5 py-2 text-left">วันที่ / ปี</th>
+                <th className="px-2.5 py-2 text-right">ยอด</th>
+                <th className="px-2.5 py-2 text-left">หมายเหตุ</th>
+                <th className="px-2.5 py-2 w-8" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {(data.stockPm ?? []).map((s) => (
                 <tr key={`stockpm-${s.mr}-${s.date}`} className="bg-blue-50/40 dark:bg-blue-950/10">
-                  <td className="px-3 py-2 text-zinc-500">{(s.date ?? "").slice(0, 4)}</td>
-                  <td className="px-3 py-2">
+                  {/* ประเภท / สถานะ */}
+                  <td className="px-2.5 py-2 align-top">
                     <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
                       <Warehouse className="w-3 h-3" /> คลัง{s.pmType ? ` · ${s.pmType}` : ""}
                     </span>
-                    {!(s.date ?? "").startsWith(String(currentYear)) && (
-                      <span className="ml-1.5 text-[10px] text-zinc-400" title="นับในเพดาน PM ของปีตามวันที่รายการ">
-                        (เพดานปี {(s.date ?? "").slice(0, 4)})
-                      </span>
-                    )}
                   </td>
-                  <td className="px-3 py-2 text-zinc-500">{s.date}</td>
-                  <td className="px-3 py-2 text-right font-medium">{formatMoney(s.amount)}</td>
-                  <td className="px-3 py-2 text-zinc-400 text-xs">{s.mr}{s.itemCount ? ` (${s.itemCount} รายการ)` : ""}</td>
-                  <td className="px-3 py-2 text-right">
+                  {/* วันที่ / ปี */}
+                  <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                    <div className="tabular-nums text-zinc-500">{s.date || "—"}</div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">
+                      ปี {(s.date ?? "").slice(0, 4)}
+                      {!(s.date ?? "").startsWith(String(currentYear)) && (
+                        <span className="ml-1" title="นับในเพดาน PM ของปีตามวันที่รายการ">(เพดานปีนี้)</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-2.5 py-2 text-right align-top font-medium tabular-nums whitespace-nowrap">{formatMoney(s.amount)}</td>
+                  <td className="px-2.5 py-2 align-top text-zinc-400 text-[11px]">
+                    <div className="truncate max-w-[160px]" title={`${s.mr ?? ""}${s.itemCount ? ` (${s.itemCount} รายการ)` : ""}`}>{s.mr}{s.itemCount ? ` (${s.itemCount} รายการ)` : ""}</div>
                     <Link href="/vehicle-cost?tab=merged" className="text-[10px] text-blue-600 hover:underline whitespace-nowrap">จัดการ →</Link>
                   </td>
+                  <td className="px-2.5 py-2 w-8" />
                 </tr>
               ))}
               {data.pmRecords.length === 0 && (data.stockPm ?? []).length === 0 ? (
-                <tr><td colSpan={6} className="px-3 py-4 text-center text-zinc-400 text-xs">ยังไม่มีบันทึก PM</td></tr>
+                <tr><td colSpan={5} className="px-2.5 py-4 text-center text-zinc-400 text-xs">ยังไม่มีบันทึก PM</td></tr>
               ) : data.pmRecords.map((p: PmRecord) => {
                 const counted = p.confirmed === true
                 return (
                   <tr key={p._id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${!counted ? "opacity-80" : ""}`}>
-                    <td className="px-3 py-2 text-zinc-500">{p.year}</td>
-                    <td className="px-3 py-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.type === "PM1" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                    {/* ประเภท / สถานะ */}
+                    <td className="px-2.5 py-2 align-top">
+                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${p.type === "PM1" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
                         {p.type}
                       </span>
+                      <div className="mt-0.5">
                       {counted ? (
-                        <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
+                        <span className="inline-block text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded px-1.5 py-0.5">
                           ✓ ยืนยันแล้ว · ยกเลิกไม่ได้
                         </span>
                       ) : (
-                        <span className="ml-2 text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5">
+                        <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded px-1.5 py-0.5">
                           รอยืนยัน — ยังไม่ตัดเพดาน
                         </span>
                       )}
+                      </div>
                     </td>
-                    <td className="px-3 py-2 text-zinc-500">{p.date}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(p.amount)}</td>
-                    <td className="px-3 py-2 text-zinc-400 text-xs">{p.notes}</td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                    {/* วันที่ / ปี */}
+                    <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                      <div className="tabular-nums text-zinc-500">{p.date || "—"}</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">ปี {p.year}</div>
+                    </td>
+                    <td className={`px-2.5 py-2 text-right align-top font-medium tabular-nums whitespace-nowrap ${!counted ? "text-zinc-400" : ""}`}>{formatMoney(p.amount)}</td>
+                    <td className="px-2.5 py-2 align-top text-zinc-400 text-[11px]">
+                      <div className="truncate max-w-[160px]" title={p.notes ?? ""}>{p.notes}</div>
+                    </td>
+                    <td className="px-2.5 py-2 text-right align-top whitespace-nowrap">
                       {!counted && (
                         <>
                           <button onClick={() => handleConfirmPm(p._id!)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mr-2">ยืนยันตัดงบ</button>

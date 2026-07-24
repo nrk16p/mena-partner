@@ -211,55 +211,61 @@ function InsuranceTaxContent() {
       {/* Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-[11px] text-zinc-500 uppercase tracking-wider">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold">ทะเบียน</th>
-                <th className="px-3 py-3 text-left font-semibold">เบอร์รถ</th>
-                <th className="px-3 py-3 text-left font-semibold">คนขับ</th>
+                <th className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">ทะเบียน</th>
+                <th className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">เบอร์รถ / คนขับ</th>
                 {ITEM_TYPES.map((t) => (
                   <th
                     key={t}
-                    className={`px-3 py-3 text-center font-semibold whitespace-nowrap ${
+                    className={`px-2.5 py-2 text-center font-semibold whitespace-nowrap ${
                       itemFilter === t ? "text-emerald-600 dark:text-emerald-400" : ""
                     }`}
                   >
                     {ITEM_COL_LABEL[t]}
                   </th>
                 ))}
-                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">รวมค่าใช้จ่าย</th>
-                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">หัก/เดือนรวม</th>
-                <th className="px-3 py-3 text-center font-semibold"></th>
+                <th className="px-2.5 py-2 text-right font-semibold whitespace-nowrap">รวม / หัก/เดือน</th>
+                <th className="px-2.5 py-2 text-center font-semibold"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {loading ? (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
               ) : visible.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
               ) : pg.paged.map((r) => (
                 <tr key={r.licensePlate} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="px-4 py-3">
+                  {/* ทะเบียน (+ ยี่ห้อ/รุ่น) */}
+                  <td className="px-2.5 py-2 align-top">
                     <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100 text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
                       {r.licensePlate}
                     </span>
                     {(r.brand || r.model) && (
-                      <div className="text-[10px] text-zinc-400 mt-0.5">{[r.brand, r.model].filter(Boolean).join(" · ")}</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[130px]" title={[r.brand, r.model].filter(Boolean).join(" · ")}>{[r.brand, r.model].filter(Boolean).join(" · ")}</div>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-xs text-zinc-600 dark:text-zinc-400">{r.truckNumber || <span className="text-zinc-300 dark:text-zinc-600">—</span>}</td>
-                  <td className="px-3 py-3 text-xs text-zinc-600 dark:text-zinc-400">{r.driverName || <span className="text-zinc-300 dark:text-zinc-600">—</span>}</td>
+                  {/* เบอร์รถ / คนขับ (2 บรรทัด) */}
+                  <td className="px-2.5 py-2 align-top">
+                    <div className="text-xs text-zinc-700 dark:text-zinc-200 font-medium truncate max-w-[140px]" title={r.truckNumber || ""}>
+                      {r.truckNumber || <span className="text-zinc-300 dark:text-zinc-600 font-normal">—</span>}
+                    </div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5 truncate max-w-[140px]" title={r.driverName || ""}>
+                      {r.driverName || "—"}
+                    </div>
+                  </td>
                   {/* 4 ช่องสถานะรายการ: จุดสี + วันหมดอายุ พ.ศ. สั้น */}
                   {ITEM_TYPES.map((t) => {
                     const it = r.items[t]
                     const st = r.itemStatus[t]
                     const dimmed = itemFilter !== "" && itemFilter !== t
                     return (
-                      <td key={t} className={`px-3 py-3 text-center whitespace-nowrap ${dimmed ? "opacity-40" : ""}`}>
+                      <td key={t} className={`px-2.5 py-2 text-center whitespace-nowrap align-top ${dimmed ? "opacity-40" : ""}`}>
                         {st === "none" || !it ? (
                           <span className="text-zinc-300 dark:text-zinc-600 text-xs">–</span>
                         ) : (
-                          <span className={`inline-flex items-center gap-1.5 text-xs ${STATUS_TEXT[st]}`}>
+                          <span className={`inline-flex items-center gap-1 text-xs ${STATUS_TEXT[st]}`}>
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[st]}`} />
                             {it.expiryDate ? shortThaiDate(it.expiryDate) : STATUS_LABEL[st]}
                           </span>
@@ -267,17 +273,16 @@ function InsuranceTaxContent() {
                       </td>
                     )
                   })}
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  {/* รวมค่าใช้จ่าย (+ หัก/เดือนรวม) */}
+                  <td className="px-2.5 py-2 text-right align-top tabular-nums">
                     {sumAmounts(r) !== null
-                      ? <span className="font-semibold text-zinc-800 dark:text-zinc-200">{formatMoney(sumAmounts(r)!)}</span>
-                      : <span className="text-zinc-300 dark:text-zinc-600 text-xs">—</span>}
+                      ? <div className="font-semibold text-zinc-800 dark:text-zinc-200">{formatMoney(sumAmounts(r)!)}</div>
+                      : <div className="text-zinc-300 dark:text-zinc-600 text-xs">—</div>}
+                    <div className="text-[11px] text-zinc-400 mt-0.5" title="หัก/เดือนรวม">
+                      {sumMonthly(r) !== null ? `หัก ${formatMoney(sumMonthly(r)!)}/ด.` : "—"}
+                    </div>
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-xs">
-                    {sumMonthly(r) !== null
-                      ? <span className="text-zinc-700 dark:text-zinc-300">{formatMoney(sumMonthly(r)!)}</span>
-                      : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                  </td>
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-2.5 py-2 text-center align-top">
                     <Link
                       href={`/insurance-tax/${encodeURIComponent(r.platePlain ?? r.licensePlate)}`}
                       title="จัดการรายการของทะเบียนนี้"

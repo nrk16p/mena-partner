@@ -278,84 +278,85 @@ export default function ContractsPage() {
 
       {/* Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-xs">
           <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-[11px] text-zinc-500 uppercase tracking-wider">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">รหัสสัญญา</th>
-              <th className="px-4 py-3 text-left font-semibold">ชื่อผู้เช่าซื้อ</th>
-              <th className="px-4 py-3 text-left font-semibold">ทะเบียนรถ</th>
-              <th className="px-4 py-3 text-left font-semibold">ยี่ห้อ / รุ่น</th>
-              <th className="px-4 py-3 text-right font-semibold">ค่างวด/เดือน</th>
-              <th className="px-4 py-3 text-center font-semibold">ประกัน</th>
-              <th className="px-4 py-3 text-center font-semibold">สถานะ</th>
-              <th className="px-4 py-3 text-center font-semibold">ข้อมูลครบ</th>
-              <th className="px-4 py-3 text-center font-semibold">สถานะเอกสาร</th>
-              <th className="px-4 py-3 text-left font-semibold">เอกสารแนบ</th>
+              <th className="px-2.5 py-2 text-left font-semibold">รหัส / ผู้เช่าซื้อ</th>
+              <th className="px-2.5 py-2 text-left font-semibold">ทะเบียน / ยี่ห้อ-รุ่น</th>
+              <th className="px-2.5 py-2 text-right font-semibold">ค่างวด/เดือน / ประกัน</th>
+              <th className="px-2.5 py-2 text-center font-semibold">สถานะ</th>
+              <th className="px-2.5 py-2 text-center font-semibold">ข้อมูลครบ</th>
+              <th className="px-2.5 py-2 text-center font-semibold">สถานะเอกสาร</th>
+              <th className="px-2.5 py-2 text-left font-semibold">เอกสารแนบ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : pg.paged.map((c) => {
               const insExpired  = c.taxExpiryDate && c.taxExpiryDate < today
               const insExpiring = !insExpired && c.taxExpiryDate && c.taxExpiryDate <= in60
               const missing     = missingDocFields(c)
               return (
                 <tr key={c._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="px-4 py-3">
+                  {/* รหัสสัญญา + ชื่อผู้เช่าซื้อ (+ พขร.) */}
+                  <td className="px-2.5 py-2 align-top">
                     <Link
                       href={`/contracts/${c._id}`}
-                      className="font-mono font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline text-xs"
+                      className="font-mono font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline"
                     >
                       {c.contractCode}
                     </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-zinc-800 dark:text-zinc-200">{c.buyerName}</div>
+                    <div className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[180px]" title={c.buyerName}>{c.buyerName}</div>
                     {c.driverName && c.driverName !== c.buyerName && (
-                      <div className="text-xs text-zinc-400 mt-0.5">{c.driverName}</div>
+                      <div className="text-[10px] text-zinc-400 truncate max-w-[180px]" title={c.driverName}>{c.driverName}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{c.licensePlate || "—"}</span>
-                    {c.truckNumber && <div className="text-xs text-zinc-400 mt-0.5">{c.truckNumber}</div>}
+                  {/* ทะเบียน + เบอร์รถ + ยี่ห้อ/รุ่น */}
+                  <td className="px-2.5 py-2 align-top">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[11px] bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{c.licensePlate || "—"}</span>
+                      {c.truckNumber && <span className="text-[10px] text-zinc-400">{c.truckNumber}</span>}
+                    </div>
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate max-w-[170px]" title={[c.vehicleBrand, c.vehicleModel].filter(Boolean).join(" · ")}>
+                      <span className="font-medium">{c.vehicleBrand || "—"}</span>
+                      {c.vehicleModel && <span className="text-zinc-400"> · {c.vehicleModel}</span>}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">
-                    <span className="font-medium">{c.vehicleBrand || "—"}</span>
-                    {c.vehicleModel && <span className="text-zinc-400"> · {c.vehicleModel}</span>}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  {/* ค่างวด/เดือน + ประกัน (ภาษี) */}
+                  <td className="px-2.5 py-2 text-right align-top">
                     {c.monthlyInstallment ? (
-                      <div>
+                      <div className="tabular-nums">
                         <span className="font-semibold text-zinc-800 dark:text-zinc-200">{formatMoney(c.monthlyInstallment)}</span>
-                        <span className="text-xs text-zinc-400 ml-1">×{c.totalInstallments}</span>
+                        <span className="text-[10px] text-zinc-400 ml-1">×{c.totalInstallments}</span>
                       </div>
-                    ) : <span className="text-zinc-300 text-xs">—</span>}
+                    ) : <span className="text-zinc-300">—</span>}
+                    <div className="mt-0.5">
+                      {insExpired ? (
+                        <span className="inline-flex items-center gap-0.5 text-red-500 text-[10px] font-medium" title={`หมดอายุ ${c.taxExpiryDate}`}>
+                          <AlertTriangle className="w-3 h-3" /> ประกันหมดแล้ว
+                        </span>
+                      ) : insExpiring ? (
+                        <span className="inline-flex items-center gap-0.5 text-amber-500 text-[10px] font-medium" title={`หมด ${c.taxExpiryDate}`}>
+                          <AlertTriangle className="w-3 h-3" /> ประกันใกล้หมด
+                        </span>
+                      ) : c.taxExpiryDate ? (
+                        <span className="text-[10px] text-zinc-400 tabular-nums">ประกัน {c.taxExpiryDate.slice(0, 7)}</span>
+                      ) : (
+                        <span className="text-zinc-200 dark:text-zinc-700 text-[10px]">—</span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    {insExpired ? (
-                      <span className="inline-flex items-center gap-0.5 text-red-500 text-xs font-medium" title={`หมดอายุ ${c.taxExpiryDate}`}>
-                        <AlertTriangle className="w-3 h-3" /> หมดแล้ว
-                      </span>
-                    ) : insExpiring ? (
-                      <span className="inline-flex items-center gap-0.5 text-amber-500 text-xs font-medium" title={`หมด ${c.taxExpiryDate}`}>
-                        <AlertTriangle className="w-3 h-3" /> ใกล้หมด
-                      </span>
-                    ) : c.taxExpiryDate ? (
-                      <span className="text-xs text-zinc-400">{c.taxExpiryDate.slice(0, 7)}</span>
-                    ) : (
-                      <span className="text-zinc-200 dark:text-zinc-700 text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2.5 py-2 text-center align-top">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_COLOR[c.status]}`}>
                       {STATUS_LABEL[c.status]}
                     </span>
                   </td>
                   {/* ── ความครบถ้วนของข้อมูลเอกสารสัญญา (เกณฑ์เดียวกับหน้าแก้ไข/หน้าพิมพ์) ── */}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2.5 py-2 text-center align-top">
                     {missing.length === 0 ? (
                       <div className="inline-flex flex-col items-center gap-0.5">
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full">
@@ -376,7 +377,7 @@ export default function ContractsPage() {
                     )}
                   </td>
                   {/* ── สถานะเอกสาร: อัปโหลดสัญญาซื้อขายแล้ว = เอกสารครบ / ยังไม่มี = ติดตามเอกสาร ── */}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2.5 py-2 text-center align-top">
                     {c.saleContractUrl ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full">
                         <CheckCircle2 className="w-3 h-3" /> เอกสารครบ
@@ -388,7 +389,7 @@ export default function ContractsPage() {
                     )}
                   </td>
                   {/* ── เอกสารแนบ: ดูไฟล์ที่แนบแล้ว / แอดมินแนบไฟล์ได้จากหน้านี้ ── */}
-                  <td className="px-4 py-3">
+                  <td className="px-2.5 py-2 align-top">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {ATTACH_DOCS.map(({ field, label, full }) => {
                         const url  = c[field]
@@ -465,6 +466,7 @@ export default function ContractsPage() {
             })}
           </tbody>
         </table>
+        </div>
         <PaginationBar {...pg} unit="สัญญา" />
       </div>
     </div>

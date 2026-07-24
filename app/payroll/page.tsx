@@ -300,26 +300,24 @@ export default function PayrollPage() {
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 uppercase tracking-wide">
+        <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-500 uppercase tracking-wide">
             <tr>
-              <th className="px-4 py-3 text-left">รหัส</th>
-              <th className="px-4 py-3 text-left">ชื่อผู้ขับขี่</th>
-              <th className="px-4 py-3 text-left">แพล้นท์</th>
-              <th className="px-4 py-3 text-right">เที่ยว</th>
-              <th className="px-4 py-3 text-right">รายรับ</th>
-              <th className="px-4 py-3 text-right">รายหัก</th>
-              <th className="px-4 py-3 text-right">สุทธิ</th>
-              <th className="px-4 py-3 text-right text-zinc-400">เทียบเดือนก่อน</th>
-              <th className="px-4 py-3 text-center">สถานะ</th>
-              <th className="px-4 py-3" />
+              <th className="px-2.5 py-2 text-left font-semibold">รหัส / ชื่อ</th>
+              <th className="px-2.5 py-2 text-right font-semibold w-24">เที่ยว / วันทำงาน</th>
+              <th className="px-2.5 py-2 text-right font-semibold w-32">รายรับ / OT</th>
+              <th className="px-2.5 py-2 text-right font-semibold w-32">รายหัก / ดำเนินการ</th>
+              <th className="px-2.5 py-2 text-right font-semibold w-32">สุทธิ / เทียบเดือนก่อน</th>
+              <th className="px-2.5 py-2 text-center font-semibold w-24">สถานะ</th>
+              <th className="px-2.5 py-2 w-24" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : filtered.map((d) => {
               const entry     = entryMap[d.contractCode ?? ""]
               const prevEntry = prevEntryMap[d.contractCode ?? ""]
@@ -327,41 +325,72 @@ export default function PayrollPage() {
 
               return (
                 <tr key={d._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3 font-medium">{d.contractCode}</td>
-                  <td className="px-4 py-3">{d.driverName}</td>
-                  <td className="px-4 py-3 text-zinc-500"></td>
-                  <td className="px-4 py-3 text-right text-zinc-500 text-xs">
-                    {entry ? entry.tripCount : "-"}
+                  {/* รหัส / ชื่อ */}
+                  <td className="px-2.5 py-2 align-top">
+                    <div className="font-medium font-mono text-zinc-800 dark:text-zinc-100">{d.contractCode}</div>
+                    <div className="text-[11px] text-zinc-500 truncate max-w-[200px]" title={d.driverName}>{d.driverName}</div>
                   </td>
-                  <td className="px-4 py-3 text-right text-emerald-600">
-                    {entry ? formatMoney(entry.totalIncome) : "-"}
+
+                  {/* เที่ยว / วันทำงาน */}
+                  <td className="px-2.5 py-2 align-top text-right tabular-nums text-zinc-600">
+                    {entry ? (
+                      <>
+                        <div>{entry.tripCount} <span className="text-[10px] text-zinc-400">เที่ยว</span></div>
+                        <div className="text-[10px] text-zinc-400">{entry.workingDays} วัน</div>
+                      </>
+                    ) : <span className="text-zinc-300">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-right text-red-500">
-                    {entry ? formatMoney(entry.totalDeductions) : "-"}
+
+                  {/* รายรับ / OT */}
+                  <td className="px-2.5 py-2 align-top text-right tabular-nums">
+                    {entry ? (
+                      <>
+                        <div className="text-emerald-600 font-medium">{formatMoney(entry.totalIncome)}</div>
+                        {entry.ot ? <div className="text-[10px] text-zinc-400">OT {formatMoney(entry.ot)}</div> : null}
+                      </>
+                    ) : <span className="text-zinc-300">-</span>}
                   </td>
-                  <td className={`px-4 py-3 text-right font-semibold ${entry && entry.netPay < 0 ? "text-red-600" : ""}`}>
-                    {entry ? formatMoney(entry.netPay) : "-"}
+
+                  {/* รายหัก / ค่าดำเนินการ */}
+                  <td className="px-2.5 py-2 align-top text-right tabular-nums">
+                    {entry ? (
+                      <>
+                        <div className="text-red-500 font-medium">{formatMoney(entry.totalDeductions)}</div>
+                        {entry.mgmtFee8pct ? <div className="text-[10px] text-zinc-400">ดำเนินการ {formatMoney(entry.mgmtFee8pct)}</div> : null}
+                      </>
+                    ) : <span className="text-zinc-300">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    {delta !== null ? (
-                      <span className={`text-xs font-medium ${
-                        delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-500" : "text-zinc-400"
-                      }`}>
-                        {delta > 0 ? "+" : ""}{formatMoney(delta)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-zinc-300">-</span>
-                    )}
+
+                  {/* สุทธิ / เทียบเดือนก่อน */}
+                  <td className="px-2.5 py-2 align-top text-right tabular-nums">
+                    {entry ? (
+                      <>
+                        <div className={`font-semibold ${entry.netPay < 0 ? "text-red-600" : "text-zinc-800 dark:text-zinc-100"}`}>
+                          {formatMoney(entry.netPay)}
+                        </div>
+                        {delta !== null ? (
+                          <div className={`text-[10px] font-medium ${
+                            delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-500" : "text-zinc-400"
+                          }`}>
+                            {delta > 0 ? "+" : ""}{formatMoney(delta)}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : <span className="text-zinc-300">-</span>}
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+
+                  {/* สถานะ */}
+                  <td className="px-2.5 py-2 align-top text-center">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${
                       entry ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
                     }`}>
                       {entry ? "บันทึกแล้ว" : "ยังไม่บันทึก"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
+
+                  {/* Actions */}
+                  <td className="px-2.5 py-2 align-top text-right">
+                    <div className="flex items-center justify-end gap-2">
                       {entry && (
                         <Link
                           href={`/payroll/${month}/${d.contractCode}/print`}
@@ -373,7 +402,7 @@ export default function PayrollPage() {
                       )}
                       <Link
                         href={`/payroll/${month}/${d.contractCode}`}
-                        className="text-xs text-emerald-600 hover:underline"
+                        className="text-emerald-600 hover:underline whitespace-nowrap"
                       >
                         {entry ? "แก้ไข →" : "กรอก →"}
                       </Link>
@@ -395,26 +424,27 @@ export default function PayrollPage() {
             const totalDelta    = prevVisible.length > 0 ? sumNet - prevSumNet : null
             return (
               <tfoot>
-                <tr className="bg-zinc-50 dark:bg-zinc-800 text-sm font-semibold border-t-2 border-zinc-200 dark:border-zinc-700">
-                  <td className="px-4 py-3" colSpan={4}>รวม {visibleEntries.length} คน</td>
-                  <td className="px-4 py-3 text-right text-emerald-600">{formatMoney(sumIncome)}</td>
-                  <td className="px-4 py-3 text-right text-red-500">{formatMoney(sumDeductions)}</td>
-                  <td className="px-4 py-3 text-right">{formatMoney(sumNet)}</td>
-                  <td className="px-4 py-3 text-right">
+                <tr className="bg-zinc-50 dark:bg-zinc-800 font-semibold border-t-2 border-zinc-200 dark:border-zinc-700">
+                  <td className="px-2.5 py-2" colSpan={2}>รวม {visibleEntries.length} คน</td>
+                  <td className="px-2.5 py-2 text-right tabular-nums text-emerald-600">{formatMoney(sumIncome)}</td>
+                  <td className="px-2.5 py-2 text-right tabular-nums text-red-500">{formatMoney(sumDeductions)}</td>
+                  <td className="px-2.5 py-2 text-right tabular-nums">
+                    <div>{formatMoney(sumNet)}</div>
                     {totalDelta !== null && (
-                      <span className={`text-xs font-medium ${
+                      <div className={`text-[10px] font-medium ${
                         totalDelta > 0 ? "text-emerald-600" : totalDelta < 0 ? "text-red-500" : "text-zinc-400"
                       }`}>
                         {totalDelta > 0 ? "+" : ""}{formatMoney(totalDelta)}
-                      </span>
+                      </div>
                     )}
                   </td>
-                  <td className="px-4 py-3" colSpan={2} />
+                  <td className="px-2.5 py-2" colSpan={2} />
                 </tr>
               </tfoot>
             )
           })()}
         </table>
+        </div>
       </div>
     </div>
   )

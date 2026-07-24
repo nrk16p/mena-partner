@@ -708,41 +708,17 @@ export default function PriceListPage() {
           </div>
         </div>
 
-        <table className="w-full text-sm min-w-[1200px]">
+        <table className="w-full text-xs">
           <thead>
-            {/* Group row */}
-            <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/20">
-              <th className="px-4 py-2" rowSpan={2} />
-              <th
-                className="px-3 py-1.5 text-center text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700"
-                colSpan={5}
-              >
-                เงินดาวน์
-              </th>
-              <th
-                className="px-3 py-1.5 text-center text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700"
-                colSpan={3}
-              >
-                ไฟแนนซ์
-              </th>
-              <th className="px-4 py-1.5 border-l border-zinc-200 dark:border-zinc-700" colSpan={3} />
-            </tr>
-            {/* Sub-header row */}
-            <tr className="border-b border-zinc-100 dark:border-zinc-800">
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700 min-w-[110px]">
-                ทะเบียน
-              </th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">เงินดาวน์</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">เงินสด</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">คงเหลือผ่อน</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">งวด</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ผ่อน/งวด</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold text-blue-500 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700">งวด</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-blue-500 uppercase tracking-wider">ผ่อนเดือนละ</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-blue-500 uppercase tracking-wider">ยอดจัด</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700">รวมราคาขาย</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700">สถานะ</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-l border-zinc-200 dark:border-zinc-700 min-w-[130px]">ความพร้อมขาย</th>
+            {/* คอลัมน์แบบกระชับ — รวมฟิลด์ที่เกี่ยวข้องเป็นเซลล์ 2 บรรทัด (ไม่ตัดข้อมูลทิ้ง) */}
+            <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+              <th className="px-2.5 py-2 text-left text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap min-w-[100px]">ทะเบียน</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider whitespace-nowrap border-l border-zinc-200 dark:border-zinc-700">ดาวน์รวม / ชำระแล้ว</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider whitespace-nowrap">ดาวน์คงเหลือ / งวด</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-blue-500 uppercase tracking-wider whitespace-nowrap border-l border-zinc-200 dark:border-zinc-700">ยอดจัดไฟแนนซ์ / งวด×ผ่อน</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider whitespace-nowrap border-l border-zinc-200 dark:border-zinc-700 min-w-[110px]">รวมราคาขาย</th>
+              <th className="px-2.5 py-2 text-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap border-l border-zinc-200 dark:border-zinc-700">สถานะ</th>
+              <th className="px-2.5 py-2 text-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap border-l border-zinc-200 dark:border-zinc-700 min-w-[130px]">ความพร้อมขาย</th>
             </tr>
           </thead>
 
@@ -752,10 +728,9 @@ export default function PriceListPage() {
               const sc = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.active
               return (
                 <tr key={r.licensePlate} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 transition-colors group">
-                  <td className="w-0 p-0" />
 
                   {/* License plate → jump to vehicle record */}
-                  <td className="px-3 py-2 border-l border-zinc-50 dark:border-zinc-800/60">
+                  <td className="px-2.5 py-2 align-top">
                     <Link
                       href={`/vehicles?plate=${encodeURIComponent(r.licensePlate)}`}
                       title="ดูข้อมูลรถคันนี้ในทะเบียนรถ"
@@ -766,39 +741,30 @@ export default function PriceListPage() {
                     </Link>
                   </td>
 
-                  {/* Down section */}
-                  <td className="px-3 py-2 text-right text-xs tabular-nums text-amber-700 dark:text-amber-400 font-semibold">
-                    {fmt(r.downPayment)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                    {fmt(r.cashDown)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                    {fmt(r.remainingInstallment)}
-                  </td>
-                  <td className="px-3 py-2 text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                    {r.downInstallmentCount}
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs tabular-nums text-zinc-600 dark:text-zinc-300">
-                    {fmt(r.downInstallmentAmt)}
+                  {/* ดาวน์รวม / ชำระแล้ว (เงินสด) */}
+                  <td className="px-2.5 py-2 align-top text-right whitespace-nowrap border-l border-zinc-50 dark:border-zinc-800/60">
+                    <div className="text-xs tabular-nums text-amber-700 dark:text-amber-400 font-semibold">{fmt(r.downPayment)}</div>
+                    <div className="text-[10px] tabular-nums text-zinc-400 mt-0.5" title="เงินสดที่ชำระดาวน์แล้ว">ชำระ {fmt(r.cashDown)}</div>
                   </td>
 
-                  {/* Finance section */}
-                  <td className="px-3 py-2 text-center border-l border-zinc-50 dark:border-zinc-800/60">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[11px] font-bold tabular-nums">
-                      {r.financeInstallments}
-                    </span>
+                  {/* ดาวน์คงเหลือ / จำนวนงวด × ค่างวดดาวน์ */}
+                  <td className="px-2.5 py-2 align-top text-right whitespace-nowrap">
+                    <div className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(r.remainingInstallment)}</div>
+                    <div className="text-[10px] tabular-nums text-zinc-400 mt-0.5" title="จำนวนงวดดาวน์ × ค่างวดดาวน์/เดือน">{r.downInstallmentCount} งวด × {fmt(r.downInstallmentAmt)}</div>
                   </td>
-                  <td className="px-3 py-2 text-right text-xs tabular-nums text-blue-700 dark:text-blue-400 font-semibold">
-                    {fmt(r.monthlyPayment)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs tabular-nums text-blue-600 dark:text-blue-300">
-                    {fmt(r.financeAmount)}
+
+                  {/* ยอดจัดไฟแนนซ์ / จำนวนงวด × ผ่อนเดือนละ */}
+                  <td className="px-2.5 py-2 align-top text-right whitespace-nowrap border-l border-zinc-50 dark:border-zinc-800/60">
+                    <div className="text-xs tabular-nums text-blue-600 dark:text-blue-300 font-semibold">{fmt(r.financeAmount)}</div>
+                    <div className="text-[10px] mt-0.5 flex items-center justify-end gap-1">
+                      <span className="inline-block px-1 py-0 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold tabular-nums">{r.financeInstallments} งวด</span>
+                      <span className="tabular-nums text-blue-700/70 dark:text-blue-400/80 font-medium" title="ค่างวดไฟแนนซ์/เดือน">× {fmt(r.monthlyPayment)}</span>
+                    </div>
                   </td>
 
                   {/* Total */}
-                  <td className="px-3 py-2 border-l border-zinc-50 dark:border-zinc-800/60">
-                    <div className="text-right text-sm tabular-nums font-bold text-zinc-900 dark:text-zinc-50">
+                  <td className="px-2.5 py-2 align-top border-l border-zinc-50 dark:border-zinc-800/60 min-w-[110px]">
+                    <div className="text-right text-xs tabular-nums font-bold text-zinc-900 dark:text-zinc-50">
                       {fmt(r.totalSalePrice)}
                     </div>
                     <PayBar down={r.downPayment} finance={r.financeAmount} />
@@ -808,14 +774,14 @@ export default function PriceListPage() {
                   </td>
 
                   {/* Status */}
-                  <td className="px-3 py-2 text-center border-l border-zinc-50 dark:border-zinc-800/60">
+                  <td className="px-2.5 py-2 align-top text-center border-l border-zinc-50 dark:border-zinc-800/60">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.cls}`}>
                       {sc.label}
                     </span>
                   </td>
 
                   {/* Sale readiness */}
-                  <td className="px-3 py-2 text-center border-l border-zinc-50 dark:border-zinc-800/60 relative">
+                  <td className="px-2.5 py-2 align-top text-center border-l border-zinc-50 dark:border-zinc-800/60 relative">
                     {(() => {
                       // รถติดสัญญา = ขายไปแล้ว → โชว์ "ขายแล้ว" (ตั้งความพร้อมขายไม่ได้)
                       if (r.status === "contract") return (
@@ -888,22 +854,18 @@ export default function PriceListPage() {
           {filtered.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40">
-                <td className="w-0 p-0" />
-                <td className="px-3 py-2.5 text-xs font-semibold text-zinc-500 border-l border-zinc-200 dark:border-zinc-700" colSpan={2}>
+                <td className="px-2.5 py-2.5 text-xs font-semibold text-zinc-500 whitespace-nowrap">
                   รวม {filtered.length} คัน
                 </td>
-                <td className="px-3 py-2.5 text-right text-xs tabular-nums font-bold text-amber-700 dark:text-amber-400">
+                <td className="px-2.5 py-2.5 text-right text-xs tabular-nums font-bold text-amber-700 dark:text-amber-400 border-l border-zinc-200 dark:border-zinc-700">
                   {fmt(sumDown)}
                 </td>
-                <td colSpan={3} />
-                <td className="px-3 py-2.5 border-l border-zinc-200 dark:border-zinc-700" />
-                <td className="px-3 py-2.5 text-right text-xs tabular-nums font-bold text-blue-600 dark:text-blue-400">
-                  เฉลี่ย {fmt(avgMonthlyF)}
+                <td className="px-2.5 py-2.5" />
+                <td className="px-2.5 py-2.5 text-right border-l border-zinc-200 dark:border-zinc-700 whitespace-nowrap">
+                  <div className="text-xs tabular-nums font-bold text-blue-600 dark:text-blue-400">{fmt(sumFinance)}</div>
+                  <div className="text-[10px] tabular-nums text-blue-500/80 mt-0.5">เฉลี่ย/เดือน {fmt(avgMonthlyF)}</div>
                 </td>
-                <td className="px-3 py-2.5 text-right text-xs tabular-nums font-bold text-blue-600 dark:text-blue-400">
-                  {fmt(sumFinance)}
-                </td>
-                <td className="px-3 py-2.5 text-right text-sm tabular-nums font-bold text-zinc-900 dark:text-zinc-50 border-l border-zinc-200 dark:border-zinc-700">
+                <td className="px-2.5 py-2.5 text-right text-xs tabular-nums font-bold text-zinc-900 dark:text-zinc-50 border-l border-zinc-200 dark:border-zinc-700">
                   {fmt(sumTotal)}
                 </td>
                 <td className="border-l border-zinc-200 dark:border-zinc-700" />

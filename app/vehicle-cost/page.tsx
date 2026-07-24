@@ -972,50 +972,78 @@ interface StockMovement {
 
 function MovementRow({ m }: { m: StockMovement }) {
   const [expanded, setExpanded] = useState(false)
+  // เลขเอกสารรวมเป็นบรรทัดย่อย (ไม่ตัดข้อมูลทิ้ง — ซ่อนใน title เต็ม)
+  const docRefs = ([["PR", m.pr], ["PO", m.po], ["DD", m.dd]] as [string, string][])
+    .filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(" · ")
+  const wdMr = [m.wd ? `WD ${m.wd}` : "", m.mr ? `MR ${m.mr}` : ""].filter(Boolean).join(" · ")
   return (
     <>
       <tr
-        className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer"
+        className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer align-top"
         onClick={() => setExpanded((e) => !e)}
         title="คลิกเพื่อดูหมายเหตุเต็ม"
       >
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{thaiDate(m.date)}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{m.pr || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{m.po || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{m.dd || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{m.wd || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{m.mr || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{m.supplier || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{m.apTerm || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{m.purpose || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{m.warehouse || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-700 dark:text-zinc-200 whitespace-nowrap">{m.itemName}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{m.itemCode || "—"}</td>
-        <td className="px-3 py-2.5 whitespace-nowrap">
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-            {m.itemGroup || "—"}
-          </span>
+        {/* วันที่ / เอกสาร (PR·PO·DD / WD·MR) */}
+        <td className="px-2.5 py-2 whitespace-nowrap">
+          <div className="text-zinc-600 dark:text-zinc-300">{thaiDate(m.date)}</div>
+          {docRefs && <div className="font-mono text-[10px] text-zinc-400 truncate max-w-[150px]" title={docRefs}>{docRefs}</div>}
+          {wdMr && <div className="font-mono text-[10px] text-zinc-500 truncate max-w-[150px]" title={wdMr}>{wdMr}</div>}
         </td>
-        <td className="px-3 py-2.5 font-mono text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{m.truckNumber || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{m.driverName || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{m.licensePlate || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{m.serialNo || "—"}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-500 whitespace-nowrap">{m.receiveQty ? fmt(m.receiveQty) : "—"}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-700 dark:text-zinc-200 whitespace-nowrap">{m.issueQty ? fmt(m.issueQty) : "—"}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-500 whitespace-nowrap">฿{fmt(m.unitCost)}</td>
-        <td className="px-3 py-2.5 text-right font-semibold text-zinc-800 dark:text-zinc-100 whitespace-nowrap">฿{fmt(m.amount)}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-400 whitespace-nowrap">{fmt(m.maxStock)}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-400 whitespace-nowrap">{fmt(m.minStock)}</td>
-        <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-300 max-w-[240px]">
-          <span className="block truncate">{m.notes || "—"}</span>
+
+        {/* ซัพพลายเออร์ / AP Term */}
+        <td className="px-2.5 py-2">
+          <div className="text-zinc-600 dark:text-zinc-300 truncate max-w-[140px]" title={m.supplier || ""}>{m.supplier || "—"}</div>
+          {m.apTerm && <div className="text-[10px] text-zinc-400 truncate max-w-[140px]" title={m.apTerm}>AP {m.apTerm}</div>}
         </td>
-        <td className="px-3 py-2.5 text-zinc-500 max-w-[200px]">
-          <span className="block truncate">{m.subNotes || "—"}</span>
+
+        {/* จุดประสงค์ / คลัง */}
+        <td className="px-2.5 py-2">
+          <div className="text-zinc-600 dark:text-zinc-300 truncate max-w-[130px]" title={m.purpose || ""}>{m.purpose || "—"}</div>
+          {m.warehouse && <div className="text-[10px] text-zinc-400 truncate max-w-[130px]" title={m.warehouse}>{m.warehouse}</div>}
+        </td>
+
+        {/* สินค้า / รหัส · กลุ่ม · SN */}
+        <td className="px-2.5 py-2">
+          <div className="text-zinc-700 dark:text-zinc-200 truncate max-w-[180px]" title={m.itemName}>{m.itemName}</div>
+          <div className="flex items-center gap-1 mt-0.5">
+            {m.itemCode && <span className="font-mono text-[10px] text-zinc-400">{m.itemCode}</span>}
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+              {m.itemGroup || "—"}
+            </span>
+          </div>
+          {m.serialNo && <div className="font-mono text-[10px] text-zinc-400 truncate max-w-[180px]" title={m.serialNo}>SN {m.serialNo}</div>}
+        </td>
+
+        {/* รถ / คนขับ */}
+        <td className="px-2.5 py-2 whitespace-nowrap">
+          <div className="font-mono text-zinc-600 dark:text-zinc-300">
+            {m.truckNumber || "—"}{m.licensePlate && <span className="text-zinc-400"> · {m.licensePlate}</span>}
+          </div>
+          {m.driverName && <div className="text-[10px] text-zinc-400 truncate max-w-[130px]" title={m.driverName}>{m.driverName}</div>}
+        </td>
+
+        {/* จ่าย / รับ · สต็อก */}
+        <td className="px-2.5 py-2 text-right whitespace-nowrap tabular-nums">
+          <div className="text-zinc-700 dark:text-zinc-200">{m.issueQty ? fmt(m.issueQty) : "—"}<span className="text-[10px] text-zinc-400"> จ่าย</span></div>
+          {m.receiveQty ? <div className="text-[10px] text-zinc-400">รับ {fmt(m.receiveQty)}</div> : null}
+          <div className="text-[10px] text-zinc-400">min {fmt(m.minStock)} · max {fmt(m.maxStock)}</div>
+        </td>
+
+        {/* ราคาทุน / ยอดเงิน */}
+        <td className="px-2.5 py-2 text-right whitespace-nowrap tabular-nums">
+          <div className="text-zinc-500">฿{fmt(m.unitCost)}</div>
+          <div className="font-semibold text-zinc-800 dark:text-zinc-100">฿{fmt(m.amount)}</div>
+        </td>
+
+        {/* หมายเหตุ / หมายเหตุย่อย */}
+        <td className="px-2.5 py-2 max-w-[200px]">
+          {m.notes ? <div className="text-zinc-600 dark:text-zinc-300 truncate" title={m.notes}>{m.notes}</div> : <span className="text-zinc-300">—</span>}
+          {m.subNotes && <div className="text-[10px] text-zinc-400 truncate" title={m.subNotes}>{m.subNotes}</div>}
         </td>
       </tr>
       {expanded && (m.notes || m.subNotes) && (
         <tr className="bg-zinc-50/70 dark:bg-zinc-800/40">
-          <td colSpan={25} className="px-4 py-3 space-y-2">
+          <td colSpan={8} className="px-4 py-3 space-y-2">
             {m.notes && (
               <div>
                 <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">หมายเหตุ — {m.itemName}</p>
@@ -1160,15 +1188,17 @@ function MovementTab() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
-                {[
-                  "วันที่", "PR", "PO", "DD", "WD", "MR", "ซัพพลายเออร์", "AP Term",
-                  "จุดประสงค์ในการเบิก", "คลังสินค้า", "ชื่อสินค้า", "รหัสสินค้า", "กลุ่มสินค้า",
-                  "เลขรถ", "พจส.", "ทะเบียน", "เลขที่เฉพาะ", "รับ", "จ่าย", "ราคาทุน",
-                  "ยอดเงิน", "max stock", "min stock", "หมายเหตุ", "หมายเหตุย่อย",
-                ].map((h) => (
-                  <th key={h} className={`px-3 py-2.5 font-semibold text-zinc-500 whitespace-nowrap ${
-                    ["รับ","จ่าย","ราคาทุน","ยอดเงิน","max stock","min stock"].includes(h) ? "text-right" : "text-left"
-                  }`}>{h}</th>
+                {([
+                  ["วันที่ / เอกสาร", "text-left"],
+                  ["ซัพพลายเออร์ / AP", "text-left"],
+                  ["จุดประสงค์ / คลัง", "text-left"],
+                  ["สินค้า / รหัส · กลุ่ม", "text-left"],
+                  ["รถ / คนขับ", "text-left"],
+                  ["จ่าย / รับ · สต็อก", "text-right"],
+                  ["ราคาทุน / ยอดเงิน", "text-right"],
+                  ["หมายเหตุ", "text-left"],
+                ] as [string, string][]).map(([h, align]) => (
+                  <th key={h} className={`px-2.5 py-2 font-semibold text-zinc-500 whitespace-nowrap ${align}`}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1501,10 +1531,16 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-zinc-50 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
-                    {["วันที่","WD","จุดประสงค์","ชื่อสินค้า","รหัสสินค้า","กลุ่มสินค้า","จ่าย","ราคาทุน","ยอดเงิน","โปรโมชั่น"].map((h) => (
-                      <th key={h} className={`px-3 py-2 font-semibold text-zinc-500 whitespace-nowrap ${
-                        ["จ่าย","ราคาทุน","ยอดเงิน"].includes(h) ? "text-right" : h === "โปรโมชั่น" ? "text-center" : "text-left"
-                      }`}>{h}</th>
+                    {([
+                      ["วันที่ / WD", "text-left"],
+                      ["จุดประสงค์", "text-left"],
+                      ["สินค้า / รหัส · กลุ่ม", "text-left"],
+                      ["จ่าย", "text-right"],
+                      ["ราคาทุน", "text-right"],
+                      ["ยอดเงิน", "text-right"],
+                      ["โปรโมชั่น", "text-center"],
+                    ] as [string, string][]).map(([h, align]) => (
+                      <th key={h} className={`px-2.5 py-2 font-semibold text-zinc-500 whitespace-nowrap ${align}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1512,24 +1548,31 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
                   {movements.map((m) => {
                     const sel = eff(m)
                     return (
-                      <tr key={m._id} className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 ${
+                      <tr key={m._id} className={`align-top hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 ${
                         sel === "repair" ? "bg-red-50/40 dark:bg-red-950/10" :
                         isPm(sel)        ? "bg-blue-50/40 dark:bg-blue-950/10" : ""
                       }`}>
-                        <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{thaiDate(m.date)}</td>
-                        <td className="px-3 py-2 font-mono text-zinc-500 whitespace-nowrap">{m.wd || "—"}</td>
-                        <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{m.purpose || "—"}</td>
-                        <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">{m.itemName}</td>
-                        <td className="px-3 py-2 font-mono text-zinc-500 whitespace-nowrap">{m.itemCode || "—"}</td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                            {m.itemGroup || "—"}
-                          </span>
+                        {/* วันที่ / WD */}
+                        <td className="px-2.5 py-2 whitespace-nowrap">
+                          <div className="text-zinc-500">{thaiDate(m.date)}</div>
+                          {m.wd && <div className="font-mono text-[10px] text-zinc-400">WD {m.wd}</div>}
                         </td>
-                        <td className="px-3 py-2 text-right text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{fmt(m.issueQty)}</td>
-                        <td className="px-3 py-2 text-right text-zinc-500 whitespace-nowrap">฿{fmt(m.unitCost)}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-zinc-800 dark:text-zinc-100 whitespace-nowrap">฿{fmt(m.amount)}</td>
-                        <td className="px-3 py-2 whitespace-nowrap">
+                        {/* จุดประสงค์ */}
+                        <td className="px-2.5 py-2 text-zinc-500 truncate max-w-[120px]" title={m.purpose || ""}>{m.purpose || "—"}</td>
+                        {/* สินค้า / รหัส · กลุ่ม */}
+                        <td className="px-2.5 py-2">
+                          <div className="text-zinc-700 dark:text-zinc-200 truncate max-w-[200px]" title={m.itemName}>{m.itemName}</div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {m.itemCode && <span className="font-mono text-[10px] text-zinc-400">{m.itemCode}</span>}
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                              {m.itemGroup || "—"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2.5 py-2 text-right text-zinc-600 dark:text-zinc-300 whitespace-nowrap tabular-nums">{fmt(m.issueQty)}</td>
+                        <td className="px-2.5 py-2 text-right text-zinc-500 whitespace-nowrap tabular-nums">฿{fmt(m.unitCost)}</td>
+                        <td className="px-2.5 py-2 text-right font-semibold text-zinc-800 dark:text-zinc-100 whitespace-nowrap tabular-nums">฿{fmt(m.amount)}</td>
+                        <td className="px-2.5 py-2 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
@@ -1577,40 +1620,40 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-zinc-100 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-800/40">
-                    <td colSpan={8} className="px-3 py-2.5 text-right font-semibold text-zinc-500">รวมยอดเบิก</td>
-                    <td className="px-3 py-2.5 text-right font-bold text-zinc-800 dark:text-zinc-100 whitespace-nowrap">฿{fmt(movementTotal)}</td>
+                    <td colSpan={5} className="px-2.5 py-2.5 text-right font-semibold text-zinc-500">รวมยอดเบิก</td>
+                    <td className="px-2.5 py-2.5 text-right font-bold text-zinc-800 dark:text-zinc-100 whitespace-nowrap tabular-nums">฿{fmt(movementTotal)}</td>
                     <td />
                   </tr>
                   {repairDeduct > 0 && (
                     <tr className="bg-red-50/50 dark:bg-red-950/10">
-                      <td colSpan={8} className="px-3 py-2 text-right font-semibold text-red-500">หักโปรโมชั่นซ่อม ({repairItems.length} รายการ)</td>
-                      <td className="px-3 py-2 text-right font-bold text-red-500 whitespace-nowrap">-฿{fmt(repairDeduct)}</td>
+                      <td colSpan={5} className="px-2.5 py-2 text-right font-semibold text-red-500">หักโปรโมชั่นซ่อม ({repairItems.length} รายการ)</td>
+                      <td className="px-2.5 py-2 text-right font-bold text-red-500 whitespace-nowrap tabular-nums">-฿{fmt(repairDeduct)}</td>
                       <td />
                     </tr>
                   )}
                   {pmDeduct > 0 && (
                     <tr className="bg-blue-50/50 dark:bg-blue-950/10">
-                      <td colSpan={8} className="px-3 py-2 text-right font-semibold text-blue-500">หักโปรโมชั่น PM ({pmItems.length} รายการ)</td>
-                      <td className="px-3 py-2 text-right font-bold text-blue-500 whitespace-nowrap">-฿{fmt(pmDeduct)}</td>
+                      <td colSpan={5} className="px-2.5 py-2 text-right font-semibold text-blue-500">หักโปรโมชั่น PM ({pmItems.length} รายการ)</td>
+                      <td className="px-2.5 py-2 text-right font-bold text-blue-500 whitespace-nowrap tabular-nums">-฿{fmt(pmDeduct)}</td>
                       <td />
                     </tr>
                   )}
                   <tr className="bg-zinc-50/70 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-700">
-                    <td colSpan={8} className="px-3 py-2.5 text-right font-bold text-zinc-700 dark:text-zinc-200">ยอดสุทธิที่ พจร. ต้องรับผิด</td>
-                    <td className={`px-3 py-2.5 text-right font-bold whitespace-nowrap ${driverOwes > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600"}`}>
+                    <td colSpan={5} className="px-2.5 py-2.5 text-right font-bold text-zinc-700 dark:text-zinc-200">ยอดสุทธิที่ พจร. ต้องรับผิด</td>
+                    <td className={`px-2.5 py-2.5 text-right font-bold whitespace-nowrap tabular-nums ${driverOwes > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600"}`}>
                       ฿{fmt(driverOwes)}
                     </td>
                     <td />
                   </tr>
                   <tr className="bg-zinc-50/70 dark:bg-zinc-800/40">
-                    <td colSpan={8} className="px-3 py-2 text-right font-semibold text-zinc-500">ยอดรับผิดตามใบรับสภาพหนี้</td>
-                    <td className="px-3 py-2 text-right font-bold text-red-600 dark:text-red-400 whitespace-nowrap">฿{fmt(doc.liabilityAmount)}</td>
+                    <td colSpan={5} className="px-2.5 py-2 text-right font-semibold text-zinc-500">ยอดรับผิดตามใบรับสภาพหนี้</td>
+                    <td className="px-2.5 py-2 text-right font-bold text-red-600 dark:text-red-400 whitespace-nowrap tabular-nums">฿{fmt(doc.liabilityAmount)}</td>
                     <td />
                   </tr>
                   {!isBalanced && (
                     <tr className="bg-amber-50/70 dark:bg-amber-950/20">
-                      <td colSpan={8} className="px-3 py-2 text-right font-semibold text-amber-600">ส่วนต่าง (เบิก vs ใบรับสภาพหนี้)</td>
-                      <td className="px-3 py-2 text-right font-bold text-amber-600 whitespace-nowrap">฿{fmt(Math.abs(diff))}</td>
+                      <td colSpan={5} className="px-2.5 py-2 text-right font-semibold text-amber-600">ส่วนต่าง (เบิก vs ใบรับสภาพหนี้)</td>
+                      <td className="px-2.5 py-2 text-right font-bold text-amber-600 whitespace-nowrap tabular-nums">฿{fmt(Math.abs(diff))}</td>
                       <td />
                     </tr>
                   )}

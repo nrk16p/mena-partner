@@ -289,33 +289,37 @@ export default function TripImportPage() {
           )}
 
           {/* Preview table */}
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-auto">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-500 uppercase tracking-wide">
                 <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">รหัส</th>
-                  <th className="px-3 py-2 text-left">วันที่</th>
-                  <th className="px-3 py-2 text-left">LDT</th>
-                  <th className="px-3 py-2 text-left">แพล้นท์</th>
-                  <th className="px-3 py-2 text-left">ปลายทาง</th>
-                  <th className="px-3 py-2 text-left">จังหวัด</th>
-                  <th className="px-3 py-2 text-right">ค่าเที่ยว</th>
-                  <th className="px-3 py-2 text-center">สถานะ</th>
+                  <th className="px-2.5 py-2 text-left">#</th>
+                  <th className="px-2.5 py-2 text-left">รหัส / วันที่</th>
+                  <th className="px-2.5 py-2 text-left">LDT</th>
+                  <th className="px-2.5 py-2 text-left">แพล้นท์</th>
+                  <th className="px-2.5 py-2 text-left">ปลายทาง / จังหวัด</th>
+                  <th className="px-2.5 py-2 text-right">ค่าเที่ยว</th>
+                  <th className="px-2.5 py-2 text-center">สถานะ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {parsed.slice(0, 50).map((r, i) => (
                   <tr key={i} className={r._error ? "bg-red-50 dark:bg-red-950/10" : ""}>
-                    <td className="px-3 py-1.5 text-zinc-400">{i + 1}</td>
-                    <td className="px-3 py-1.5 font-medium">{r.contractCode || <span className="text-red-400">-</span>}</td>
-                    <td className="px-3 py-1.5 text-zinc-500">{r.date || <span className="text-red-400">-</span>}</td>
-                    <td className="px-3 py-1.5 font-mono">{r.ldtNumber}</td>
-                    <td className="px-3 py-1.5 text-zinc-500">{r.plant}</td>
-                    <td className="px-3 py-1.5">{r.destinationName}</td>
-                    <td className="px-3 py-1.5 text-zinc-500">{r.province}</td>
-                    <td className="px-3 py-1.5 text-right">{r.tripFee.toLocaleString()}</td>
-                    <td className="px-3 py-1.5 text-center">
+                    <td className="px-2.5 py-2 align-top text-zinc-400 tabular-nums">{i + 1}</td>
+                    {/* รหัส / วันที่ */}
+                    <td className="px-2.5 py-2 align-top">
+                      <div className="font-medium truncate max-w-[130px]" title={r.contractCode}>{r.contractCode || <span className="text-red-400">-</span>}</div>
+                      <div className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">{r.date || <span className="text-red-400">-</span>}</div>
+                    </td>
+                    <td className="px-2.5 py-2 align-top font-mono truncate max-w-[120px]" title={r.ldtNumber}>{r.ldtNumber}</td>
+                    <td className="px-2.5 py-2 align-top text-zinc-500 truncate max-w-[100px]" title={r.plant}>{r.plant}</td>
+                    {/* ปลายทาง / จังหวัด */}
+                    <td className="px-2.5 py-2 align-top">
+                      <div className="truncate max-w-[200px]" title={r.destinationName}>{r.destinationName}</div>
+                      {r.province && <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[200px]" title={r.province}>{r.province}</div>}
+                    </td>
+                    <td className="px-2.5 py-2 align-top text-right tabular-nums whitespace-nowrap">{r.tripFee.toLocaleString()}</td>
+                    <td className="px-2.5 py-2 align-top text-center">
                       {r._error
                         ? <span className="text-red-500">✕</span>
                         : <span className="text-emerald-500">✓</span>
@@ -325,7 +329,7 @@ export default function TripImportPage() {
                 ))}
                 {parsed.length > 50 && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-2 text-center text-zinc-400">
+                    <td colSpan={7} className="px-2.5 py-2 text-center text-zinc-400">
                       ...และอีก {parsed.length - 50} แถว (ทั้งหมดจะถูกนำเข้า)
                     </td>
                   </tr>

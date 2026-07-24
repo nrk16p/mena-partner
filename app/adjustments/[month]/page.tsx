@@ -135,17 +135,16 @@ export default function AdjustmentsPage() {
             className="h-7 w-52 text-xs"
           />
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-zinc-100 dark:border-zinc-800">
-              <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider w-28">รหัส</th>
-              <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ชื่อ</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">รับ WHT</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">รับ NoWHT</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">หัก WHT</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">หัก NoWHT</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Net Pay</th>
-              {isAdmin && <th className="px-4 py-2.5 w-16" />}
+              <th className="px-2.5 py-2 text-left text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ชื่อ / รหัส</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">รับ WHT</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">รับ NoWHT</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">หัก WHT</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">หัก NoWHT</th>
+              <th className="px-2.5 py-2 text-right text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Net Pay</th>
+              {isAdmin && <th className="px-2.5 py-2 w-14" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/60">
@@ -158,15 +157,18 @@ export default function AdjustmentsPage() {
                   key={d.contractCode}
                   className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 transition-colors ${isDirty ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
                 >
-                  <td className="px-4 py-2 font-mono text-[11px] text-zinc-400">{d.contractCode}</td>
-                  <td className="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-200">
-                    {d.driverName}
-                    {filled && !isDirty && (
-                      <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 align-middle" title="มีข้อมูล" />
-                    )}
+                  {/* ชื่อ / รหัส (2 บรรทัด) */}
+                  <td className="px-2.5 py-2 align-middle">
+                    <div className="text-sm text-zinc-700 dark:text-zinc-200 truncate max-w-[220px]" title={d.driverName}>
+                      {d.driverName}
+                      {filled && !isDirty && (
+                        <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 align-middle" title="มีข้อมูล" />
+                      )}
+                    </div>
+                    <div className="font-mono text-[11px] text-zinc-400 mt-0.5">{d.contractCode}</div>
                   </td>
                   {(["otherIncomeWHT", "otherIncomeNoWHT", "otherDeductWHT", "otherDeductNoWHT"] as (keyof Adjustment)[]).map((field) => (
-                    <td key={field} className="px-2 py-1.5 text-right">
+                    <td key={field} className="px-2 py-1.5 text-right align-middle">
                       {isAdmin ? (
                         <Input
                           type="number"
@@ -184,7 +186,7 @@ export default function AdjustmentsPage() {
                     </td>
                   ))}
                   {/* Net pay feedback column */}
-                  <td className="px-4 py-2 text-right text-xs tabular-nums">
+                  <td className="px-2.5 py-2 text-right text-xs tabular-nums align-middle">
                     {feedback !== undefined && feedback !== null ? (
                       <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                         <CheckCircle2 className="w-3 h-3" />
@@ -195,7 +197,7 @@ export default function AdjustmentsPage() {
                     )}
                   </td>
                   {isAdmin && (
-                    <td className="px-3 py-1.5 text-center">
+                    <td className="px-2.5 py-1.5 text-center align-middle">
                       <Button
                         size="sm"
                         variant={isDirty ? "default" : "ghost"}

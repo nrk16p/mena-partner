@@ -332,70 +332,73 @@ export default function DriverLedgerPage() {
       {/* Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-[11px] text-zinc-500 uppercase tracking-wider">
+          {/* คอลัมน์แบบกระชับ — รวมฟิลด์ที่เกี่ยวข้องเป็นเซลล์ 2 บรรทัด ให้พอดีจอโน้ตบุ๊ก (ไม่ตัดข้อมูลทิ้ง) */}
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-[11px] text-zinc-400 uppercase tracking-wider">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold">รหัส</th>
-                <th className="px-3 py-3 text-left font-semibold">ประเภท</th>
-                <th className="px-3 py-3 text-left font-semibold">ชื่อ พขร.</th>
-                <th className="px-3 py-3 text-left font-semibold">ทะเบียน</th>
-                <th className="px-3 py-3 text-left font-semibold">สัญญา</th>
-                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">ยอดตั้งต้น/เป้า</th>
-                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">หัก/เดือน</th>
-                <th className="px-3 py-3 text-left font-semibold min-w-[180px]">ความคืบหน้า</th>
-                <th className="px-3 py-3 text-center font-semibold whitespace-nowrap">เริ่ม</th>
-                <th className="px-3 py-3 text-center font-semibold">สถานะ</th>
-                <th className="px-3 py-3 text-center font-semibold"></th>
+                <th className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">รหัส / ประเภท</th>
+                <th className="px-2.5 py-2 text-left font-semibold whitespace-nowrap">พขร. / ทะเบียน · สัญญา</th>
+                <th className="px-2.5 py-2 text-right font-semibold whitespace-nowrap">ยอดตั้งต้น/เป้า · หัก/เดือน</th>
+                <th className="px-2.5 py-2 text-left font-semibold min-w-[150px]">ความคืบหน้า</th>
+                <th className="px-2.5 py-2 text-center font-semibold whitespace-nowrap">เริ่ม / ล่าสุด</th>
+                <th className="px-2.5 py-2 text-center font-semibold">สถานะ</th>
+                <th className="px-2.5 py-2 w-16" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {loading ? (
-                <tr><td colSpan={11} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
               ) : visible.length === 0 ? (
-                <tr><td colSpan={11} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
               ) : pg.paged.map((e) => {
                 const isDebt = e.kind === "debt"
                 const pct = progressPct(e)
                 const totalMonths = debtTotalMonths(e)
+                const sourceLabel = SOURCE_LABEL[e.source?.type] ?? e.source?.type ?? "—"
+                const idLine = [e.licensePlate, e.contractCode].filter(Boolean).join(" · ")
                 return (
-                  <tr key={e._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono font-semibold text-xs text-zinc-800 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                  <tr key={e._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors align-top">
+                    {/* รหัส / ประเภท (+ refLabel) */}
+                    <td className="px-2.5 py-2">
+                      <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                         {e.debtCode || "—"}
                       </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
-                        isDebt
-                          ? "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-                          : "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
-                      }`}>
-                        {SOURCE_LABEL[e.source?.type] ?? e.source?.type ?? "—"}
-                      </span>
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
+                          isDebt
+                            ? "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                            : "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400"
+                        }`}>
+                          {sourceLabel}
+                        </span>
+                      </div>
                       {e.source?.refLabel && (
-                        <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[120px]" title={e.source.refLabel}>{e.source.refLabel}</div>
+                        <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[140px]" title={e.source.refLabel}>{e.source.refLabel}</div>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-                      {e.driverName || <span className="text-zinc-300 dark:text-zinc-600 font-normal">—</span>}
+
+                    {/* ชื่อ พขร. / ทะเบียน · สัญญา */}
+                    <td className="px-2.5 py-2">
+                      <div className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[160px]" title={e.driverName || ""}>
+                        {e.driverName || <span className="text-zinc-300 dark:text-zinc-600 font-normal">—</span>}
+                      </div>
+                      {idLine
+                        ? <div className="text-[10px] text-zinc-400 mt-0.5 font-mono truncate max-w-[160px]" title={idLine}>{idLine}</div>
+                        : null}
                     </td>
-                    <td className="px-3 py-3">
-                      {e.licensePlate
-                        ? <span className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{e.licensePlate}</span>
-                        : <span className="text-zinc-300 dark:text-zinc-600 text-xs">—</span>}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                      {e.contractCode || <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
+
+                    {/* ยอดตั้งต้น/เป้า · หัก/เดือน */}
+                    <td className="px-2.5 py-2 text-right tabular-nums whitespace-nowrap">
                       {(isDebt ? e.principal : e.targetAmount) != null
-                        ? <span className="font-semibold text-zinc-800 dark:text-zinc-200">{formatMoney(isDebt ? e.principal! : e.targetAmount!)}</span>
-                        : <span className="text-zinc-300 dark:text-zinc-600 text-xs">—</span>}
+                        ? <div className="font-semibold text-zinc-800 dark:text-zinc-200">{formatMoney(isDebt ? e.principal! : e.targetAmount!)}</div>
+                        : <div className="text-zinc-300 dark:text-zinc-600">—</div>}
+                      <div className="text-[10px] text-zinc-400 mt-0.5">
+                        {e.monthlyAmount ? <>หัก {formatMoney(e.monthlyAmount)}/ด</> : "—"}
+                      </div>
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-xs text-zinc-700 dark:text-zinc-300">
-                      {e.monthlyAmount ? formatMoney(e.monthlyAmount) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-3 py-3">
+
+                    {/* ความคืบหน้า */}
+                    <td className="px-2.5 py-2">
                       <div className="w-full h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden mb-1">
                         <div
                           className={`h-full rounded-full transition-all ${
@@ -412,15 +415,24 @@ export default function DriverLedgerPage() {
                         )}
                       </p>
                     </td>
-                    <td className="px-3 py-3 text-center text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      {safeMonth(e.startMonth)}
+
+                    {/* เริ่ม / ล่าสุด */}
+                    <td className="px-2.5 py-2 text-center text-zinc-500 dark:text-zinc-400 whitespace-nowrap tabular-nums">
+                      <div>{safeMonth(e.startMonth)}</div>
+                      {e.lastPayment && (
+                        <div className="text-[10px] text-zinc-400 mt-0.5">ล่าสุด {safeMonth(e.lastPayment.slice(0, 7))}</div>
+                      )}
                     </td>
-                    <td className="px-3 py-3 text-center">
+
+                    {/* สถานะ */}
+                    <td className="px-2.5 py-2 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_COLOR[e.status]}`}>
                         {STATUS_LABEL[e.status]}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-center">
+
+                    {/* Actions */}
+                    <td className="px-2.5 py-2 text-center">
                       <button
                         type="button"
                         onClick={() => setManageId(e._id)}
