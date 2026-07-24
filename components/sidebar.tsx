@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
+import { statusOf, STATUS_META } from "@/lib/module-status"
 
 // จัดหมวดตาม Flow หลัก 5 ขั้น (ดูหน้าแรก)
 const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] }[] = [
@@ -59,6 +60,8 @@ function NavLink({ href, label, icon: Icon, active }: {
   icon: React.ComponentType<{ className?: string }>
   active: boolean
 }) {
+  const status = statusOf(href)
+  const meta = STATUS_META[status]
   return (
     <Link
       href={href}
@@ -68,9 +71,13 @@ function NavLink({ href, label, icon: Icon, active }: {
           ? "bg-zinc-800 text-white font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
           : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200"
       )}
+      title={meta.label}
     >
       <Icon className={cn("w-[15px] h-[15px] shrink-0", active ? "text-emerald-400" : "text-zinc-500")} />
-      {label}
+      <span className="truncate min-w-0 flex-1">{label}</span>
+      {status !== "ready" && (
+        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
+      )}
     </Link>
   )
 }

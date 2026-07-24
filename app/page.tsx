@@ -3,7 +3,9 @@ import {
   Users, Truck, FileText, Warehouse, ClipboardList, CalendarCheck,
   Tag, ShieldCheck, Wrench, ArrowRight, BookOpen, AlertTriangle,
   CheckCircle2, Upload, Banknote, BadgeCheck, HandCoins, FileDown,
+  Receipt, SlidersHorizontal, Settings, BarChart3,
 } from "lucide-react"
+import { statusOf, STATUS_META, type ModuleStatus } from "@/lib/module-status"
 
 /**
  * หน้าหลัก — สรุป flow การทำงานของทีม + คู่มือประกอบต่อโมดูล
@@ -172,6 +174,63 @@ const RULES = [
   { icon: <BadgeCheck className="w-3.5 h-3.5 text-emerald-400" />, text: "รหัสสัญญา / รหัสพนักงาน สร้างต่อเลขให้อัตโนมัติ (+1) · สัญญาลบถาวรไม่ได้ — ใช้ “ยกเลิกสัญญา” เท่านั้น กันข้อมูลสูญ" },
 ]
 
+// ── สถานะการใช้งานแต่ละระบบ (สถานะดึงจาก lib/module-status.ts) ──
+const STATUS_GROUPS: {
+  group: string
+  items: { href: string; label: string; icon: React.ReactNode }[]
+}[] = [
+  {
+    group: "ข้อมูลหลัก",
+    items: [
+      { href: "/drivers",    label: "พนักงานขับรถ", icon: <Users className="w-3.5 h-3.5" /> },
+      { href: "/vehicles",   label: "ทะเบียนรถ",     icon: <Truck className="w-3.5 h-3.5" /> },
+      { href: "/price-list", label: "ราคาขาย",       icon: <Tag className="w-3.5 h-3.5" /> },
+    ],
+  },
+  {
+    group: "สัญญา",
+    items: [
+      { href: "/contracts", label: "สัญญา", icon: <FileText className="w-3.5 h-3.5" /> },
+    ],
+  },
+  {
+    group: "งานประจำวัน",
+    items: [
+      { href: "/vehicle-cost",  label: "ค่าใช้จ่ายรถ",     icon: <Wrench className="w-3.5 h-3.5" /> },
+      { href: "/insurance-tax", label: "ภาษี & ประกันภัย", icon: <BadgeCheck className="w-3.5 h-3.5" /> },
+      { href: "/promotions",    label: "โปรโมชั่น",         icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+      { href: "/trips",         label: "เที่ยววิ่ง",         icon: <ClipboardList className="w-3.5 h-3.5" /> },
+    ],
+  },
+  {
+    group: "เงินเดือน & ปิดเดือน",
+    items: [
+      { href: "/reports/promotions", label: "รายงานสรุปยอดโปรโมชั่น", icon: <Receipt className="w-3.5 h-3.5" /> },
+      { href: "/driver-ledger",      label: "หนี้สิน & เงินสะสม พขร.", icon: <HandCoins className="w-3.5 h-3.5" /> },
+      { href: "/payroll",            label: "เงินเดือน",               icon: <Banknote className="w-3.5 h-3.5" /> },
+      { href: "/adjustments",        label: "รายการปรับปรุง",          icon: <SlidersHorizontal className="w-3.5 h-3.5" /> },
+      { href: "/reports",            label: "รายงาน",                  icon: <BarChart3 className="w-3.5 h-3.5" /> },
+    ],
+  },
+  {
+    group: "Admin",
+    items: [
+      { href: "/import",      label: "นำเข้า Excel",   icon: <Upload className="w-3.5 h-3.5" /> },
+      { href: "/admin/month", label: "จัดการรอบเดือน", icon: <Settings className="w-3.5 h-3.5" /> },
+    ],
+  },
+]
+
+function StatusPill({ status }: { status: ModuleStatus }) {
+  const m = STATUS_META[status]
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-semibold ${m.pill}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+      {m.label}
+    </span>
+  )
+}
+
 export default function HomePage() {
   return (
     <div className="max-w-5xl mx-auto py-6 space-y-8">
@@ -217,6 +276,44 @@ export default function HomePage() {
               {i < FLOW.length - 1 && (
                 <ArrowRight className="hidden md:block absolute -right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 dark:text-zinc-600 z-10" />
               )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── สถานะการใช้งานแต่ละระบบ ── */}
+      <section>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
+            สถานะการใช้งานแต่ละระบบ
+          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(["ready", "testing", "dev"] as ModuleStatus[]).map((s) => (
+              <span key={s} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                <span className={`w-2 h-2 rounded-full ${STATUS_META[s].dot}`} />
+                {STATUS_META[s].label}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3">
+          {STATUS_GROUPS.map((g) => (
+            <div key={g.group} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-[0.12em] mb-2.5">{g.group}</p>
+              <ul className="space-y-1.5">
+                {g.items.map((it) => (
+                  <li key={it.href} className="flex items-center justify-between gap-2">
+                    <Link
+                      href={it.href}
+                      className="inline-flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200 hover:text-blue-600 dark:hover:text-blue-400 min-w-0"
+                    >
+                      <span className="text-zinc-400 shrink-0">{it.icon}</span>
+                      <span className="truncate">{it.label}</span>
+                    </Link>
+                    <StatusPill status={statusOf(it.href)} />
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
