@@ -27,7 +27,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
 
     { columns: [
       { width: "*", text: [S("เลขสัญญา "), v(d.contractCode)] },
-      { width: "auto", text: [S("ทำที่ "), S(COMPANY.name)] },
+      { width: "auto", text: [S("ทำที่ "), vS(COMPANY.name)] },
     ] },
     { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 4, 0, 6] },
 
@@ -37,7 +37,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     body([B("ข. "), S("นาย/นาง/นางสาว" + DOTS + " เลขประจำตัวประชาชน" + DOTS + " ที่อยู่เลขที่" + DOTS + " หมู่ที่……… ถนน" + DOTS +
       " ตำบล/แขวง" + DOTS + " อำเภอ/เขต" + DOTS + " จังหวัด" + DOTS + " ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้รับจ้างที่ 2”")]),
     body("ซึ่งต่อไปในสัญญาฉบับนี้จะรวมเรียกว่า “ผู้รับจ้าง” ฝ่ายหนึ่ง กับ"),
-    body([B("ค. "), S(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), COMPANY.regNo, S(" สำนักงานแห่งใหญ่ตั้งอยู่"), S(COMPANY.address),
+    body([B("ค. "), vS(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), v(COMPANY.regNo), S(" สำนักงานแห่งใหญ่ตั้งอยู่"), vS(COMPANY.address),
       S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ว่าจ้าง” อีกฝ่ายหนึ่ง")]),
 
     body("โดยที่", { margin: [0, 6, 0, 2] }),
@@ -150,7 +150,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
             sigCell("ลงชื่อ.............................................ผู้รับจ้างที่ 2"),
           ],
         },
-        { text: S(COMPANY.name), alignment: "center", margin: [0, 12, 0, 0] },
+        { text: S(COMPANY.name), bold: true, alignment: "center", margin: [0, 12, 0, 0] },
         {
           columnGap: 10,
           columns: [

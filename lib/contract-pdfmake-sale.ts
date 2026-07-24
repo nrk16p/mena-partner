@@ -15,12 +15,12 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     { text: S("สัญญาซื้อขายรถยนต์บรรทุก ( แบบผ่อนชำระราคา )"), bold: true, fontSize: 18, alignment: "center", margin: [0, 0, 0, 8] },
     { columns: [
       { width: "*", text: [S("เลขสัญญา "), v(d.contractCode)] },
-      { width: "auto", text: [S("ทำที่ "), S(COMPANY.name)] },
+      { width: "auto", text: [S("ทำที่ "), vS(COMPANY.name)] },
     ] },
     { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 18, 0, 18] },
 
-    body([S("สัญญาฉบับนี้ทำขึ้นระหว่าง "), S(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), COMPANY.regNo,
-      S(" สำนักงานแห่งใหญ่ ตั้งอยู่"), S(COMPANY.address), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ ผู้ขาย ” ฝ่ายหนึ่ง กับ")]),
+    body([S("สัญญาฉบับนี้ทำขึ้นระหว่าง "), vS(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), v(COMPANY.regNo),
+      S(" สำนักงานแห่งใหญ่ ตั้งอยู่"), vS(COMPANY.address), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ ผู้ขาย ” ฝ่ายหนึ่ง กับ")]),
     body([vS(d.buyerName), S(" อายุ "), v(d.age), S(" ปี หมายเลขประจำตัวประชาชน "), v(d.nationalId),
       S(" อยู่บ้านเลขที่ "), vS(d.driverAddress), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ ผู้ซื้อ ” อีกฝ่ายหนึ่ง")]),
     body("คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญากันโดยมีเงื่อนไขและรายละเอียดดังต่อไปนี้"),
@@ -92,7 +92,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     body("6.9 สัญญาฉบับนี้ให้อยู่ในบังคับและการตีความตามกฎหมายไทย"),
     body("สัญญานี้จัดทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาต่างเก็บรักษาไว้ฝ่ายละหนึ่งฉบับ ทั้งสองฝ่ายได้อ่านข้อความเป็นที่เข้าใจและเห็นว่าถูกต้องตรงตามเจตนาของตนแล้ว จึงลงลายมือชื่อและประทับตราสำคัญให้ไว้ต่อหน้าพยาน"),
 
-    { text: S(COMPANY.name), alignment: "center", margin: [0, 10, 0, 0] },
+    { text: S(COMPANY.name), bold: true, alignment: "center", margin: [0, 10, 0, 0] },
     { unbreakable: true, columnGap: 10, columns: [
       sigCell("ลงชื่อ.............................................ผู้ขาย", COMPANY.sellerSignatories[0]),
       sigCell("ลงชื่อ..............................................ผู้ซื้อ", d.buyerName),

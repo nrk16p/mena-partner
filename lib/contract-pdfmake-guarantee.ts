@@ -18,13 +18,13 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
 
     { columns: [
       { width: "*", text: [S("เลขที่สัญญา "), v(c.contractCode)] },
-      { width: "auto", text: [S("ทำที่ "), S(COMPANY.name)] },
+      { width: "auto", text: [S("ทำที่ "), vS(COMPANY.name)] },
     ] },
     { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 12, 0, 12] },
 
     body([S("ข้าพเจ้า "), vS(d.guarantorName), S(" เลขประจำตัวประชาชน "), v(d.guarantorNationalId),
       S(" อยู่บ้านเลขที่ "), vS(d.guarantorAddress), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ค้ำประกัน” ขอทำสัญญาค้ำประกันฉบับนี้ให้ไว้ต่อ"),
-      S(COMPANY.name), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ขาย” โดยมีข้อความดังต่อไปนี้")]),
+      vS(COMPANY.name), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ขาย” โดยมีข้อความดังต่อไปนี้")]),
 
     clause("1", [S("ตามที่ "), vS(d.buyerName), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ซื้อ” ได้ทำสัญญาซื้อขายรถยนต์บรรทุก (แบบผ่อนชำระราคา) ฉบับลงวันที่ "),
       v(d.contractDay), S(" "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE),
