@@ -15,6 +15,14 @@ import type { Contract } from "@/types"
 const STATUS_LABEL: Record<string, string> = {
   active: "ใช้งาน", completed: "สิ้นสุด", terminated: "ยกเลิก"
 }
+
+// วันที่แบบสั้น (พ.ศ.) สำหรับ "วันที่ล่าสุด"
+function fmtThaiShort(iso?: string): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ""
+  return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })
+}
 const STATUS_COLOR: Record<string, string> = {
   active:     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
   completed:  "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
@@ -137,6 +145,7 @@ export default function ContractsPage() {
         "วันหมดอายุ": c.taxExpiryDate ?? "",
         "สถานะ": c.status,
         "ข้อมูลครบ": missing.length === 0 ? "ครบ" : `ขาด ${missing.length}`,
+        "วันที่ล่าสุด": missing.length === 0 ? (c.updatedAt?.slice(0, 10) ?? "") : "",
         "สถานะเอกสาร": c.saleContractUrl ? "เอกสารครบ" : "ติดตามเอกสาร",
         "เอกสารแนบ": `${attached}/${ATTACH_DOCS.length}`,
       }
@@ -348,9 +357,14 @@ export default function ContractsPage() {
                   {/* ── ความครบถ้วนของข้อมูลเอกสารสัญญา (เกณฑ์เดียวกับหน้าแก้ไข/หน้าพิมพ์) ── */}
                   <td className="px-4 py-3 text-center">
                     {missing.length === 0 ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" /> ครบ
-                      </span>
+                      <div className="inline-flex flex-col items-center gap-0.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" /> ครบ
+                        </span>
+                        {fmtThaiShort(c.updatedAt) && (
+                          <span className="text-[9px] text-zinc-400" title="วันที่อัปเดตล่าสุด">{fmtThaiShort(c.updatedAt)}</span>
+                        )}
+                      </div>
                     ) : (
                       <Link
                         href={`/contracts/${c._id}`}
