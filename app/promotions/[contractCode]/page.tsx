@@ -117,6 +117,9 @@ export default function PromoDetailPage() {
     .filter((c) => c.reserve && !c.confirmed && !data.dedupedMrs?.includes(claimMr(c)))
     .reduce((s, c) => s + (c.amount ?? 0), 0)
   const pmBarColor     = pmPct >= 90     ? "bg-red-500" : pmPct >= 60     ? "bg-amber-500" : "bg-blue-500"
+  // ส่วนที่ใช้เกินวงเงิน/เพดาน (ถ้ามี) — ไม่บล็อก แต่เตือนชัดเจน
+  const repairOver = data.repairBudget > 0 && data.repairRemaining < 0 ? -data.repairRemaining : 0
+  const pmOver     = data.annualPmCap  > 0 && data.pmRemainingThisYear < 0 ? -data.pmRemainingThisYear : 0
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -174,9 +177,14 @@ export default function PromoDetailPage() {
             )}
           </div>
           <p className="text-sm text-right text-zinc-500">
-            คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.repairRemaining)}</span>
-            {reserveTotal > 0 && <> · หลังกันจอง <span className="font-semibold text-blue-600">{formatMoney(data.repairRemaining - reserveTotal)}</span></>}
+            คงเหลือ <span className={`font-semibold ${data.repairRemaining < 0 ? "text-red-600 dark:text-red-400" : "text-zinc-700 dark:text-zinc-200"}`}>{formatMoney(data.repairRemaining)}</span>
+            {reserveTotal > 0 && <> · หลังกันจอง <span className={`font-semibold ${(data.repairRemaining - reserveTotal) < 0 ? "text-red-600 dark:text-red-400" : "text-blue-600"}`}>{formatMoney(data.repairRemaining - reserveTotal)}</span></>}
           </p>
+          {repairOver > 0 && (
+            <p className="text-xs font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2">
+              ⚠️ ใช้เกินวงเงินซ่อม {formatMoney(repairOver)} บาท — ส่วนเกินนี้เกินสิทธิ์ฟรีของโปรฯ ควรเรียกเก็บจากคนขับ (เช่น ทำใบรับสภาพหนี้ / รายการหนี้ใน driver-ledger)
+            </p>
+          )}
           {(() => {
             const uncovered = data.repairClaims.filter(
               (c) => !c.confirmed && !data.dedupedMrs?.includes(claimMr(c))
@@ -364,8 +372,13 @@ export default function PromoDetailPage() {
             <div className={`h-full rounded-full transition-all ${pmBarColor}`} style={{ width: `${pmPct}%` }} />
           </div>
           <p className="text-sm text-right text-zinc-500">
-            คงเหลือปีนี้ <span className="font-semibold text-zinc-700 dark:text-zinc-200">{formatMoney(data.pmRemainingThisYear)}</span>
+            คงเหลือปีนี้ <span className={`font-semibold ${data.pmRemainingThisYear < 0 ? "text-red-600 dark:text-red-400" : "text-zinc-700 dark:text-zinc-200"}`}>{formatMoney(data.pmRemainingThisYear)}</span>
           </p>
+          {pmOver > 0 && (
+            <p className="text-xs font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2">
+              ⚠️ ใช้ PM เกินเพดานปีนี้ {formatMoney(pmOver)} บาท — ส่วนเกินเกินสิทธิ์ฟรี ควรเรียกเก็บจากคนขับ
+            </p>
+          )}
           {(() => {
             const pending = data.pmRecords.filter((p) => p.year === currentYear && p.confirmed !== true)
             const pendingTotal = pending.reduce((s, p) => s + (p.amount ?? 0), 0)
