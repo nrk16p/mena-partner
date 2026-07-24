@@ -123,6 +123,8 @@ export async function POST(req: NextRequest) {
   let insuranceItemToClear: any = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let debtAcceptanceToMark: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let contractToMark: any = null
 
   // ── convertFrom: insurance_item ───────────────────────────────────────────
   if (body.convertFrom?.type === "insurance_item") {
@@ -195,6 +197,38 @@ export async function POST(req: NextRequest) {
     startMonth = startMonth ?? (typeof da.startDate === "string" && da.startDate.length >= 7 ? da.startDate.slice(0, 7) : undefined)
   }
 
+  // ── convertFrom: contract (ค่างวดรถ / เช่าซื้อ) ────────────────────────────
+  if (body.convertFrom?.type === "contract") {
+    const ctId = body.convertFrom.id as string
+    if (!ctId || !ObjectId.isValid(ctId)) {
+      return NextResponse.json({ error: "convertFrom.id invalid" }, { status: 400 })
+    }
+    const ct = await db.collection("contracts").findOne({ _id: new ObjectId(ctId) })
+    if (!ct) return NextResponse.json({ error: "contract not found" }, { status: 404 })
+    if (ct.ledgerDebtCode) {
+      return NextResponse.json(
+        { error: `สัญญานี้สร้างรายการผ่อนรถแล้ว (${ct.ledgerDebtCode})`, ledgerDebtCode: ct.ledgerDebtCode },
+        { status: 409 }
+      )
+    }
+    const monthly = (ct.monthlyInstallment as number) ?? 0
+    const count   = (ct.totalInstallments as number) ?? 0
+    if (!(monthly > 0) || !(count > 0)) {
+      return NextResponse.json({ error: "สัญญาไม่มีค่างวด/จำนวนงวด" }, { status: 400 })
+    }
+    contractToMark = ct
+    kind = "debt"
+    // ยอดรวม = ค่างวด × จำนวนงวด (ตามที่เคาะ)
+    principal = principal ?? round2(monthly * count)
+    monthlyAmount = monthlyAmount ?? monthly
+    installmentCount = installmentCount ?? count
+    source = { type: "vehicle_installment", refId: ctId, refLabel: ct.contractCode as string }
+    contractCode = contractCode ?? (ct.contractCode as string | undefined)
+    licensePlate = licensePlate ?? (ct.licensePlate as string | undefined)
+    driverName = driverName ?? (ct.driverName as string | undefined)
+    startMonth = startMonth ?? (typeof ct.startDate === "string" && ct.startDate.length >= 7 ? ct.startDate.slice(0, 7) : undefined)
+  }
+
   // ── validation ────────────────────────────────────────────────────────────
   if (!LEDGER_KINDS.includes(kind)) {
     return NextResponse.json({ error: `kind must be one of: ${LEDGER_KINDS.join(", ")}` }, { status: 400 })
@@ -260,6 +294,14 @@ export async function POST(req: NextRequest) {
   if (debtAcceptanceToMark) {
     await db.collection("debt_acceptances").updateOne(
       { _id: debtAcceptanceToMark._id },
+      { $set: { ledgerDebtCode: debtCode, ledgerConvertedAt: now, updatedAt: now } }
+    )
+  }
+
+  // ── contract: ทำ flag รายการผ่อนรถที่สร้างใน ledger (กันสร้างซ้ำ + ลิงก์) ──
+  if (contractToMark) {
+    await db.collection("contracts").updateOne(
+      { _id: contractToMark._id },
       { $set: { ledgerDebtCode: debtCode, ledgerConvertedAt: now, updatedAt: now } }
     )
   }

@@ -70,6 +70,7 @@ const SOURCE_LABEL: Record<string, string> = {
   inspection:      "ตรวจสภาพ",
   debt_acceptance: "ใบรับสภาพหนี้",
   down_payment:    "เงินดาวน์",
+  vehicle_installment: "ค่างวดรถ",
   tire_deposit:    "เงินสะสมค่ายาง",
   manual:          "อื่นๆ",
 }
@@ -499,6 +500,57 @@ function ManageDrawer({ entry, onClose, onChanged }: {
   const [wdRefMR, setWdRefMR]   = useState("")
   const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null)
 
+  // บันทึกจ่ายรายงวด (manual) + หลักฐาน — debt เท่านั้น
+  const [payMonth, setPayMonth]   = useState(currentMonth())
+  const [payAmount, setPayAmount] = useState(String(entry.monthlyAmount || ""))
+  const [payNote, setPayNote]     = useState("")
+  const [payEvidence, setPayEvidence] = useState("")   // url สลิป
+  const [payUploading, setPayUploading] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [payments, setPayments] = useState<any[] | null>(null)
+
+  const loadPayments = useCallback(async () => {
+    if (!isDebt) return
+    try {
+      const res = await fetch(`/api/ledger/${entry._id}/pay`)
+      setPayments(res.ok ? await res.json() : [])
+    } catch { setPayments([]) }
+  }, [entry._id, isDebt])
+
+  async function uploadEvidence(file: File) {
+    setPayUploading(true); setError("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "ledger-payments")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!res.ok) throw new Error()
+      const { url } = await res.json()
+      setPayEvidence(url)
+    } catch { setError("อัปโหลดหลักฐานไม่สำเร็จ") }
+    finally { setPayUploading(false) }
+  }
+
+  async function recordPayment() {
+    if (!/^\d{4}-\d{2}$/.test(payMonth)) { setError("ระบุเดือนให้ถูกต้อง"); return }
+    const amt = Number(payAmount)
+    if (!amt || amt <= 0) { setError("ยอดจ่ายต้องมากกว่า 0"); return }
+    const ok = await run(
+      () => api(`/api/ledger/${entry._id}/pay`, {
+        method: "POST",
+        body: JSON.stringify({ month: payMonth, amount: amt, evidenceUrl: payEvidence || undefined, note: payNote.trim() || undefined }),
+      }),
+      () => { setPayNote(""); setPayEvidence("") },
+    )
+    if (ok) await loadPayments()
+  }
+
+  async function removePayment(month: string) {
+    if (!confirm(`ยกเลิกการจ่ายเดือน ${month}? (คืนยอด)`)) return
+    const ok = await run(() => api(`/api/ledger/${entry._id}/pay`, { method: "DELETE", body: JSON.stringify({ month }) }))
+    if (ok) await loadPayments()
+  }
+
   const loadSkips = useCallback(async () => {
     try {
       const res = await fetch(`/api/ledger/${entry._id}/skip`)
@@ -526,7 +578,7 @@ function ManageDrawer({ entry, onClose, onChanged }: {
     }
   }, [entry._id, isDebt])
 
-  useEffect(() => { loadSkips(); loadWithdrawals() }, [loadSkips, loadWithdrawals])
+  useEffect(() => { loadSkips(); loadWithdrawals(); loadPayments() }, [loadSkips, loadWithdrawals, loadPayments])
 
   async function run(fn: () => Promise<{ ok: boolean; msg?: string }>, after?: () => void) {
     setBusy(true); setError("")
@@ -719,6 +771,77 @@ function ManageDrawer({ entry, onClose, onChanged }: {
                   <Trash2 className="w-3.5 h-3.5" /> ลบ
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* บันทึกจ่ายรายงวด + หลักฐาน (debt เท่านั้น) */}
+          {isDebt && (
+            <div>
+              <SectionTitle>บันทึกจ่าย + หลักฐาน</SectionTitle>
+
+              {entry.status !== "paid" && entry.status !== "cancelled" && (
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">เดือนที่จ่าย</label>
+                      <Input type="month" value={payMonth} onChange={(e) => setPayMonth(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">ยอดจ่าย (บาท)</label>
+                      <Input type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className="h-8 text-xs text-right" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">หมายเหตุ (ถ้ามี)</label>
+                    <Input value={payNote} onChange={(e) => setPayNote(e.target.value)} className="h-8 text-xs" placeholder="เช่น เลขอ้างอิงโอน" />
+                  </div>
+                  {/* แนบหลักฐาน */}
+                  {payEvidence ? (
+                    <div className="flex items-center gap-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5">
+                      <a href={payEvidence} target="_blank" rel="noreferrer" className="flex-1 text-emerald-600 hover:underline truncate">✓ แนบหลักฐานแล้ว — ดู</a>
+                      <button type="button" onClick={() => setPayEvidence("")} className="text-zinc-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ) : (
+                    <label className={`flex items-center justify-center gap-2 text-xs rounded-lg border-2 border-dashed px-2.5 py-2 cursor-pointer ${payUploading ? "border-blue-300 text-blue-600" : "border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:border-emerald-400"}`}>
+                      {payUploading ? "กำลังอัปโหลด..." : "📎 แนบสลิป / หลักฐานการจ่าย"}
+                      <input type="file" accept="image/*,.pdf" className="hidden" disabled={payUploading}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadEvidence(f); e.target.value = "" }} />
+                    </label>
+                  )}
+                  <button
+                    type="button" disabled={busy || payUploading} onClick={recordPayment}
+                    className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    บันทึกการจ่าย
+                  </button>
+                </div>
+              )}
+
+              {/* ประวัติการจ่าย */}
+              {payments && payments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {payments.map((p) => (
+                    <div key={p._id} className="flex items-center gap-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
+                      <span className="font-mono text-zinc-600 dark:text-zinc-300 w-16 shrink-0">{safeMonth(p.month)}</span>
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-200 tabular-nums">{formatMoney(p.amount)}</span>
+                      {p.payrollRef && <span className="text-[9px] text-zinc-400">(เงินเดือน)</span>}
+                      {p.note && <span className="text-[10px] text-zinc-400 truncate">· {p.note}</span>}
+                      <span className="flex-1" />
+                      {p.evidenceUrl
+                        ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer" className="text-[10px] font-semibold text-emerald-600 hover:underline shrink-0">ดูหลักฐาน</a>
+                        : <span className="text-[10px] text-zinc-300 shrink-0">ไม่มีหลักฐาน</span>}
+                      {!p.payrollRef && entry.status !== "cancelled" && (
+                        <button type="button" onClick={() => removePayment(p.month)} className="text-zinc-300 hover:text-red-500 shrink-0" title="ยกเลิกการจ่ายเดือนนี้">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {payments && payments.length === 0 && entry.status !== "paid" && (
+                <p className="text-[11px] text-zinc-400 mt-1.5">ยังไม่มีการบันทึกจ่าย</p>
+              )}
             </div>
           )}
 

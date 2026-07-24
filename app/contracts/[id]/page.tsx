@@ -106,6 +106,28 @@ export default function ContractDetailPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [pullVehicleId, setPullVehicleId] = useState("")
   const [guarUp, setGuarUp] = useState<string | null>(null)  // field เอกสารผู้ค้ำที่กำลังอัปโหลด
+  // รายการผ่อนรถใน driver-ledger (ผ่อนจริง + หลักฐาน) — null = ยังไม่ผูก
+  const [ledger, setLedger] = useState<{ debtCode: string; monthsPaid: number; principal: number; paidAmount: number; remaining: number; monthlyAmount: number } | null>(null)
+  const [creatingLedger, setCreatingLedger] = useState(false)
+
+  function reloadContract() {
+    fetch(`/api/contracts/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d) setForm(d) })
+  }
+
+  // สร้างรายการผ่อนรถใน ledger จากสัญญานี้
+  async function createVehicleLedger() {
+    setCreatingLedger(true); setError("")
+    try {
+      const res = await fetch("/api/ledger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ convertFrom: { type: "contract", id } }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(j.error ?? "สร้างรายการผ่อนรถไม่สำเร็จ"); return }
+      reloadContract()
+    } finally { setCreatingLedger(false) }
+  }
 
   // อัปโหลดเอกสารผู้ค้ำ → เก็บ url ลง form (บันทึกพร้อมฟอร์มสัญญา)
   async function uploadGuarantorDoc(field: keyof Contract, file: File) {
@@ -281,6 +303,26 @@ export default function ContractDetailPage() {
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setPromoList(d))
   }, [id])
+
+  // ดึงสถานะการผ่อนจริงจาก ledger เมื่อสัญญาผูกแล้ว
+  useEffect(() => {
+    if (!form?.ledgerDebtCode || !form?.contractCode) { setLedger(null); return }
+    fetch(`/api/ledger?contractCode=${encodeURIComponent(form.contractCode)}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((rows: Array<Record<string, unknown>>) => {
+        const e = rows.find((x) => x.debtCode === form.ledgerDebtCode)
+          ?? rows.find((x) => (x.source as { type?: string } | undefined)?.type === "vehicle_installment")
+        setLedger(e ? {
+          debtCode:     e.debtCode as string,
+          monthsPaid:   (e.monthsPaid as number) ?? 0,
+          principal:    (e.principal as number) ?? 0,
+          paidAmount:   (e.paidAmount as number) ?? 0,
+          remaining:    (e.remaining as number) ?? 0,
+          monthlyAmount:(e.monthlyAmount as number) ?? 0,
+        } : null)
+      })
+      .catch(() => setLedger(null))
+  }, [form?.ledgerDebtCode, form?.contractCode])
 
   // ทุกข้อมูลที่ปรากฏในเอกสารสัญญา = จำเป็นต้องกรอก → ไฮไลต์ช่องที่ยังขาด
   const missingDoc  = missingDocFields(form)
@@ -546,23 +588,65 @@ export default function ContractDetailPage() {
               <p className="text-lg font-bold text-emerald-600">{paid ? formatMoney(paid) : "-"}</p>
             </div>
           </div>
-          {/* Estimated remaining balance */}
-          {form.startDate && form.monthlyInstallment > 0 && form.totalInstallments > 0 && (() => {
+          {/* สถานะการผ่อน — ถ้าผูก ledger แล้วใช้ของจริง, ไม่งั้นเป็นการประมาณ */}
+          {form.monthlyInstallment > 0 && form.totalInstallments > 0 && (() => {
+            if (ledger) {
+              // ── ผ่อนจริงจาก driver-ledger (นับการจ่ายจริง + หลักฐาน) ──
+              const total = form.totalInstallments
+              const paidN = Math.min(ledger.monthsPaid, total)
+              const remainN = total - paidN
+              const pct = Math.round((paidN / total) * 100)
+              return (
+                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
+                      ● ผ่อนจริง (จาก ledger)
+                    </span>
+                    <a href={`/driver-ledger?q=${encodeURIComponent(ledger.debtCode)}`}
+                       className="text-[11px] font-semibold text-emerald-600 hover:underline">
+                      บันทึกจ่าย / ดูหลักฐาน →
+                    </a>
+                  </div>
+                  <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+                    <span>ผ่อนไปแล้ว {paidN}/{total} งวด ({pct}%) · จ่ายจริง {formatMoney(ledger.paidAmount)} บาท</span>
+                    <span>คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-300">{remainN} งวด · {formatMoney(ledger.remaining)} บาท</span></span>
+                  </div>
+                  <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            }
+            // ── ยังไม่ผูก ledger → ประมาณจากปฏิทิน + ปุ่มสร้าง ──
             const start = new Date(form.startDate)
             const now = new Date()
-            const monthsPassed = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()))
+            const monthsPassed = form.startDate ? Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())) : 0
             const monthsPaid = Math.min(monthsPassed, form.totalInstallments)
             const remaining = form.totalInstallments - monthsPaid
             const remainingAmt = remaining * form.monthlyInstallment
             const pct = Math.round((monthsPaid / form.totalInstallments) * 100)
             return (
               <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full">
+                    ประมาณตามปฏิทิน
+                  </span>
+                  <button
+                    type="button"
+                    onClick={createVehicleLedger}
+                    disabled={creatingLedger}
+                    className="text-[11px] font-semibold text-emerald-600 hover:underline disabled:opacity-50"
+                    title="สร้างรายการผ่อนรถใน driver-ledger เพื่อบันทึกการจ่ายจริง + แนบหลักฐาน"
+                  >
+                    {creatingLedger ? "กำลังสร้าง..." : "+ สร้างรายการผ่อนรถ (บันทึกจ่ายจริง)"}
+                  </button>
+                </div>
                 <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
                   <span>ผ่อนไปแล้ว {monthsPaid}/{form.totalInstallments} งวด ({pct}%)</span>
                   <span>คงเหลือ <span className="font-semibold text-zinc-700 dark:text-zinc-300">{remaining} งวด · {formatMoney(remainingAmt)} บาท</span></span>
                 </div>
                 <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                  <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             )
