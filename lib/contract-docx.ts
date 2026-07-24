@@ -9,7 +9,6 @@ import {
   thaiDate,
   thaiDateParts,
   ageFromBirthDate,
-  firstInstallmentDate,
   formatNationalId,
 } from "@/lib/thai-format"
 
@@ -39,7 +38,8 @@ export function saleDocxData(c: Contract, promo: PromoMasterData | null): Record
   const dp = thaiDateParts(c.contractDate)
   const age = ageFromBirthDate(c.birthDate, c.contractDate)
   const plate = normPlate(c.licensePlate) || c.licensePlate || ""
-  const firstPay = firstInstallmentDate(c.contractDate)
+  // วันที่เริ่มผ่อนงวดแรก = field startDate (กรอกเอง) — ว่าง = เว้นเส้นประให้เติมมือใน PDF/DOCX
+  const firstPay = c.startDate || null
   const downRemaining =
     c.remainingInstallment ??
     (c.downPayment != null && c.cashDown != null ? c.downPayment - c.cashDown : undefined)
