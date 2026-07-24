@@ -32,12 +32,12 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 4, 0, 6] },
 
     body("สัญญาฉบับนี้ทำขึ้น ระหว่าง"),
-    body([vS(d.buyerName), S(" เลขประจำตัวประชาชน "), v(d.nationalId), S(" ที่อยู่ "), vS(d.driverAddress),
+    body([B("ก. "), vS(d.buyerName), S(" เลขประจำตัวประชาชน "), v(d.nationalId), S(" ที่อยู่ "), vS(d.driverAddress),
       S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้รับจ้างที่ 1”")]),
-    body([S("นาย/นาง/นางสาว" + DOTS + " เลขประจำตัวประชาชน" + DOTS + " ที่อยู่เลขที่" + DOTS + " หมู่ที่……… ถนน" + DOTS +
+    body([B("ข. "), S("นาย/นาง/นางสาว" + DOTS + " เลขประจำตัวประชาชน" + DOTS + " ที่อยู่เลขที่" + DOTS + " หมู่ที่……… ถนน" + DOTS +
       " ตำบล/แขวง" + DOTS + " อำเภอ/เขต" + DOTS + " จังหวัด" + DOTS + " ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้รับจ้างที่ 2”")]),
     body("ซึ่งต่อไปในสัญญาฉบับนี้จะรวมเรียกว่า “ผู้รับจ้าง” ฝ่ายหนึ่ง กับ"),
-    body([S(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), COMPANY.regNo, S(" สำนักงานแห่งใหญ่ตั้งอยู่"), S(COMPANY.address),
+    body([B("ค. "), S(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), COMPANY.regNo, S(" สำนักงานแห่งใหญ่ตั้งอยู่"), S(COMPANY.address),
       S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ว่าจ้าง” อีกฝ่ายหนึ่ง")]),
 
     body("โดยที่", { margin: [0, 6, 0, 2] }),
