@@ -28,6 +28,8 @@ export async function middleware(request: NextRequest) {
   // (price-list: เพิ่ม/แก้ราคา + สถานะความพร้อมขาย — ตามข้อกำหนด 2026-07-15)
   const userWritable =
     pathname.startsWith("/api/price-list") ||
+    // สถานะความคืบหน้าโมดูล (ติ๊กข้อมูลครบ/วันคาดเสร็จ ในหน้าแรก) — ทุกคนที่ login แก้ได้
+    pathname.startsWith("/api/module-status") ||
     // จัดการไฟล์แนบสัญญา (แนบ/ลบ) — เฉพาะ endpoint attachment ไม่ใช่แก้ข้อมูลสัญญา
     (pathname.startsWith("/api/contracts/") && pathname.endsWith("/attachment"))
   if (!READ_METHODS.has(request.method) && token.role !== "admin" && !userWritable) {
