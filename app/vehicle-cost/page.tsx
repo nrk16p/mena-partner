@@ -652,10 +652,19 @@ function ConvertDebtModal({ doc, onClose, onDone }: {
   const [notes,       setNotes]       = useState("")
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState("")
+  // งวดละคำนวณอัตโนมัติ = ยอดหนี้ ÷ จำนวนงวด จนกว่าผู้ใช้จะพิมพ์ทับเอง
+  const [monthlyTouched, setMonthlyTouched] = useState(!!doc.monthlyInstallment)
 
   const num = (s: string) => parseFloat(s.replace(/,/g, "")) || 0
   const p = num(principal), c = num(count), m = num(monthly)
   const derivedMonthly = m > 0 ? m : (c > 0 ? Math.round((p / c) * 100) / 100 : 0)
+
+  // auto-fill งวดละ เมื่อ ยอดหนี้/จำนวนงวด เปลี่ยน (ถ้ายังไม่พิมพ์ทับเอง)
+  useEffect(() => {
+    if (monthlyTouched) return
+    if (p > 0 && c > 0) setMonthly(String(Math.round((p / c) * 100) / 100))
+    else setMonthly("")
+  }, [principal, count, monthlyTouched]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSave() {
     if (!(p > 0))            { setError("ยอดหนี้ต้องมากกว่า 0"); return }
@@ -712,8 +721,25 @@ function ConvertDebtModal({ doc, onClose, onDone }: {
             <Input value={count} onChange={(e) => setCount(e.target.value)} className="h-10 text-sm" placeholder="เช่น 12" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500 mb-1">งวดละ (บาท)</label>
-            <Input value={monthly} onChange={(e) => setMonthly(e.target.value)} className="h-10 text-sm" placeholder="ว่าง = หารจากงวด" />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-zinc-500">งวดละ (บาท)</label>
+              {monthlyTouched && (
+                <button
+                  type="button"
+                  onClick={() => setMonthlyTouched(false)}
+                  className="text-[10px] text-emerald-600 hover:underline"
+                  title="คำนวณจาก ยอดหนี้ ÷ จำนวนงวด"
+                >
+                  คำนวณให้
+                </button>
+              )}
+            </div>
+            <Input
+              value={monthly}
+              onChange={(e) => { setMonthly(e.target.value); setMonthlyTouched(true) }}
+              className="h-10 text-sm"
+              placeholder="คำนวณอัตโนมัติ"
+            />
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-zinc-500 mb-1">เริ่มหักเดือน</label>
