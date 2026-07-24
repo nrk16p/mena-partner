@@ -437,21 +437,15 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+// คอลัมน์แบบกระชับ — รวมฟิลด์ที่เกี่ยวข้องเป็นเซลล์ 2 บรรทัด ให้พอดีจอโน้ตบุ๊ก (ไม่ตัดข้อมูลทิ้ง)
 const TABLE_COLS = [
-  { key: "truckNumber",   label: "เบอร์รถ",       w: "w-24" },
-  { key: "truckType",     label: "ประเภท",        w: "w-24" },
-  { key: "licensePlate",  label: "ทะเบียนรถ",     w: "w-32" },
-  { key: "vehicleType",   label: "ประเภทรถ",      w: "w-32" },
-  { key: "characteristic",label: "ลักษณะ",        w: "w-24" },
-  { key: "brand",         label: "ยี่ห้อ",        w: "w-24" },
-  { key: "model",         label: "รุ่น",          w: "w-28" },
-  { key: "color",         label: "สีรถ",          w: "w-20" },
-  { key: "registrationDate", label: "วันจดทะเบียน", w: "w-28" },
-  { key: "chassisNumber", label: "เลขตัวถัง",     w: "w-36" },
-  { key: "engineNumber",  label: "เลขเครื่อง",    w: "w-28" },
-  { key: "engineSize",    label: "กำลังเครื่อง",  w: "w-28" },
-  { key: "status",        label: "สถานะ",         w: "w-24" },
-  { key: "dataComplete",  label: "ข้อมูล",        w: "w-28" },
+  { key: "id",        label: "เบอร์รถ / ทะเบียน",  w: "w-36" },
+  { key: "truckType", label: "ประเภท",             w: "w-20" },
+  { key: "brand",     label: "ยี่ห้อ / รุ่น",       w: "w-48" },
+  { key: "spec",      label: "ตัวถัง / เครื่อง",    w: "w-44" },
+  { key: "reg",       label: "จดทะเบียน",          w: "w-24" },
+  { key: "status",    label: "สถานะ",              w: "w-24" },
+  { key: "data",      label: "ข้อมูล",             w: "w-28" },
 ]
 
 type StatusFilter = "" | "active" | "inactive"
@@ -697,11 +691,11 @@ export default function VehiclesPage() {
             <thead>
               <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
                 {TABLE_COLS.map((col) => (
-                  <th key={col.key} className={`px-3 py-2.5 text-left font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap ${col.w}`}>
+                  <th key={col.key} className={`px-2.5 py-2 text-left font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap ${col.w}`}>
                     {col.label}
                   </th>
                 ))}
-                <th className="px-3 py-2.5 w-16" />
+                <th className="px-2.5 py-2 w-16" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/60">
@@ -722,15 +716,25 @@ export default function VehiclesPage() {
                   </td>
                 </tr>
               ) : (
-                pg.paged.map((v) => (
-                  <tr key={v._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
-                    {/* เบอร์รถ */}
-                    <td className="px-3 py-2.5">
-                      <span className="font-bold text-zinc-800 dark:text-zinc-100 font-mono">{v.truckNumber || "—"}</span>
+                pg.paged.map((v) => {
+                  const specLine = [v.vehicleType, v.characteristic, v.color].filter(Boolean).join(" · ")
+                  return (
+                  <tr key={v._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group cursor-pointer" onClick={() => setPanel(v)}>
+                    {/* เบอร์รถ / ทะเบียน */}
+                    <td className="px-2.5 py-2 align-top">
+                      <div className="font-bold text-zinc-800 dark:text-zinc-100 font-mono">{v.truckNumber || "—"}</div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="font-mono text-[11px] text-zinc-500">{v.licensePlate || "—"}</span>
+                        {v.registrationDocUrl && (
+                          <a href={v.registrationDocUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="ดูสำเนาทะเบียนรถ" className="text-zinc-300 hover:text-emerald-500">
+                            <FileText className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     </td>
 
                     {/* ประเภท (Mixer / Trailer) */}
-                    <td className="px-3 py-2.5">
+                    <td className="px-2.5 py-2 align-top">
                       {vType(v) === "trailer" ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Trailer</span>
                       ) : (
@@ -738,63 +742,29 @@ export default function VehiclesPage() {
                       )}
                     </td>
 
-                    {/* ทะเบียน */}
-                    <td className="px-3 py-2.5">
+                    {/* ยี่ห้อ / รุ่น (+ ประเภทรถ · ลักษณะ · สี) */}
+                    <td className="px-2.5 py-2 align-top">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-zinc-700 dark:text-zinc-200">{v.licensePlate || "—"}</span>
-                        {v.registrationDocUrl && (
-                          <a
-                            href={v.registrationDocUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            title="ดูสำเนาทะเบียนรถ"
-                            className="text-zinc-300 hover:text-emerald-500 transition-colors"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </a>
-                        )}
+                        {v.brand
+                          ? <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-medium text-[11px]">{v.brand}</span>
+                          : <span className="text-zinc-300">—</span>}
+                        {v.model && <span className="text-[11px] text-zinc-600 dark:text-zinc-400 truncate max-w-[130px]">{v.model}</span>}
                       </div>
+                      {specLine && <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[190px]" title={specLine}>{specLine}</div>}
                     </td>
 
-                    {/* ประเภทรถ */}
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">{v.vehicleType || "—"}</td>
-
-                    {/* ลักษณะ */}
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">{v.characteristic || "—"}</td>
-
-                    {/* ยี่ห้อ */}
-                    <td className="px-3 py-2.5">
-                      {v.brand
-                        ? <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-medium">{v.brand}</span>
-                        : <span className="text-zinc-300">—</span>
-                      }
+                    {/* ตัวถัง / เครื่อง (+ กำลัง) */}
+                    <td className="px-2.5 py-2 align-top font-mono text-[10px] text-zinc-500 tracking-wide">
+                      <div className="truncate max-w-[170px]" title={v.chassisNumber || ""}><span className="text-zinc-400">ถัง</span> {v.chassisNumber || "—"}</div>
+                      <div className="truncate max-w-[170px] mt-0.5" title={v.engineNumber || ""}><span className="text-zinc-400">คร.</span> {v.engineNumber || "—"}</div>
+                      {v.engineSize && <div className="text-zinc-400 font-sans">{v.engineSize}</div>}
                     </td>
-
-                    {/* รุ่น */}
-                    <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400">{v.model || "—"}</td>
-
-                    {/* สี */}
-                    <td className="px-3 py-2.5 text-zinc-500">{v.color || "—"}</td>
 
                     {/* วันจดทะเบียน */}
-                    <td className="px-3 py-2.5 tabular-nums text-zinc-500">{formatThaiDateShort(v.registrationDate)}</td>
-
-                    {/* เลขตัวถัง */}
-                    <td className="px-3 py-2.5">
-                      <span className="font-mono text-zinc-500 text-[10px] tracking-wider">{v.chassisNumber || "—"}</span>
-                    </td>
-
-                    {/* เลขเครื่อง */}
-                    <td className="px-3 py-2.5">
-                      <span className="font-mono text-zinc-500 text-[10px] tracking-wider">{v.engineNumber || "—"}</span>
-                    </td>
-
-                    {/* กำลังเครื่อง */}
-                    <td className="px-3 py-2.5 text-zinc-500">{v.engineSize || "—"}</td>
+                    <td className="px-2.5 py-2 align-top tabular-nums text-zinc-500 whitespace-nowrap">{formatThaiDateShort(v.registrationDate)}</td>
 
                     {/* สถานะ */}
-                    <td className="px-3 py-2.5">
+                    <td className="px-2.5 py-2 align-top">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
                         v.status === "active"
                           ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
@@ -806,7 +776,7 @@ export default function VehiclesPage() {
                     </td>
 
                     {/* ข้อมูลครบ / ไม่ครบ (ยึด tick box manual) */}
-                    <td className="px-3 py-2.5">
+                    <td className="px-2.5 py-2 align-top">
                       {v.dataComplete ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ครบ
@@ -817,28 +787,21 @@ export default function VehiclesPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ไม่ครบ
                           </span>
                           {v.dataExpectedDate && (
-                            <span className="text-[9px] text-zinc-400 whitespace-nowrap" title="วันที่คาดจะเก็บข้อมูลครบ">
-                              คาดเสร็จ {formatThaiDateShort(v.dataExpectedDate)}
-                            </span>
+                            <span className="text-[9px] text-zinc-400 whitespace-nowrap" title="วันที่คาดจะเก็บข้อมูลครบ">คาดเสร็จ {formatThaiDateShort(v.dataExpectedDate)}</span>
                           )}
                         </div>
                       )}
                     </td>
 
                     {/* Actions */}
-                    <td className="px-3 py-2.5">
+                    <td className="px-2.5 py-2 align-top">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setPanel(v)}
-                          className="px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors"
-                        >
-                          แก้ไข
-                        </button>
+                        <span className="px-2 py-1 text-[10px] font-medium text-zinc-400">แก้ไข</span>
                         <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
                       </div>
                     </td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>
