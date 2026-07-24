@@ -10,7 +10,7 @@ const COLL = "vehicle_master"
 
 const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim()
 
-const AUDIT_FIELDS = ["truckType", "status", "licensePlate", "brand", "model"]
+const AUDIT_FIELDS = ["truckType", "status", "licensePlate", "brand", "model", "dataComplete", "dataExpectedDate"]
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -39,6 +39,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     engineSize?:           string | null
     status?:               string
     registrationDocUrl?:   string | null
+    dataComplete?:         boolean
+    dataExpectedDate?:     string | null
   }
 
   const $set: Record<string, unknown> = { updatedAt: new Date() }
@@ -57,6 +59,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.engineSize           !== undefined) $set.engineSize           = str(body.engineSize)
   if (body.status               !== undefined) $set.status               = body.status
   if (body.registrationDocUrl   !== undefined) $set.registrationDocUrl   = str(body.registrationDocUrl)
+  if (body.dataComplete         !== undefined) $set.dataComplete         = body.dataComplete === true
+  if (body.dataExpectedDate     !== undefined) $set.dataExpectedDate     = str(body.dataExpectedDate)
 
   const client = await clientPromise
   const col = client.db(DB).collection(COLL)

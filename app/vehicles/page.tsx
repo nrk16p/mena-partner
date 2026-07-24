@@ -43,6 +43,7 @@ const EMPTY_FORM: Omit<Vehicle, "_id" | "createdAt" | "updatedAt"> = {
   registrationDate: "", color: "", licensePlate: "", truckNumber: "",
   chassisNumber: "", engineNumber: "", engineSize: "", status: "active",
   registrationDocUrl: "",
+  dataComplete: false, dataExpectedDate: "",
 }
 
 // ─── Slide panel ─────────────────────────────────────────────────────────────
@@ -97,6 +98,8 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
         engineSize:          vehicle.engineSize          ?? "",
         status:              vehicle.status              ?? "active",
         registrationDocUrl:  vehicle.registrationDocUrl  ?? "",
+        dataComplete:        vehicle.dataComplete === true,
+        dataExpectedDate:    vehicle.dataExpectedDate    ?? "",
       })
     } else {
       setForm({ ...EMPTY_FORM })
@@ -228,7 +231,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
                     <ActivityHistory
                       entity="vehicle"
                       entityId={vehicle._id}
-                      fieldLabels={{ truckType: "ประเภท (Mixer/Trailer)", status: "สถานะ", licensePlate: "ทะเบียน", brand: "ยี่ห้อ", model: "รุ่น" }}
+                      fieldLabels={{ truckType: "ประเภท (Mixer/Trailer)", status: "สถานะ", licensePlate: "ทะเบียน", brand: "ยี่ห้อ", model: "รุ่น", dataComplete: "ข้อมูลครบถ้วน", dataExpectedDate: "วันที่คาดจะเสร็จ" }}
                       actionLabels={{ edit: "แก้ไข" }}
                     />
                   </div>
@@ -272,6 +275,34 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
                   style={{ width: `${pct}%` }}
                 />
               </div>
+            </div>
+
+            {/* ── ยืนยันข้อมูลครบถ้วน (manual) + วันที่คาดจะเสร็จ ── */}
+            <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.dataComplete === true}
+                  onChange={(e) => setForm((p) => ({ ...p, dataComplete: e.target.checked }))}
+                  className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">ข้อมูลครบถ้วน</span>
+                {form.dataComplete
+                  ? <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">🟢 ครบ</span>
+                  : <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full">🟡 ยังไม่ครบ</span>
+                }
+              </label>
+              {!form.dataComplete && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-zinc-500 whitespace-nowrap">วันที่คาดจะเสร็จ</label>
+                  <Input
+                    type="date"
+                    value={form.dataExpectedDate ?? ""}
+                    onChange={(e) => set("dataExpectedDate", e.target.value)}
+                    className="h-8 text-sm w-40"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -420,6 +451,7 @@ const TABLE_COLS = [
   { key: "engineNumber",  label: "เลขเครื่อง",    w: "w-28" },
   { key: "engineSize",    label: "กำลังเครื่อง",  w: "w-28" },
   { key: "status",        label: "สถานะ",         w: "w-24" },
+  { key: "dataComplete",  label: "ข้อมูล",        w: "w-28" },
 ]
 
 type StatusFilter = "" | "active" | "inactive"
@@ -429,6 +461,7 @@ export default function VehiclesPage() {
   const [q, setQ]                       = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("")
   const [typeFilter, setTypeFilter]     = useState<"" | "mixer" | "trailer">("")
+  const [dataFilter, setDataFilter]     = useState<"" | "complete" | "incomplete">("")
   const [loading, setLoading]           = useState(true)
   const [panel, setPanel]               = useState<Vehicle | null | "new">(null)
 
@@ -494,20 +527,24 @@ export default function VehiclesPage() {
     const lq = q.toLowerCase()
     return items.filter((v) => {
       if (typeFilter && vType(v) !== typeFilter) return false
+      if (dataFilter === "complete"   && v.dataComplete !== true) return false
+      if (dataFilter === "incomplete" && v.dataComplete === true) return false
       if (!q) return true
       return [v.truckNumber, v.licensePlate, v.brand, v.model, v.vehicleType,
         v.chassisNumber, v.engineNumber, v.characteristic]
         .some((f) => (f ?? "").toLowerCase().includes(lq))
     })
-  }, [items, q, typeFilter])
+  }, [items, q, typeFilter, dataFilter])
 
   // ── pagination: สูงสุด 50 คัน/หน้า ──
-  const pg = usePagination(filtered, 50, [q, statusFilter, typeFilter])
+  const pg = usePagination(filtered, 50, [q, statusFilter, typeFilter, dataFilter])
 
   const activeCount   = items.filter((v) => v.status === "active").length
   const inactiveCount = items.filter((v) => v.status !== "active").length
   const mixerCount    = items.filter((v) => vType(v) === "mixer").length
   const trailerCount  = items.filter((v) => vType(v) === "trailer").length
+  const completeCount   = items.filter((v) => v.dataComplete === true).length
+  const incompleteCount = items.length - completeCount
   const showPanel     = panel !== null
   const editVehicle   = panel === "new" ? null : panel
 
@@ -527,6 +564,8 @@ export default function VehiclesPage() {
       "เลขเครื่อง":    v.engineNumber  ?? "",
       "กำลังเครื่อง":  v.engineSize    ?? "",
       "สถานะ":         v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน",
+      "ข้อมูลครบถ้วน": v.dataComplete ? "ครบ" : "ไม่ครบ",
+      "วันที่คาดจะเสร็จ": v.dataComplete ? "" : (v.dataExpectedDate ?? ""),
     }))
     await exportToExcel([{ name: "ทะเบียนรถ", rows }], `vehicles-${todayStamp()}`)
   }
@@ -539,7 +578,7 @@ export default function VehiclesPage() {
         <div>
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">ข้อมูลยานพาหนะ</p>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">ทะเบียนรถ</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">{activeCount} ใช้งาน · {inactiveCount} ไม่ใช้งาน</p>
+          <p className="text-xs text-zinc-400 mt-0.5">{activeCount} ใช้งาน · {inactiveCount} ไม่ใช้งาน · ข้อมูลครบ {completeCount}/{items.length} คัน</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -614,6 +653,24 @@ export default function VehiclesPage() {
             onClick={() => setTypeFilter(f.key)}
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
               typeFilter === f.key
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+        <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+        {([
+          { key: "",           label: `ข้อมูลทั้งหมด` },
+          { key: "complete",   label: `🟢 ครบ (${completeCount})` },
+          { key: "incomplete", label: `🟡 ไม่ครบ (${incompleteCount})` },
+        ] as { key: "" | "complete" | "incomplete"; label: string }[]).map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setDataFilter(f.key)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              dataFilter === f.key
                 ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                 : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
             }`}
@@ -746,6 +803,26 @@ export default function VehiclesPage() {
                         <span className={`w-1.5 h-1.5 rounded-full ${v.status === "active" ? "bg-emerald-500" : "bg-zinc-400"}`} />
                         {v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
                       </span>
+                    </td>
+
+                    {/* ข้อมูลครบ / ไม่ครบ (ยึด tick box manual) */}
+                    <td className="px-3 py-2.5">
+                      {v.dataComplete ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ครบ
+                        </span>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ไม่ครบ
+                          </span>
+                          {v.dataExpectedDate && (
+                            <span className="text-[9px] text-zinc-400 whitespace-nowrap" title="วันที่คาดจะเก็บข้อมูลครบ">
+                              คาดเสร็จ {formatThaiDateShort(v.dataExpectedDate)}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     {/* Actions */}
