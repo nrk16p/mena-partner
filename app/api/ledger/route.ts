@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let insuranceItemToClear: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let debtAcceptanceToMark: any = null
 
   // ── convertFrom: insurance_item ───────────────────────────────────────────
   if (body.convertFrom?.type === "insurance_item") {
@@ -165,6 +167,15 @@ export async function POST(req: NextRequest) {
     const da = await db.collection("debt_acceptances").findOne({ _id: new ObjectId(daId) })
     if (!da) return NextResponse.json({ error: "debt acceptance not found" }, { status: 404 })
 
+    // กันแปลงซ้ำ — ถ้าใบนี้ถูกแปลงเป็นรายการหนี้ไปแล้ว
+    if (da.ledgerDebtCode) {
+      return NextResponse.json(
+        { error: `ใบนี้ถูกแปลงเป็นรายการหนี้แล้ว (${da.ledgerDebtCode})`, ledgerDebtCode: da.ledgerDebtCode },
+        { status: 409 }
+      )
+    }
+    debtAcceptanceToMark = da
+
     // ยอดหนี้คงเหลือจริง: outstandingBalance ก่อน, fallback liability − totalPaid
     const liability   = (da.liabilityAmount as number) ?? (da.fullDamageAmount as number) ?? 0
     const outstanding = typeof da.outstandingBalance === "number"
@@ -174,7 +185,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "debt acceptance has no outstanding balance" }, { status: 400 })
     }
     kind = "debt"
-    principal = outstanding
+    principal = principal ?? outstanding   // ให้ปรับยอดในป๊อปอัปได้ (default = ยอดคงค้าง)
     source = { type: "debt_acceptance", refId: daId, refLabel: da.debtAcceptanceNo as string }
     contractCode = contractCode ?? (da.contractCode as string | undefined)
     licensePlate = licensePlate ?? (da.licensePlate as string | undefined)
@@ -244,6 +255,14 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await db.collection(COLL).insertOne(entry as never)
+
+  // ── debt acceptance: ทำ flag ว่าแปลงเป็นรายการหนี้แล้ว (กันแปลงซ้ำ + โชว์ลิงก์) ──
+  if (debtAcceptanceToMark) {
+    await db.collection("debt_acceptances").updateOne(
+      { _id: debtAcceptanceToMark._id },
+      { $set: { ledgerDebtCode: debtCode, ledgerConvertedAt: now, updatedAt: now } }
+    )
+  }
 
   // ── insurance item: ล้าง field การหักเดิม กัน payroll หักซ้ำ ────────────────
   if (insuranceItemToClear) {

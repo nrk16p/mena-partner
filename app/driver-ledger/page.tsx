@@ -168,7 +168,7 @@ async function api(path: string, init?: RequestInit): Promise<{ ok: boolean; msg
 export default function DriverLedgerPage() {
   const [items, setItems]     = useState<LedgerEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [q, setQ]             = useState("")
+  const [q, setQ]             = useState(() => typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") ?? "" : "")
   const [tab, setTab]         = useState("")
   const [manageId, setManageId] = useState<string | null>(null)
   const [showAdd, setShowAdd]   = useState(false)

@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import {
   Wrench, Settings2, Circle, Plus, Trash2, ChevronDown, ChevronRight,
   Search, X, Check, FileText, ShieldCheck, Upload, Download,
+  HandCoins, ArrowRightLeft, ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -81,6 +83,8 @@ interface DebtDoc {
   contractCode:       string
   licensePlate:       string
   truckNumber:        string
+  ledgerDebtCode?:    string  // ถ้าถูกแปลงเป็นรายการหนี้ใน driver-ledger แล้ว
+  ledgerConvertedAt?: string
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -499,71 +503,243 @@ function CostTab({ isAdmin, contracts }: { isAdmin: boolean; contracts: Contract
 
 // ─── Debt Acceptance Tab ──────────────────────────────────────────────────────
 
-function DebtRow({ doc }: { doc: DebtDoc }) {
+// รายละเอียดคู่ label/value ในแถวขยาย
+function DetailItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>
+      <p className="text-xs text-zinc-700 dark:text-zinc-200 truncate">{children ?? "—"}</p>
+    </div>
+  )
+}
+
+function DebtRow({ doc, onConvert }: { doc: DebtDoc; onConvert: (doc: DebtDoc) => void }) {
   const [expanded, setExpanded] = useState(false)
+  const converted = !!doc.ledgerDebtCode
+  const noContract = !doc.contractCode
+
   return (
     <>
-      <tr
-        className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer"
-        onClick={() => setExpanded((e) => !e)}
-        title="คลิกเพื่อดูหมายเหตุเต็ม"
-      >
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{thaiDate(doc.issueDate)}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{doc.debtAcceptanceNo}</td>
-        <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{doc.branch || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{doc.department || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{doc.employeeCode || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-700 dark:text-zinc-200 whitespace-nowrap">{doc.employeeName || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.driverStatus || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.vehicleType || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.driverAffiliation || "—"}</td>
+      <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+        {/* วันที่ / เลขที่ใบ (+ ปุ่มขยาย) */}
+        <td className="px-3 py-2.5 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
+          <div className="flex items-center gap-1.5">
+            {expanded ? <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-300 shrink-0" />}
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 truncate">{doc.debtAcceptanceNo}</p>
+              <p className="text-[10px] text-zinc-400">{thaiDate(doc.issueDate)}</p>
+            </div>
+          </div>
+        </td>
+
+        {/* คนขับ */}
+        <td className="px-3 py-2.5">
+          <p className="text-zinc-700 dark:text-zinc-200 whitespace-nowrap">{doc.employeeName || "—"}</p>
+          {doc.employeeCode && <p className="font-mono text-[10px] text-zinc-400">{doc.employeeCode}</p>}
+        </td>
+
+        {/* รถ */}
         <td className="px-3 py-2.5 whitespace-nowrap">
           <span className="font-mono text-zinc-700 dark:text-zinc-200">{doc.licensePlate || "—"}</span>
-          {doc.truckNumber && <span className="ml-1.5 font-mono text-zinc-400">{doc.truckNumber}</span>}
+          {doc.truckNumber && <span className="ml-1.5 font-mono text-[10px] text-zinc-400">{doc.truckNumber}</span>}
         </td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{doc.repairOrderNo || "—"}</td>
-        <td className="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">{doc.accidentOrderNo || "—"}</td>
+
+        {/* ประเภท */}
         <td className="px-3 py-2.5 whitespace-nowrap">
-          <span className="inline-flex items-center gap-1.5">
-            <RepairBadge type={doc.repairType} />
-            <span className="text-zinc-500">{doc.otherItems || ""}</span>
-          </span>
+          <RepairBadge type={doc.repairType} />
+          {doc.otherItems && <span className="ml-1 text-[10px] text-zinc-400">{doc.otherItems}</span>}
         </td>
-        <td className="px-3 py-2.5 text-right text-zinc-600 dark:text-zinc-300 whitespace-nowrap">฿{fmt(doc.fullDamageAmount)}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.depreciationPeriod || "—"}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-500 whitespace-nowrap">฿{fmt(doc.depreciationAmount)}</td>
-        <td className="px-3 py-2.5 text-right font-semibold text-zinc-800 dark:text-zinc-100 whitespace-nowrap">฿{fmt(doc.liabilityAmount)}</td>
-        <td className="px-3 py-2.5 text-center text-zinc-500">{doc.installmentCount ?? "—"}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-500 whitespace-nowrap">฿{fmt(doc.monthlyInstallment)}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{thaiDate(doc.startDate)}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{thaiDate(doc.endDate)}</td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.actualPayDate ? thaiDate(doc.actualPayDate) : "—"}</td>
-        <td className="px-3 py-2.5 text-right text-zinc-500 whitespace-nowrap">฿{fmt(doc.totalPaid)}</td>
-        <td className={`px-3 py-2.5 text-right font-semibold whitespace-nowrap ${(doc.outstandingBalance ?? 0) > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600"}`}>
-          ฿{fmt(doc.outstandingBalance)}
+
+        {/* ยอดรับผิด / คงค้าง */}
+        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+          <p className="font-semibold text-zinc-800 dark:text-zinc-100">฿{fmt(doc.liabilityAmount)}</p>
+          <p className={`text-[10px] ${(doc.outstandingBalance ?? 0) > 0 ? "text-red-500" : "text-emerald-500"}`}>
+            คงค้าง ฿{fmt(doc.outstandingBalance)}
+          </p>
         </td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.paymentMethod || "—"}</td>
-        <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-300 max-w-[280px]">
-          <span className="block truncate">{doc.description || "—"}</span>
+
+        {/* ผ่อน */}
+        <td className="px-3 py-2.5 text-center whitespace-nowrap">
+          {doc.installmentCount ? (
+            <>
+              <p className="text-zinc-700 dark:text-zinc-200">{doc.installmentCount} งวด</p>
+              <p className="text-[10px] text-zinc-400">฿{fmt(doc.monthlyInstallment)}/ด.</p>
+            </>
+          ) : <span className="text-zinc-300">—</span>}
         </td>
+
+        {/* สถานะ */}
         <td className="px-3 py-2.5 whitespace-nowrap">
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
             doc.status === "ค้างผ่อนชำระ" ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" :
             doc.status === "ชำระครบ"       ? "bg-emerald-100 text-emerald-700" :
-            "bg-zinc-100 text-zinc-600"
+            "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
           }`}>{doc.status || "—"}</span>
         </td>
-        <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{doc.paymentNotes || "—"}</td>
+
+        {/* Action: แปลงเป็นรายการหนี้ / ลิงก์ถ้าแปลงแล้ว */}
+        <td className="px-3 py-2.5 whitespace-nowrap text-right">
+          {converted ? (
+            <Link
+              href={`/driver-ledger?q=${encodeURIComponent(doc.ledgerDebtCode!)}`}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg px-2 py-1 hover:bg-emerald-100"
+              title="ดูรายการหนี้ใน driver-ledger"
+            >
+              <HandCoins className="w-3 h-3" /> {doc.ledgerDebtCode} <ExternalLink className="w-2.5 h-2.5" />
+            </Link>
+          ) : (
+            <Button
+              size="sm"
+              className="h-7 px-2.5 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white gap-1 disabled:opacity-40"
+              disabled={noContract}
+              title={noContract ? "ใบนี้ยังไม่ผูกสัญญา — แปลงไม่ได้" : "สร้างเป็นรายการหนี้ใน driver-ledger"}
+              onClick={() => onConvert(doc)}
+            >
+              <ArrowRightLeft className="w-3 h-3" /> สร้างหนี้
+            </Button>
+          )}
+        </td>
       </tr>
-      {expanded && doc.description && (
+
+      {expanded && (
         <tr className="bg-zinc-50/70 dark:bg-zinc-800/40">
-          <td colSpan={28} className="px-4 py-3">
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">หมายเหตุ — {doc.debtAcceptanceNo}</p>
-            <pre className="text-xs text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap font-sans leading-relaxed">{doc.description}</pre>
+          <td colSpan={8} className="px-5 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-5 gap-y-3">
+              <DetailItem label="สาขา">{doc.branch || "—"}</DetailItem>
+              <DetailItem label="แผนกที่บันทึก">{doc.department || "—"}</DetailItem>
+              <DetailItem label="สถานะ พจส./พจร.">{doc.driverStatus || "—"}</DetailItem>
+              <DetailItem label="ประเภทรถ">{doc.vehicleType || "—"}</DetailItem>
+              <DetailItem label="สังกัดคนขับ">{doc.driverAffiliation || "—"}</DetailItem>
+              <DetailItem label="รหัสสัญญา">{doc.contractCode || "—"}</DetailItem>
+              <DetailItem label="เลขแจ้งซ่อม">{doc.repairOrderNo || "—"}</DetailItem>
+              <DetailItem label="เลขอุบัติเหตุ">{doc.accidentOrderNo || "—"}</DetailItem>
+              <DetailItem label="ค่าเสียหายเต็ม">฿{fmt(doc.fullDamageAmount)}</DetailItem>
+              <DetailItem label="ระยะเวลาเสื่อมราคา">{doc.depreciationPeriod || "—"}</DetailItem>
+              <DetailItem label="ค่าเสื่อมราคา">฿{fmt(doc.depreciationAmount)}</DetailItem>
+              <DetailItem label="ยอดที่ชำระแล้ว">฿{fmt(doc.totalPaid)}</DetailItem>
+              <DetailItem label="วันที่เริ่มชำระ">{thaiDate(doc.startDate)}</DetailItem>
+              <DetailItem label="วันที่สิ้นสุด">{thaiDate(doc.endDate)}</DetailItem>
+              <DetailItem label="วันที่ชำระจริง">{doc.actualPayDate ? thaiDate(doc.actualPayDate) : "—"}</DetailItem>
+              <DetailItem label="วิธีการชำระเงิน">{doc.paymentMethod || "—"}</DetailItem>
+              <DetailItem label="หมายเหตุการชำระ">{doc.paymentNotes || "—"}</DetailItem>
+            </div>
+            {doc.description && (
+              <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">หมายเหตุ</p>
+                <pre className="text-xs text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap font-sans leading-relaxed">{doc.description}</pre>
+              </div>
+            )}
           </td>
         </tr>
       )}
     </>
+  )
+}
+
+// ─── ป๊อปอัปยืนยันแปลงใบรับสภาพหนี้ → รายการหนี้ ─────────────────────────────────
+function ConvertDebtModal({ doc, onClose, onDone }: {
+  doc: DebtDoc
+  onClose: () => void
+  onDone: (ledgerDebtCode: string) => void
+}) {
+  const defOutstanding = (doc.outstandingBalance ?? 0) > 0
+    ? doc.outstandingBalance
+    : Math.max(0, (doc.liabilityAmount ?? 0) - (doc.totalPaid ?? 0))
+  const [principal,   setPrincipal]   = useState(String(defOutstanding || ""))
+  const [count,       setCount]       = useState(doc.installmentCount ? String(doc.installmentCount) : "")
+  const [monthly,     setMonthly]     = useState(doc.monthlyInstallment ? String(doc.monthlyInstallment) : "")
+  const [startMonth,  setStartMonth]  = useState((doc.startDate || "").slice(0, 7))
+  const [notes,       setNotes]       = useState("")
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState("")
+
+  const num = (s: string) => parseFloat(s.replace(/,/g, "")) || 0
+  const p = num(principal), c = num(count), m = num(monthly)
+  const derivedMonthly = m > 0 ? m : (c > 0 ? Math.round((p / c) * 100) / 100 : 0)
+
+  async function handleSave() {
+    if (!(p > 0))            { setError("ยอดหนี้ต้องมากกว่า 0"); return }
+    if (!(derivedMonthly > 0)) { setError("ระบุงวดละ หรือจำนวนงวด"); return }
+    if (startMonth && !/^\d{4}-\d{2}$/.test(startMonth)) { setError("เดือนเริ่มต้องเป็น YYYY-MM"); return }
+    setSaving(true); setError("")
+    try {
+      const res = await fetch("/api/ledger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          convertFrom: { type: "debt_acceptance", id: doc._id },
+          principal: p,
+          ...(m > 0 ? { monthlyAmount: m } : {}),
+          ...(c > 0 ? { installmentCount: c } : {}),
+          ...(startMonth ? { startMonth } : {}),
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(j.error ?? "แปลงไม่สำเร็จ"); return }
+      onDone(j.debtCode ?? "")
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">สร้างเป็นรายการหนี้</h2>
+            <p className="text-[11px] text-zinc-400 mt-0.5">จากใบ {doc.debtAcceptanceNo}</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* สรุปคนขับ/รถ (อ่านอย่างเดียว) */}
+        <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 px-3 py-2.5 text-xs space-y-1">
+          <div className="flex justify-between"><span className="text-zinc-400">คนขับ</span><span className="text-zinc-700 dark:text-zinc-200 font-medium">{doc.employeeName || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-zinc-400">รถ / สัญญา</span><span className="font-mono text-zinc-700 dark:text-zinc-200">{doc.licensePlate || "—"} · {doc.contractCode || "—"}</span></div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-zinc-500 mb-1">ยอดหนี้ (บาท) *</label>
+            <Input value={principal} onChange={(e) => setPrincipal(e.target.value)} className="h-10 text-sm" placeholder="ยอดคงค้าง" />
+            <p className="text-[10px] text-zinc-400 mt-1">ค่าเริ่มต้น = ยอดคงค้างของใบ</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 mb-1">จำนวนงวด</label>
+            <Input value={count} onChange={(e) => setCount(e.target.value)} className="h-10 text-sm" placeholder="เช่น 12" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 mb-1">งวดละ (บาท)</label>
+            <Input value={monthly} onChange={(e) => setMonthly(e.target.value)} className="h-10 text-sm" placeholder="ว่าง = หารจากงวด" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-zinc-500 mb-1">เริ่มหักเดือน</label>
+            <Input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} className="h-10 text-sm" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-zinc-500 mb-1">หมายเหตุ</label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="h-10 text-sm" placeholder="(ถ้ามี)" />
+          </div>
+        </div>
+
+        {derivedMonthly > 0 && p > 0 && (
+          <p className="text-[11px] text-zinc-500 bg-blue-50/60 dark:bg-blue-950/20 rounded-lg px-3 py-2">
+            หัก <b>฿{fmt(derivedMonthly)}</b>/เดือน · ~{Math.ceil(p / derivedMonthly)} งวด จนครบ ฿{fmt(p)}
+          </p>
+        )}
+        {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-lg">{error}</p>}
+
+        <div className="flex gap-2 pt-1">
+          <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-10 gap-1.5" disabled={saving} onClick={handleSave}>
+            {saving ? "กำลังสร้าง..." : <><Check className="w-4 h-4" /> ยืนยันสร้างรายการหนี้</>}
+          </Button>
+          <Button variant="ghost" className="h-10" onClick={onClose}>ยกเลิก</Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -573,6 +749,8 @@ function DebtTab() {
   const [q,          setQ]          = useState("")
   const [typeFilter, setTypeFilter] = useState("")
   const [showImport, setShowImport] = useState(false)
+  const [convertDoc, setConvertDoc] = useState<DebtDoc | null>(null)
+  const [toast,      setToast]      = useState("")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -589,6 +767,7 @@ function DebtTab() {
 
   const totalLiability   = docs.reduce((s, d) => s + d.liabilityAmount,    0)
   const totalOutstanding = docs.reduce((s, d) => s + d.outstandingBalance,  0)
+  const convertedCount   = docs.filter((d) => d.ledgerDebtCode).length
 
   // Export Excel — แถวที่กรองอยู่ของแท็บนี้ (respect ค้นหา + ประเภท)
   async function handleExport() {
@@ -610,7 +789,7 @@ function DebtTab() {
   return (
     <div className="space-y-5">
       {/* KPI */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">จำนวนใบรับสภาพหนี้</p>
           <p className="text-xl font-bold mt-1 text-zinc-800 dark:text-zinc-100">{docs.length} ใบ</p>
@@ -622,6 +801,10 @@ function DebtTab() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ยอดคงค้างรวม</p>
           <p className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-400">฿{fmt(totalOutstanding)}</p>
+        </div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">แปลงเป็นรายการหนี้แล้ว</p>
+          <p className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{convertedCount} ใบ</p>
         </div>
       </div>
 
@@ -682,27 +865,46 @@ function DebtTab() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
-                {[
-                  "วันที่ออกรายการ", "เลขที่ใบรับสภาพหนี้", "สาขา", "แผนกที่บันทึก",
-                  "รหัสพนักงาน", "ชื่อ-สกุลพนักงาน", "สถานะพจส./พจร.", "ประเภทรถ",
-                  "สังกัดคนขับ", "ทะเบียน / เบอร์", "รายการแจ้งซ่อม", "รายการอุบัติเหตุ",
-                  "รายการอื่นๆ", "ค่าเสียหายเต็ม", "ระยะเวลาเสื่อมราคา", "ค่าเสื่อมราคา",
-                  "ยอดรับผิด", "จำนวนงวด", "งวดละ", "วันที่เริ่มชำระ", "วันที่สิ้นสุด",
-                  "วันที่ชำระจริง", "ยอดที่ชำระทั้งสิ้น", "ยอดคงค้าง", "วิธีการชำระเงิน",
-                  "หมายเหตุ", "สถานะ", "หมายเหตุการชำระเงิน",
-                ].map((h) => (
-                  <th key={h} className={`px-3 py-2.5 font-semibold text-zinc-500 whitespace-nowrap ${
-                    ["ค่าเสียหายเต็ม","ค่าเสื่อมราคา","ยอดรับผิด","งวดละ","ยอดที่ชำระทั้งสิ้น","ยอดคงค้าง"].includes(h) ? "text-right" : "text-left"
-                  }`}>{h}</th>
+                {([
+                  ["เลขที่ใบ / วันที่", "text-left"],
+                  ["คนขับ", "text-left"],
+                  ["รถ", "text-left"],
+                  ["ประเภท", "text-left"],
+                  ["ยอดรับผิด / คงค้าง", "text-right"],
+                  ["ผ่อน", "text-center"],
+                  ["สถานะ", "text-left"],
+                  ["จัดการ", "text-right"],
+                ] as [string, string][]).map(([h, align]) => (
+                  <th key={h} className={`px-3 py-2.5 font-semibold text-zinc-500 whitespace-nowrap ${align}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
               {docs.map((doc) => (
-                <DebtRow key={doc._id} doc={doc} />
+                <DebtRow key={doc._id} doc={doc} onConvert={setConvertDoc} />
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ป๊อปอัปยืนยันแปลงเป็นรายการหนี้ */}
+      {convertDoc && (
+        <ConvertDebtModal
+          doc={convertDoc}
+          onClose={() => setConvertDoc(null)}
+          onDone={(code) => {
+            setConvertDoc(null)
+            setToast(`สร้างรายการหนี้สำเร็จ${code ? ` (${code})` : ""} — เข้าดูได้ที่หน้า หนี้สิน & เงินสะสม`)
+            load()
+            setTimeout(() => setToast(""), 5000)
+          }}
+        />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+          <Check className="w-4 h-4" /> {toast}
         </div>
       )}
     </div>
