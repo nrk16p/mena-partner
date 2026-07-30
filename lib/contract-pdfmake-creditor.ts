@@ -551,7 +551,7 @@ export function creditorDocDef(c: Contract, promo: PromoMasterData | null): any 
     pageMargins: [45, 32, 45, 42],
     defaultStyle: { font: "Cordia", fontSize: 15, lineHeight: 1.0 },
     info: { title: `เปิดรหัสเจ้าหนี้-${c.contractCode}` },
-    footer: pageFooter(c.contractCode),
+    footer: pageFooter(c.contractCode, { left: 45, right: 45 }), // ฟอร์มนี้ใช้ขอบ 45/45 — footer ต้องตรงแนวเนื้อหา
     content: content(c, promo),
   }
 }

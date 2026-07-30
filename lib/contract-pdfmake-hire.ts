@@ -3,7 +3,7 @@ import "server-only"
 import type { Contract } from "@/types"
 import type { PromoMasterData } from "@/lib/contract-docx"
 import { hireDocxData } from "@/lib/contract-docx-hire"
-import { S, COMPANY, body, B, sigCell, v, vS, pageFooter } from "@/lib/contract-pdfmake-helpers"
+import { S, COMPANY, body, B, sigCell, sigRow, v, vS, titleLine, headRule, docShell, lawTableLayout } from "@/lib/contract-pdfmake-helpers"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -11,9 +11,9 @@ import { S, COMPANY, body, B, sigCell, v, vS, pageFooter } from "@/lib/contract-
 // dotted blank สำหรับช่องเว้นให้กรอกมือ (ผู้รับจ้างที่ 2)
 const DOTS = "…………………………"
 
-// เลขข้อ (หนา นำหน้าเนื้อความ ไม่ขีดเส้นใต้ ตามต้นฉบับ)
+// เลขข้อ (หนา นำหน้าเนื้อความ ไม่ขีดเส้นใต้ ตามต้นฉบับ) — เว้นระยะก่อนข้อเล็กน้อยให้จังหวะอ่านชัด
 const clause = (no: string, parts: any) =>
-  body([B(no + "  "), ...(Array.isArray(parts) ? parts : [S(parts)])])
+  body([B(no + "  "), ...(Array.isArray(parts) ? parts : [S(parts)])], { margin: [0, 6, 0, 1.5] })
 
 // เซลล์ตารางแบบมีเส้นขอบ
 const th = (t: string) => ({ text: S(t), bold: true, alignment: "center", margin: [0, 1, 0, 1] })
@@ -23,13 +23,14 @@ const tdN = (t: string) => ({ text: t, alignment: "center", margin: [0, 1, 0, 1]
 function content(c: Contract, promo: PromoMasterData | null): any[] {
   const d = hireDocxData(c, promo)
   return [
-    { text: S("สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า"), bold: true, fontSize: 18, alignment: "center", margin: [0, 0, 0, 6] },
+    titleLine("สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า"),
 
     { columns: [
       { width: "*", text: [S("เลขสัญญา "), v(d.contractCode)] },
       { width: "auto", text: [S("ทำที่ "), vS(COMPANY.name)] },
     ] },
-    { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 4, 0, 6] },
+    { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 5, 0, 0] },
+    headRule(),
 
     body("สัญญาฉบับนี้ทำขึ้น ระหว่าง"),
     // ก/ข/ค: ไม่ย่อหน้าบรรทัดแรก (leadingIndent 0) — บรรทัดที่ wrap จะไม่ตกไปซ้ายกว่า "ก."
@@ -81,7 +82,8 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
           [tdT("เทรเลอร์"), tdN("1,000 – 3,000"), tdN("20,000")],
         ],
       },
-      margin: [24, 4, 24, 4],
+      layout: lawTableLayout,
+      margin: [24, 6, 24, 6],
     },
     body([S("แต่รวมเงินประกันที่หักไว้ทั้งสิ้นจะมีจำนวนไม่เกิน "), "200,000.-", S(" บาท (สองแสนบาทถ้วน)")]),
 
@@ -112,7 +114,8 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
               [tdN("มากกว่า 50,000"), tdN("10,000 – 20,000")],
             ],
           },
-          margin: [24, 4, 24, 4],
+          layout: lawTableLayout,
+          margin: [24, 6, 24, 6],
         },
       ],
     },
@@ -144,46 +147,33 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
       unbreakable: true,
       stack: [
         body("สัญญานี้จัดทำขึ้นเป็นสามฉบับมีข้อความถูกต้องตรงกัน คู่สัญญาต่างยึดถือไว้ฝ่ายละหนึ่งฉบับ ทั้งสองฝ่ายได้อ่านข้อความเป็นที่เข้าใจและเห็นว่าถูกต้องตรงตามเจตนาแห่งตนแล้ว จึงลงลายมือชื่อต่อหน้าพยานไว้เป็นสำคัญ", { margin: [0, 8, 0, 0] }),
-        {
-          columnGap: 10,
-          columns: [
-            sigCell("ลงชื่อ.............................................ผู้รับจ้างที่ 1", d.buyerName),
-            sigCell("ลงชื่อ.............................................ผู้รับจ้างที่ 2"),
-          ],
-        },
-        { text: S(COMPANY.name), bold: true, alignment: "center", margin: [0, 12, 0, 0] },
-        {
-          columnGap: 10,
-          columns: [
-            // ผู้ลงนามฝ่ายบริษัท 2 ท่าน — แยกคนละบรรทัด (กันชื่อหักกลางบรรทัด)
-            {
-              stack: [
-                sigCell("ลงชื่อ.............................................ผู้ว่าจ้าง", COMPANY.sellerSignatories[0]),
-                { text: S(`( ${COMPANY.sellerSignatories[1]} )`), alignment: "center", margin: [0, 2, 0, 0] },
-              ],
-            },
-            { text: "" },
-          ],
-        },
-        {
-          columnGap: 10,
-          columns: [
-            sigCell("ลงชื่อ.............................................พยาน", COMPANY.witnesses[0]),
-            sigCell("ลงชื่อ.............................................พยาน", COMPANY.witnesses[1]),
-          ],
-        },
+        sigRow(
+          sigCell("ลงชื่อ.............................................ผู้รับจ้างที่ 1", d.buyerName),
+          sigCell("ลงชื่อ.............................................ผู้รับจ้างที่ 2"),
+        ),
+        { text: S(COMPANY.name), bold: true, alignment: "center", margin: [0, 16, 0, 0] },
+        sigRow(
+          // ผู้ลงนามฝ่ายบริษัท 2 ท่าน — ชื่อท่านที่สองจัดกลางใต้ช่องเซ็นเดียวกัน
+          { stack: [
+            sigCell("ลงชื่อ.............................................ผู้ว่าจ้าง", COMPANY.sellerSignatories[0]),
+            { text: S(`( ${COMPANY.sellerSignatories[1]} )`), alignment: "center", margin: [0, 2, 0, 0] },
+          ] },
+          { text: "" },
+        ),
+        sigRow(
+          sigCell("ลงชื่อ.............................................พยาน", COMPANY.witnesses[0]),
+          sigCell("ลงชื่อ.............................................พยาน", COMPANY.witnesses[1]),
+        ),
       ],
     },
   ]
 }
 
 export function hireDocDef(c: Contract, promo: PromoMasterData | null): any {
-  return {
-    pageSize: "A4",
-    pageMargins: [57, 40, 45, 42],
-    defaultStyle: { font: "Cordia", fontSize: 16, lineHeight: 1.0 },
-    info: { title: `สัญญาว่าจ้าง-${c.contractCode}` },
-    footer: pageFooter(c.contractCode),
+  return docShell({
+    fileTitle: `สัญญาว่าจ้าง-${c.contractCode}`,
+    docTitle: "สัญญาว่าจ้างขับรถยนต์บรรทุกสินค้า",
+    contractCode: c.contractCode,
     content: content(c, promo),
-  }
+  })
 }

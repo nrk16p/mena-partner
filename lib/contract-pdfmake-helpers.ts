@@ -1,7 +1,9 @@
 /**
  * Helpers ที่ใช้ร่วมกันสำหรับสร้างเนื้อ PDF ด้วย pdfmake (สัญญาทุกชนิด)
  * - S(): ตัดคำไทย (ZWSP) — ใช้กับ "ข้อความไทย" เท่านั้น ห้ามใช้กับเลข/ทะเบียน/โค้ด (มี "-" จะแตกบรรทัด)
- * - body/H/B/sigCell: paragraph helpers ให้หน้าตาตรงต้นฉบับ
+ * - body/H/B/sigCell: paragraph helpers
+ * - docShell(): โครงเอกสารมาตรฐาน (margins · running header · footer · orphan control)
+ *   ปรับ typography ระดับ law-firm — ห้ามแตะถ้อยคำสัญญา (แก้ได้เฉพาะ presentation)
  */
 import "server-only"
 import { seg } from "@/lib/pdfmake-printer"
@@ -18,7 +20,12 @@ export const COMPANY = {
   witnesses: ["นางสาวนัชภัค ขจรวุฒิเดช", "นางสาวธัญรดี ตะกิ่นนอก"],
 }
 
-// ── style "Body Legal": justify, line 1.15, spacing before/after 0, first-line indent 1.25cm ──
+// ── กติกาหน้ากระดาษ (ทุกสัญญา): A4 · ขอบซ้าย 2.25cm (เผื่อเย็บเล่ม) · ขวา 2cm ──
+const A4_W = 595.28
+export const PAGE_MARGINS: [number, number, number, number] = [64, 54, 57, 58]
+export const CONTENT_W = Math.round((A4_W - PAGE_MARGINS[0] - PAGE_MARGINS[2]) * 100) / 100 // ≈ 474.28
+
+// ── style "Body Legal": line 1.15, first-line indent 1.25cm ──
 export const FIRST_LINE_INDENT = 35.4 // 1.25 cm = 35.43 pt
 export const LINE_HEIGHT = 1.15
 
@@ -30,17 +37,18 @@ export const body = (parts: any, extra: any = {}) => ({
   alignment: "left",
   leadingIndent: FIRST_LINE_INDENT,
   lineHeight: LINE_HEIGHT,
-  margin: [0, 0, 0, 0], // spacing before/after = 0 (ระยะห่างมาจาก line spacing เท่านั้น)
+  margin: [0, 0, 0, 1.5], // หายใจเล็กน้อยระหว่างย่อหน้า
   ...extra,
 })
 
-/** หัวข้อข้อ (Heading style): หนา + ขีดเส้นใต้, ไม่ย่อหน้าบรรทัดแรก, เว้นก่อนหัวข้อด้วย spacing before */
+/** หัวข้อข้อ (Heading): หนา ไม่ขีดเส้นใต้ (สไตล์เอกสารกฎหมายสมัยใหม่) + orphan control
+ *  headlineLevel ใช้คู่กับ pageBreakBefore ใน docShell — หัวข้อไม่ตกท้ายหน้าโดดจากเนื้อหา */
 export const H = (txt: string) => ({
   text: S(txt),
   bold: true,
-  decoration: "underline",
   lineHeight: LINE_HEIGHT,
-  margin: [0, 12, 0, 0], // spacing before 12pt, after 0
+  margin: [0, 12, 0, 3],
+  headlineLevel: 1,
 })
 
 /** run ตัวหนา (ใช้ใน text array) */
@@ -50,9 +58,59 @@ export const B = (txt: string) => ({ text: S(txt), bold: true })
 export const v = (x: string) => ({ text: x ?? "", bold: true })
 export const vS = (x: string) => ({ text: S(x), bold: true })
 
+/** ชื่อเรื่องเอกสาร (กึ่งกลาง หนา) */
+export const titleLine = (txt: string) => ({
+  text: S(txt),
+  bold: true,
+  fontSize: 19,
+  alignment: "center",
+  lineHeight: 1.1,
+  margin: [0, 0, 0, 10],
+})
+
+/** เส้นคั่นโซนหัวเอกสาร (ใต้บรรทัดวันที่ ก่อนเข้าเนื้อสัญญา) */
+export const headRule = () => ({
+  canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.7, lineColor: "#999999" }],
+  margin: [0, 8, 0, 10],
+})
+
+/** layout ตารางในสัญญา: เส้นบาง เทาเข้ม + หัวตารางพื้นเทาอ่อน + ระยะขอบเซลล์สม่ำเสมอ */
+export const lawTableLayout: any = {
+  hLineWidth: () => 0.6,
+  vLineWidth: () => 0.6,
+  hLineColor: () => "#555555",
+  vLineColor: () => "#555555",
+  fillColor: (rowIndex: number) => (rowIndex === 0 ? "#f2f2f2" : null),
+  paddingLeft: () => 7,
+  paddingRight: () => 7,
+  paddingTop: () => 3.5,
+  paddingBottom: () => 3.5,
+}
+
+/** running header หน้า 2 เป็นต้นไป: ชื่อเอกสาร (ซ้าย) + เลขที่สัญญา (ขวา) + เส้นบาง */
+export const runningHeader = (docTitle: string, contractCode: string) => (currentPage: number) =>
+  currentPage === 1
+    ? []
+    : {
+        margin: [PAGE_MARGINS[0], 22, PAGE_MARGINS[2], 0],
+        stack: [
+          {
+            columns: [
+              { text: S(docTitle), fontSize: 11, color: "#777777" },
+              { text: S(`เลขที่สัญญา ${contractCode || "-"}`), alignment: "right", fontSize: 11, color: "#777777" },
+            ],
+          },
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: "#cccccc" }], margin: [0, 2, 0, 0] },
+        ],
+      }
+
 /** footer มืออาชีพ: เลขสัญญา + วันเวลาพิมพ์ (ซ้าย) + หน้า X/Y (ขวา) + เส้นคั่นบาง
- *  "พิมพ์เมื่อ" = document-control stamp (คนละอย่างกับวันที่ทำสัญญาซึ่งเป็นวันที่มีผลทางกฎหมาย) */
-export const pageFooter = (contractCode: string) => {
+ *  "พิมพ์เมื่อ" = document-control stamp (คนละอย่างกับวันที่ทำสัญญาซึ่งเป็นวันที่มีผลทางกฎหมาย)
+ *  margins ปรับได้ (ฟอร์มเปิดเจ้าหนี้ใช้ขอบ 45/45) — เส้น/ข้อความจะตรงกับเนื้อหาเสมอ */
+export const pageFooter = (contractCode: string, opts?: { left?: number; right?: number }) => {
+  const left = opts?.left ?? PAGE_MARGINS[0]
+  const right = opts?.right ?? PAGE_MARGINS[2]
+  const w = Math.round((A4_W - left - right) * 100) / 100
   const printedAt = new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
     day: "numeric",
@@ -62,17 +120,17 @@ export const pageFooter = (contractCode: string) => {
     minute: "2-digit",
   }).format(new Date())
   return (currentPage: number, pageCount: number) => ({
-    margin: [57, 6, 45, 0],
+    margin: [left, 8, right, 0],
     stack: [
-      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 493, y2: 0, lineWidth: 0.5, lineColor: "#cccccc" }] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: w, y2: 0, lineWidth: 0.5, lineColor: "#cccccc" }] },
       {
         columns: [
           {
             text: S(`เลขที่สัญญา ${contractCode || "-"}  ·  พิมพ์เมื่อ ${printedAt} น.`),
             fontSize: 11,
-            color: "#888888",
+            color: "#8a8a8a",
           },
-          { text: `หน้า ${currentPage} / ${pageCount}`, alignment: "right", fontSize: 11, color: "#888888" },
+          { text: `หน้า ${currentPage} / ${pageCount}`, alignment: "right", fontSize: 11, color: "#8a8a8a" },
         ],
         margin: [0, 3, 0, 0],
       },
@@ -80,8 +138,24 @@ export const pageFooter = (contractCode: string) => {
   })
 }
 
+/** โครงเอกสารมาตรฐานของสัญญา — margins/defaultStyle/running header/footer/orphan control ที่เดียว */
+export function docShell(opts: { fileTitle: string; docTitle: string; contractCode: string; content: any[] }): any {
+  return {
+    pageSize: "A4",
+    pageMargins: PAGE_MARGINS,
+    defaultStyle: { font: "Cordia", fontSize: 16, lineHeight: LINE_HEIGHT },
+    info: { title: opts.fileTitle },
+    header: runningHeader(opts.docTitle, opts.contractCode),
+    footer: pageFooter(opts.contractCode),
+    // หัวข้อ (headlineLevel 1) ห้ามตกท้ายหน้าโดยไม่มีเนื้อหาตาม — ยกขึ้นหน้าใหม่
+    pageBreakBefore: (node: any, followingNodesOnPage: any[]) =>
+      node.headlineLevel === 1 && followingNodesOnPage.length === 0,
+    content: opts.content,
+  }
+}
+
 /** ช่องลายเซ็น — รับ line เดิม "ลงชื่อ....ผู้ซื้อ" แล้วทำเส้นเซ็น (เส้นประยืดได้) + ชื่อ center ใต้เส้น
- *  แก้ปัญหาชื่อเยื้องขวา (เดิม center ใต้ทั้งคอลัมน์) */
+ *  เว้นที่ว่างเหนือเส้นให้พอเซ็นจริง (ink space) */
 export const sigCell = (line: string, name?: string) => {
   const m = line.match(/^(.*?)\.{2,}(.*)$/)
   const prefix = (m ? m[1] : "ลงชื่อ").trim()
@@ -100,14 +174,14 @@ export const sigCell = (line: string, name?: string) => {
         layout: {
           defaultBorder: false,
           hLineWidth: () => 0.8,
-          hLineColor: () => "#111",
+          hLineColor: () => "#333333",
           hLineStyle: () => ({ dash: { length: 2, space: 2 } }),
           paddingLeft: () => 0,
           paddingRight: () => 0,
           paddingTop: () => 0,
           paddingBottom: () => 1,
         },
-        margin: [0, 16, 0, 0],
+        margin: [0, 26, 0, 0],
       },
       {
         text: name ? S(`( ${name} )`) : S("(.................................)"),
@@ -117,3 +191,9 @@ export const sigCell = (line: string, name?: string) => {
     ],
   }
 }
+
+/** แถวลายเซ็น 2 คอลัมน์ — ระยะห่างคอลัมน์มาตรฐานเดียวกันทุกสัญญา */
+export const sigRow = (leftCell: any, rightCell: any) => ({
+  columnGap: 28,
+  columns: [leftCell, rightCell],
+})

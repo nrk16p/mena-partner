@@ -3,24 +3,25 @@ import "server-only"
 import type { Contract } from "@/types"
 import { guaranteeDocxData } from "@/lib/contract-docx-guarantee"
 import type { PromoMasterData } from "@/lib/contract-docx"
-import { S, COMPANY, body, B, sigCell, v, vS, pageFooter } from "@/lib/contract-pdfmake-helpers"
+import { S, COMPANY, body, B, sigCell, sigRow, v, vS, titleLine, headRule, docShell } from "@/lib/contract-pdfmake-helpers"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // ── clause ข้อ N: เว้นระยะก่อนหัวข้อเล็กน้อยให้อ่านง่ายและดูเป็นทางการ ──
 const clause = (num: string, parts: any[]) =>
-  body([B(`ข้อ ${num}. `), ...parts], { margin: [0, 6, 0, 0] })
+  body([B(`ข้อ ${num}. `), ...parts], { margin: [0, 6, 0, 1.5] })
 
 function content(c: Contract, promo: PromoMasterData | null): any[] {
   const d = guaranteeDocxData(c, promo)
   return [
-    { text: S("สัญญาค้ำประกัน"), bold: true, fontSize: 18, alignment: "center", margin: [0, 0, 0, 8] },
+    titleLine("สัญญาค้ำประกัน"),
 
     { columns: [
       { width: "*", text: [S("เลขที่สัญญา "), v(c.contractCode)] },
       { width: "auto", text: [S("ทำที่ "), vS(COMPANY.name)] },
     ] },
-    { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 12, 0, 12] },
+    { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 5, 0, 0] },
+    headRule(),
 
     body([S("ข้าพเจ้า "), vS(d.guarantorName), S(" เลขประจำตัวประชาชน "), v(d.guarantorNationalId),
       S(" อยู่บ้านเลขที่ "), vS(d.guarantorAddress), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้ค้ำประกัน” ขอทำสัญญาค้ำประกันฉบับนี้ให้ไว้ต่อ"),
@@ -56,25 +57,23 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
 
     { unbreakable: true, stack: [
       body("ผู้ค้ำประกันได้อ่านข้อความแห่งสัญญานี้เป็นที่เข้าใจและเห็นว่าถูกต้องตรงตามเจตนาแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐานต่อหน้าพยาน", { margin: [0, 12, 0, 0] }),
-      { unbreakable: true, columnGap: 10, margin: [0, 6, 0, 0], columns: [
+      sigRow(
         sigCell("ลงชื่อ.............................................ผู้ค้ำประกัน", c.guarantorName || undefined),
         sigCell("ลงชื่อ.............................................คู่สมรส / ผู้ยินยอม"),
-      ] },
-      { unbreakable: true, columnGap: 10, margin: [0, 6, 0, 0], columns: [
+      ),
+      sigRow(
         sigCell("ลงชื่อ.............................................พยาน", COMPANY.witnesses[0]),
         sigCell("ลงชื่อ.............................................พยาน", COMPANY.witnesses[1]),
-      ] },
+      ),
     ] },
   ]
 }
 
 export function guaranteeDocDef(c: Contract, promo: PromoMasterData | null): any {
-  return {
-    pageSize: "A4",
-    pageMargins: [57, 40, 45, 42],
-    defaultStyle: { font: "Cordia", fontSize: 16, lineHeight: 1.0 },
-    info: { title: `สัญญาค้ำประกัน-${c.contractCode}` },
-    footer: pageFooter(c.contractCode),
+  return docShell({
+    fileTitle: `สัญญาค้ำประกัน-${c.contractCode}`,
+    docTitle: "สัญญาค้ำประกัน",
+    contractCode: c.contractCode,
     content: content(c, promo),
-  }
+  })
 }

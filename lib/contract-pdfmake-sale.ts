@@ -2,22 +2,23 @@
 import "server-only"
 import type { Contract } from "@/types"
 import { saleDocxData, type PromoMasterData } from "@/lib/contract-docx"
-import { S, COMPANY, body, H, B, sigCell, v, vS, pageFooter } from "@/lib/contract-pdfmake-helpers"
+import { S, COMPANY, body, H, B, sigCell, sigRow, v, vS, titleLine, headRule, docShell } from "@/lib/contract-pdfmake-helpers"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// หัวข้อโปรโมชั่น: หนา ไม่ขีดเส้นใต้ (ตรงต้นฉบับ)
-const Hb = (txt: string) => ({ text: S(txt), bold: true, margin: [0, 7, 0, 2] })
+// หัวข้อโปรโมชั่น: หนา ไม่ขีดเส้นใต้ (ตรงต้นฉบับ) + orphan control
+const Hb = (txt: string) => ({ text: S(txt), bold: true, margin: [0, 9, 0, 2], headlineLevel: 1 })
 
 function content(c: Contract, promo: PromoMasterData | null): any[] {
   const d = saleDocxData(c, promo)
   return [
-    { text: S("สัญญาซื้อขายรถยนต์บรรทุก ( แบบผ่อนชำระราคา )"), bold: true, fontSize: 18, alignment: "center", margin: [0, 0, 0, 8] },
+    titleLine("สัญญาซื้อขายรถยนต์บรรทุก ( แบบผ่อนชำระราคา )"),
     { columns: [
       { width: "*", text: [S("เลขสัญญา "), v(d.contractCode)] },
       { width: "auto", text: [S("ทำที่ "), vS(COMPANY.name)] },
     ] },
-    { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 18, 0, 18] },
+    { text: [S("วันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE)], alignment: "right", margin: [0, 5, 0, 0] },
+    headRule(),
 
     body([S("สัญญาฉบับนี้ทำขึ้นระหว่าง "), vS(COMPANY.name), S(" ทะเบียนนิติบุคคลเลขที่ "), v(COMPANY.regNo),
       S(" สำนักงานแห่งใหญ่ ตั้งอยู่"), vS(COMPANY.address), S(" ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ ผู้ขาย ” ฝ่ายหนึ่ง กับ")]),
@@ -90,17 +91,22 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
     body("6.7 การแก้ไขเพิ่มเติมสัญญาฉบับนี้ จะต้องทำเป็นหนังสือ และลงลายมือชื่อโดยคู่สัญญาทุกฝ่าย"),
     body("6.8 คู่สัญญาตกลงว่าให้ข้อตกลงตามสัญญานี้ มีผลใช้บังคับเหนือการตกลงใด ๆ ไม่ว่าโดยวาจา ข้อเสนอ บันทึกความเข้าใจใด ๆ ที่มีมาก่อนหน้านี้ของคู่สัญญา และในกรณีที่มีความขัดแย้งกันระหว่างข้อกำหนดตามสัญญานี้กับข้อตกลงด้วยวาจา ข้อเสนอ บันทึกความเข้าใจใด ๆ ที่มีมาก่อนหน้านี้ของคู่สัญญา ให้ถือเอาข้อกำหนดตามสัญญานี้ใช้บังคับ"),
     body("6.9 สัญญาฉบับนี้ให้อยู่ในบังคับและการตีความตามกฎหมายไทย"),
-    body("สัญญานี้จัดทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาต่างเก็บรักษาไว้ฝ่ายละหนึ่งฉบับ ทั้งสองฝ่ายได้อ่านข้อความเป็นที่เข้าใจและเห็นว่าถูกต้องตรงตามเจตนาของตนแล้ว จึงลงลายมือชื่อและประทับตราสำคัญให้ไว้ต่อหน้าพยาน"),
-
-    { text: S(COMPANY.name), bold: true, alignment: "center", margin: [0, 10, 0, 0] },
-    { unbreakable: true, columnGap: 10, columns: [
-      sigCell("ลงชื่อ.............................................ผู้ขาย", COMPANY.sellerSignatories[0]),
-      sigCell("ลงชื่อ..............................................ผู้ซื้อ", d.buyerName),
-    ] },
-    { text: S(`(${COMPANY.sellerSignatories[1]})`), margin: [40, 2, 0, 6] },
-    { unbreakable: true, columnGap: 10, columns: [
-      sigCell("ลงชื่อ............................................พยาน", COMPANY.witnesses[0]),
-      sigCell("ลงชื่อ..............................................พยาน", COMPANY.witnesses[1]),
+    // ── ปิดท้าย + ลายเซ็น (ทั้งก้อนอยู่หน้าเดียวกันเสมอ) ──
+    { unbreakable: true, stack: [
+      body("สัญญานี้จัดทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาต่างเก็บรักษาไว้ฝ่ายละหนึ่งฉบับ ทั้งสองฝ่ายได้อ่านข้อความเป็นที่เข้าใจและเห็นว่าถูกต้องตรงตามเจตนาของตนแล้ว จึงลงลายมือชื่อและประทับตราสำคัญให้ไว้ต่อหน้าพยาน", { margin: [0, 8, 0, 0] }),
+      { text: S(COMPANY.name), bold: true, alignment: "center", margin: [0, 16, 0, 0] },
+      sigRow(
+        // ผู้ลงนามฝ่ายบริษัท 2 ท่าน — ชื่อท่านที่สองจัดกลางใต้ช่องเซ็นเดียวกัน
+        { stack: [
+          sigCell("ลงชื่อ.............................................ผู้ขาย", COMPANY.sellerSignatories[0]),
+          { text: S(`(${COMPANY.sellerSignatories[1]})`), alignment: "center", margin: [0, 2, 0, 0] },
+        ] },
+        sigCell("ลงชื่อ..............................................ผู้ซื้อ", d.buyerName),
+      ),
+      sigRow(
+        sigCell("ลงชื่อ............................................พยาน", COMPANY.witnesses[0]),
+        sigCell("ลงชื่อ..............................................พยาน", COMPANY.witnesses[1]),
+      ),
     ] },
   ]
 }
@@ -109,7 +115,7 @@ function content(c: Contract, promo: PromoMasterData | null): any[] {
 function promoContent(c: Contract, promo: PromoMasterData | null): any[] {
   const d = saleDocxData(c, promo)
   return [
-    { text: S("เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น)"), bold: true, fontSize: 18, alignment: "center", margin: [0, 0, 0, 8] },
+    titleLine("เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น)"),
     body([S("เอกสารแนบท้ายสัญญาฉบับนี้ จัดทำขึ้นเพื่อระบุรายละเอียดโปรโมชั่นและสิทธิประโยชน์ที่ผู้ขายตกลงให้แก่ผู้ซื้อ อันเป็นส่วนหนึ่งของสัญญาซื้อขายรถยนต์บรรทุก เลขที่ "), v(d.contractCode),
       S(" ลงวันที่ "), v(d.contractDay), S(" เดือน "), vS(d.contractMonth), S(" พ.ศ. "), v(d.contractYearBE), S(" ทะเบียนรถบรรทุกเลขที่ "), v(d.licensePlate),
       S(" ทั้งนี้ คู่สัญญาตกลงให้เอกสารแนบท้ายฉบับนี้มีผลผูกพันเป็นส่วนหนึ่งของสัญญาหลัก โดยไม่ถือเป็นการแก้ไข ลด หรือเปลี่ยนแปลงราคาซื้อขายหรือหน้าที่การชำระเงินของผู้ซื้อ เว้นแต่จะได้ระบุไว้เป็นอย่างอื่นโดยชัดแจ้งเป็นหนังสือ โดยมีรายละเอียดโปรโมชัน ดังนี้")]),
@@ -146,23 +152,19 @@ function promoContent(c: Contract, promo: PromoMasterData | null): any[] {
 }
 
 export function saleDocDef(c: Contract, promo: PromoMasterData | null): any {
-  return {
-    pageSize: "A4",
-    pageMargins: [57, 40, 45, 42],
-    defaultStyle: { font: "Cordia", fontSize: 16, lineHeight: 1.0 },
-    info: { title: `สัญญาซื้อขาย-${c.contractCode}` },
-    footer: pageFooter(c.contractCode),
+  return docShell({
+    fileTitle: `สัญญาซื้อขาย-${c.contractCode}`,
+    docTitle: "สัญญาซื้อขายรถยนต์บรรทุก ( แบบผ่อนชำระราคา )",
+    contractCode: c.contractCode,
     content: content(c, promo),
-  }
+  })
 }
 
 export function promotionDocDef(c: Contract, promo: PromoMasterData | null): any {
-  return {
-    pageSize: "A4",
-    pageMargins: [57, 40, 45, 42],
-    defaultStyle: { font: "Cordia", fontSize: 16, lineHeight: 1.0 },
-    info: { title: `เอกสารแนบท้ายโปรโมชั่น-${c.contractCode}` },
-    footer: pageFooter(c.contractCode),
+  return docShell({
+    fileTitle: `เอกสารแนบท้ายโปรโมชั่น-${c.contractCode}`,
+    docTitle: "เอกสารแนบท้ายสัญญา หมายเลข 1 (รายละเอียดโปรโมชั่น)",
+    contractCode: c.contractCode,
     content: promoContent(c, promo),
-  }
+  })
 }
