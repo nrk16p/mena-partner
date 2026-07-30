@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import {
@@ -16,7 +16,7 @@ import { exportToExcel, todayStamp } from "@/lib/export-excel"
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Category    = "repair" | "maintenance" | "tire"
-type PageTab     = "cost" | "debt" | "movement" | "merged"
+type PageTab     = "summarize" | "cost" | "debt" | "movement" | "merged"
 type RepairType  = "repair" | "tire" | "accident" | "อื่นๆ"
 
 interface CostEntry {
@@ -2013,8 +2013,167 @@ function MergedTab({ initialQ = "" }: { initialQ?: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+
+// ─── สรุปค่าซ่อมเข้างวด (payroll) — เคาะเก็บรายบรรทัด + สรุป 7 ช่อง + 8% อัตโนมัติ ───
+interface SumRow {
+  contractCode: string; driverName: string
+  partsAmount: number; tireAmount: number; tirePatchAmount: number; laborAmount: number
+  cleaningAmount: number; outsideRepairAmount: number; managementFee: number
+  lines: number; charged: number; total: number; existingTotal: number; delta: number; hasExisting: boolean
+}
+interface SumLine {
+  id: string; contractCode: string; mr: string; date: string; itemGroup: string; itemName: string
+  amount: number; promoType: string; chargeAmount: number | null; chargeMonth: string | null; effective: number
+}
+interface SumResp {
+  month: string; totals: { contracts: number; charged: number; managementFee: number; total: number; existingTotal: number }
+  rows: SumRow[]; unmatched: { mr: string; item: string; amount: number; plate: string }[]
+  sourceLines: number; lines: SumLine[]
+}
+
+function SummarizeTab() {
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [data, setData] = useState<SumResp | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState("")
+  const [openCode, setOpenCode] = useState<string | null>(null)
+  const [edits, setEdits] = useState<Record<string, string>>({})
+
+  async function preview() {
+    setBusy(true); setErr(""); setEdits({})
+    try {
+      const r = await fetch("/api/repair-monthly/summarize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ month, action: "preview" }) })
+      const d = await r.json()
+      if (!r.ok) { setErr(d.error ?? "ดึงข้อมูลไม่สำเร็จ"); setData(null); return }
+      setData(d)
+    } finally { setBusy(false) }
+  }
+
+  async function saveLineEdits(code: string) {
+    if (!data) return
+    const updates = data.lines
+      .filter((l) => l.contractCode === code && edits[l.id] !== undefined)
+      .map((l) => ({ id: l.id, chargeAmount: edits[l.id] === "" ? null : Math.round((Number(edits[l.id]) || 0) * 100) / 100 }))
+    if (!updates.length) return
+    setBusy(true)
+    try {
+      const r = await fetch("/api/stock-movements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ updates }) })
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
+      await preview()
+      setOpenCode(code)
+    } finally { setBusy(false) }
+  }
+
+  async function confirmSummary() {
+    if (!data) return
+    if (!window.confirm(`ยืนยันสรุปค่าซ่อมงวด ${month} เข้าเงินเดือน?\n${data.totals.contracts} คัน · เก็บ พขร. ${fmt(data.totals.charged)} + ดำเนินการ 8% ${fmt(data.totals.managementFee)} = ${fmt(data.totals.total)} บาท`)) return
+    setBusy(true); setErr("")
+    try {
+      const r = await fetch("/api/repair-monthly/summarize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ month, action: "confirm" }) })
+      const d = await r.json()
+      if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
+      alert(`บันทึกแล้ว ${d.upserted} คัน — payroll งวด ${month} จะใช้เลขชุดนี้`)
+      await preview()
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-900">
+        เบิกคลัง → เคาะยอดเก็บ พขร. รายบรรทัด (ไม่เคาะ: ติดโปร = 0, ไม่ติด = เต็มจำนวน) → ระบบรวม 7 ช่อง + ค่าดำเนินการ 8% เข้าเงินเดือนให้เอง · แทนชีต "รวมค่าซ่อม" ในไฟล์ Excel เดิม
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-9 w-40 text-sm" />
+        <Button onClick={preview} disabled={busy} className="h-9 bg-zinc-900 hover:bg-zinc-700 text-white">
+          {busy ? "กำลังคำนวณ..." : "คำนวณสรุปงวด"}
+        </Button>
+        {data && data.rows.length > 0 && (
+          <Button onClick={confirmSummary} disabled={busy} className="h-9 bg-blue-600 hover:bg-blue-700 text-white">
+            ยืนยันเข้าเงินเดือน ({data.totals.contracts} คัน · {fmt(data.totals.total)} บ.)
+          </Button>
+        )}
+      </div>
+      {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
+
+      {data && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-center">
+            {[["บรรทัดเบิก", String(data.sourceLines)], ["คันที่เก็บเงิน", String(data.totals.contracts)],
+              ["ยอดเก็บ พขร.", fmt(data.totals.charged)], ["ดำเนินการ 8%", fmt(data.totals.managementFee)],
+              ["รวมเข้างวด", fmt(data.totals.total)]].map(([l, v]) => (
+              <div key={l} className="bg-white border border-zinc-100 rounded-lg py-2">
+                <p className="text-[10px] text-zinc-400">{l}</p><p className="text-sm font-bold">{v}</p>
+              </div>
+            ))}
+          </div>
+          {data.unmatched.length > 0 && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              จับคู่สัญญาไม่ได้ {data.unmatched.length} บรรทัด (ไม่ถูกนำเข้างวด): {data.unmatched.slice(0, 5).map((u) => `${u.plate} ${u.item} ${fmt(u.amount)}`).join(" · ")}{data.unmatched.length > 5 ? " …" : ""}
+            </div>
+          )}
+          <div className="bg-white border border-zinc-100 rounded-xl overflow-x-auto">
+            <table className="w-full text-xs whitespace-nowrap">
+              <thead><tr className="text-zinc-400 border-b border-zinc-100 bg-zinc-50">
+                {["สัญญา / พขร.", "อะไหล่", "ยาง", "ปะยาง", "ค่าแรง", "ล้าง", "8%", "รวม", "ของเดิม", "Δ", ""].map((h) => (
+                  <th key={h} className="text-right first:text-left py-2 px-2 font-medium">{h}</th>))}
+              </tr></thead>
+              <tbody className="divide-y divide-zinc-50">
+                {data.rows.map((row) => (
+                  <React.Fragment key={row.contractCode}>
+                    <tr className="hover:bg-zinc-50 cursor-pointer" onClick={() => setOpenCode(openCode === row.contractCode ? null : row.contractCode)}>
+                      <td className="py-1.5 px-2">{openCode === row.contractCode ? "▾" : "▸"} {row.contractCode} · {row.driverName}</td>
+                      <td className="text-right px-2">{fmt(row.partsAmount)}</td>
+                      <td className="text-right px-2">{fmt(row.tireAmount)}</td>
+                      <td className="text-right px-2">{fmt(row.tirePatchAmount)}</td>
+                      <td className="text-right px-2">{fmt(row.laborAmount)}</td>
+                      <td className="text-right px-2">{fmt(row.cleaningAmount)}</td>
+                      <td className="text-right px-2 text-zinc-400">{fmt(row.managementFee)}</td>
+                      <td className="text-right px-2 font-semibold">{fmt(row.total)}</td>
+                      <td className="text-right px-2 text-zinc-400">{fmt(row.existingTotal)}</td>
+                      <td className={`text-right px-2 ${Math.abs(row.delta) > 0.02 ? "text-red-600" : "text-zinc-300"}`}>{fmt(row.delta)}</td>
+                      <td className="px-2 text-zinc-300">{row.lines} บรรทัด</td>
+                    </tr>
+                    {openCode === row.contractCode && (
+                      <tr><td colSpan={11} className="bg-zinc-50 px-4 py-2">
+                        <table className="w-full text-[11px]">
+                          <tbody>
+                            {data.lines.filter((l) => l.contractCode === row.contractCode).map((l) => (
+                              <tr key={l.id}>
+                                <td className="py-0.5 pr-2 text-zinc-400">{l.date} · {l.mr}</td>
+                                <td className="pr-2">{l.itemName} <span className="text-zinc-300">({l.itemGroup})</span>{l.promoType && <span className="ml-1 text-[9px] px-1 rounded bg-emerald-50 text-emerald-600 border border-emerald-100">โปร</span>}</td>
+                                <td className="text-right pr-2 text-zinc-400">{fmt(l.amount)}</td>
+                                <td className="text-right w-28">
+                                  <input
+                                    className="w-24 h-6 text-right text-[11px] border border-zinc-200 rounded px-1"
+                                    placeholder={String(l.effective)}
+                                    value={edits[l.id] ?? (l.chargeAmount !== null ? String(l.chargeAmount) : "")}
+                                    onChange={(e) => setEdits({ ...edits, [l.id]: e.target.value })}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div className="flex justify-end mt-1.5">
+                          <Button size="sm" className="h-7 text-[11px]" onClick={() => saveLineEdits(row.contractCode)} disabled={busy}>
+                            บันทึกยอดเก็บที่เคาะ
+                          </Button>
+                        </div>
+                      </td></tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 const PAGE_TABS: { id: PageTab; label: string }[] = [
-  { id: "cost",     label: "ค่าซ่อม / บำรุง / ยาง" },
+  { id: "summarize", label: "สรุปค่าซ่อมเข้างวด" },
   { id: "debt",     label: "ใบรับสภาพหนี้" },
   { id: "movement", label: "การเคลื่อนไหวของสินค้า" },
   { id: "merged",   label: "ใบรับสภาพหนี้ + รายละเอียด" },
@@ -2023,7 +2182,7 @@ const PAGE_TABS: { id: PageTab; label: string }[] = [
 export default function VehicleCostPage() {
   const { data: session } = useSession()
   const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
-  const [tab,       setTab]       = useState<PageTab>("cost")
+  const [tab,       setTab]       = useState<PageTab>("summarize")
   const [contracts, setContracts] = useState<Contract[]>([])
   const [initialQ,  setInitialQ]  = useState("")
 
@@ -2031,7 +2190,7 @@ export default function VehicleCostPage() {
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
     const t = sp.get("tab")
-    if (t === "cost" || t === "debt" || t === "movement" || t === "merged") setTab(t)
+    if (t === "summarize" || t === "cost" || t === "debt" || t === "movement" || t === "merged") setTab(t)
     const q = sp.get("q")
     if (q) setInitialQ(q)
   }, [])
@@ -2073,6 +2232,7 @@ export default function VehicleCostPage() {
         ))}
       </div>
 
+      {tab === "summarize" && <SummarizeTab />}
       {tab === "cost"     && <CostTab isAdmin={isAdmin} contracts={contracts} />}
       {tab === "debt"     && <DebtTab />}
       {tab === "movement" && <MovementTab />}

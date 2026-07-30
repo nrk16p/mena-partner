@@ -31,7 +31,6 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
   {
     title: "งานประจำวัน",
     items: [
-      { href: "/trips", label: "เที่ยววิ่ง", icon: ClipboardList },
       { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ", icon: Wrench },
       { href: "/insurance-tax", label: "ภาษี & ประกันภัย", icon: BadgeCheck },
       { href: "/promotions", label: "โปรโมชั่น", icon: ShieldCheck },

@@ -117,6 +117,9 @@ export default function TripsPage() {
 
   return (
     <div>
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-4 py-2.5 mb-4">
+        ⚠ หน้านี้เป็นข้อมูลเก่า (legacy) — เงินเดือนใช้ข้อมูลจากเมนู <a href="/trip-fuel" className="underline font-semibold">ค่าเที่ยว &amp; เชื้อเพลิง</a> (อัปโหลดไฟล์) แล้ว การแก้ไขที่หน้านี้ไม่มีผลต่อ payroll
+      </div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">รายเที่ยว</h1>
