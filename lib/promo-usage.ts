@@ -46,6 +46,9 @@ export interface PlateUsage {
   pmRemainingThisYear: number | null
   pm1Used: boolean
   pm2Used: boolean
+  /** รอบปี PM ปัจจุบันของคันนี้ — นับจากวันเริ่มสัญญา (ไม่มีสัญญา = ปีปฏิทิน) */
+  pmWindowFrom: string
+  pmWindowTo: string
   repairRecords: RepairRecord[]
   pmRecords: RepairRecord[]
 }
@@ -55,6 +58,7 @@ interface PlateIdentity {
   contractCode?: string
   truckNumber?: string
   driverName?: string
+  startDate?: string // วันเริ่มสัญญา — ใช้กำหนดรอบปี PM (นับจากวันเริ่มสัญญา ไม่ใช่ปีปฏิทิน)
 }
 
 /** Canonical plate ↔ contract mapping. Priority: contracts > repair_monthly > gps_config. */
@@ -71,6 +75,7 @@ export async function getPlateContractMap(db: Db): Promise<Map<string, PlateIden
         contractCode: cur.contractCode || info.contractCode,
         truckNumber: cur.truckNumber || info.truckNumber,
         driverName: cur.driverName || info.driverName,
+        startDate: cur.startDate || info.startDate,
       })
     } else {
       map.set(key, { ...(cur ?? { licensePlate: "" }), ...info } as PlateIdentity)
@@ -79,11 +84,11 @@ export async function getPlateContractMap(db: Db): Promise<Map<string, PlateIden
   const [gps, monthly, contracts] = await Promise.all([
     db.collection("gps_config").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1 }).toArray(),
     db.collection("repair_monthly").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1, driverName: 1 }).toArray(),
-    db.collection("contracts").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1, driverName: 1 }).toArray(),
+    db.collection("contracts").find({}).project({ licensePlate: 1, contractCode: 1, truckNumber: 1, driverName: 1, startDate: 1, contractDate: 1 }).toArray(),
   ])
   for (const g of gps) put(g.licensePlate, { licensePlate: g.licensePlate, contractCode: g.contractCode, truckNumber: g.truckNumber }, false)
   for (const m of monthly) put(m.licensePlate, { licensePlate: m.licensePlate, contractCode: m.contractCode, truckNumber: m.truckNumber, driverName: m.driverName }, true)
-  for (const c of contracts) put(c.licensePlate, { licensePlate: c.licensePlate, contractCode: c.contractCode, truckNumber: c.truckNumber, driverName: c.driverName }, true)
+  for (const c of contracts) put(c.licensePlate, { licensePlate: c.licensePlate, contractCode: c.contractCode, truckNumber: c.truckNumber, driverName: c.driverName, startDate: (c.startDate as string) || (c.contractDate as string) || undefined }, true)
   return map
 }
 
@@ -92,13 +97,44 @@ const num = (v: unknown): number => {
   return isNaN(n) ? 0 : n
 }
 
+
+// ── รอบปี PM: นับจากวันเริ่มสัญญา (anniversary year) — ครบรอบปีสัญญา = ขึ้นรอบใหม่ ──
+function annISO(monthDay: string, year: number): string {
+  // 29 ก.พ. ในปีไม่อธิกสุรทิน → 28 ก.พ.
+  if (monthDay === "02-29") {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+    if (!leap) return `${year}-02-28`
+  }
+  return `${year}-${monthDay}`
+}
+function dayBefore(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z")
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+/** ช่วงรอบปีปัจจุบัน [from..to] ของสัญญาที่เริ่ม startISO — ไม่มีวันเริ่ม = ปีปฏิทิน (พฤติกรรมเดิม) */
+export function pmWindow(startISO: string | undefined, todayISO: string): { from: string; to: string } {
+  const s = (startISO ?? "").slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const y = todayISO.slice(0, 4)
+    return { from: `${y}-01-01`, to: `${y}-12-31` }
+  }
+  if (s > todayISO) return { from: s, to: dayBefore(annISO(s.slice(5), parseInt(s.slice(0, 4), 10) + 1)) }
+  const md = s.slice(5)
+  const sy = parseInt(s.slice(0, 4), 10)
+  let k = parseInt(todayISO.slice(0, 4), 10) - sy
+  if (annISO(md, sy + k) > todayISO) k -= 1
+  return { from: annISO(md, sy + k), to: dayBefore(annISO(md, sy + k + 1)) }
+}
+
 /**
  * Aggregate deduplicated repair + PM usage per plate.
  * @param year Buddhist/AD calendar year for the PM annual cap window (default: current year)
  */
 export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, PlateUsage>> {
-  const y = year ?? new Date().getFullYear()
-  const yearPrefix = String(y)
+  // เพดาน PM นับเป็น "รอบปีจากวันเริ่มสัญญา" ของแต่ละคัน — year param เดิมไม่ใช้แล้ว (คงไว้กัน signature พัง)
+  void year
+  const today = new Date().toISOString().slice(0, 10)
 
   const [identity, claims, movements, configs, pmManual] = await Promise.all([
     getPlateContractMap(db),
@@ -109,12 +145,26 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
       .project({ mr: 1, date: 1, amount: 1, licensePlate: 1, promoType: 1, pmType: 1 })
       .toArray(),
     db.collection("promo_config").find({}).toArray(),
-    db.collection("pm_records").find({ year: y }).toArray(),
+    db.collection("pm_records").find({}).toArray(),
   ])
 
   // contractCode -> plate (reverse of identity map)
   const ccToPlate = new Map<string, string>()
   for (const [plate, info] of identity) if (info.contractCode) ccToPlate.set(info.contractCode, plate)
+
+  // รอบปี PM ปัจจุบันของแต่ละ plate (นับจากวันเริ่มสัญญา)
+  const winCache = new Map<string, { from: string; to: string }>()
+  const winOf = (plate: string) => {
+    let w = winCache.get(plate)
+    if (!w) { w = pmWindow(identity.get(plate)?.startDate, today); winCache.set(plate, w) }
+    return w
+  }
+  const inWindow = (dateISO: string | undefined, plate: string) => {
+    const d = (dateISO ?? "").slice(0, 10)
+    if (!d) return false
+    const w = winOf(plate)
+    return d >= w.from && d <= w.to
+  }
 
   // ── stock_movements: group item lines by MR ──
   interface MrGroup { mr: string; date: string; amount: number; plate: string; itemCount: number; promoType: string; pmTypes: Set<string> }
@@ -180,6 +230,8 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
         pmRemainingThisYear: null,
         pm1Used: false,
         pm2Used: false,
+        pmWindowFrom: "",
+        pmWindowTo: "",
         repairRecords: [],
         pmRecords: [],
       }
@@ -203,10 +255,10 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
       itemCount: g.itemCount,
     }
     if (g.promoType === "pm") {
-      // PM cap is annual — เงิน/ป้ายสิทธิ์นับเฉพาะปีที่ขอ แต่รายการโชว์ทุกปี
-      // (ไม่ให้รายการปีก่อนหายไปจากตารางจนทีมงง)
+      // เพดาน PM นับเฉพาะรายการใน "รอบปีสัญญา" ปัจจุบัน แต่รายการโชว์ทุกรอบ
+      // (ไม่ให้รายการรอบก่อนหายไปจากตารางจนทีมงง)
       rec.pmType = [...g.pmTypes].sort().join("+") || undefined
-      if ((g.date ?? "").startsWith(yearPrefix)) {
+      if (inWindow(g.date, g.plate)) {
         u.pmUsedThisYear += g.amount
         if (g.pmTypes.has("PM1")) u.pm1Used = true
         if (g.pmTypes.has("PM2")) u.pm2Used = true
@@ -248,6 +300,12 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
     const plate = ccToPlate.get(p.contractCode)
     if (!plate) continue
     const u = ensure(plate)
+    // นับเพดานเฉพาะรายการในรอบปีสัญญาปัจจุบัน (ไม่มี date → เทียบปีของวันเริ่มรอบ)
+    const counted = p.date ? inWindow(p.date as string, plate) : Number(p.year) === parseInt(winOf(plate).from.slice(0, 4), 10)
+    if (!counted) {
+      u.pmRecords.push({ mr: "", date: (p.date as string) ?? "", amount: num(p.amount), source: "claim", contractCode: p.contractCode, licensePlate: u.licensePlate, pmType: p.type })
+      continue
+    }
     u.pmUsedThisYear += num(p.amount)
     if (p.type === "PM1") u.pm1Used = true
     if (p.type === "PM2") u.pm2Used = true
@@ -271,6 +329,9 @@ export async function getPromoUsage(db: Db, year?: number): Promise<Map<string, 
     u.annualPmCap = num(cfg.annualPmCap)
   }
   for (const u of usage.values()) {
+    const w = winOf(u.plate)
+    u.pmWindowFrom = w.from
+    u.pmWindowTo = w.to
     if (u.repairBudget != null) u.repairRemaining = u.repairBudget - u.repairUsed
     if (u.annualPmCap != null) u.pmRemainingThisYear = u.annualPmCap - u.pmUsedThisYear
     u.repairRecords.sort((a, b) => (b.date || "").localeCompare(a.date || ""))

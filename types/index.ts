@@ -277,6 +277,8 @@ export interface PromoSummaryRow {
   annualPmCap: number
   pmUsedThisYear: number
   pmRemainingThisYear: number
+  pmWindowFrom?: string | null   // รอบปี PM ปัจจุบัน (นับจากวันเริ่มสัญญา)
+  pmWindowTo?: string | null
   pm1UsedThisYear: boolean
   pm2UsedThisYear: boolean
 }

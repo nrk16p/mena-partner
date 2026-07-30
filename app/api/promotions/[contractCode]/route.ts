@@ -64,6 +64,8 @@ export async function GET(_req: Request, { params }: Ctx) {
     annualPmCap: cfg.annualPmCap ?? 0,
     pmUsedThisYear,
     pmRemainingThisYear: (cfg.annualPmCap ?? 0) - pmUsedThisYear,
+    pmWindowFrom: u?.pmWindowFrom ?? null,
+    pmWindowTo: u?.pmWindowTo ?? null,
     pm1UsedThisYear: pm1Used,
     pm2UsedThisYear: pm2Used,
     repairClaims: repairClaims.map(toPlain),

@@ -331,22 +331,30 @@ export default function PromoDetailPage() {
         {/* PM budget bar */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-zinc-600">
-            <span>ใช้ปีนี้ <span className="font-semibold text-blue-500">{formatMoney(data.pmUsedThisYear)}</span></span>
+            <span>ใช้รอบนี้ <span className="font-semibold text-blue-500">{formatMoney(data.pmUsedThisYear)}</span></span>
             <span>เพดาน {formatMoney(data.annualPmCap)}</span>
           </div>
           <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all ${pmBarColor}`} style={{ width: `${pmPct}%` }} />
           </div>
           <p className="text-sm text-right text-zinc-500">
-            คงเหลือปีนี้ <span className={`font-semibold ${data.pmRemainingThisYear < 0 ? "text-red-600 dark:text-red-400" : "text-zinc-700 dark:text-zinc-200"}`}>{formatMoney(data.pmRemainingThisYear)}</span>
+            คงเหลือรอบนี้ <span className={`font-semibold ${data.pmRemainingThisYear < 0 ? "text-red-600 dark:text-red-400" : "text-zinc-700 dark:text-zinc-200"}`}>{formatMoney(data.pmRemainingThisYear)}</span>
           </p>
+          {data.pmWindowFrom && data.pmWindowTo && (
+            <p className="text-[11px] text-zinc-400 text-right">
+              รอบปีสัญญา {new Date(data.pmWindowFrom).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })} – {new Date(data.pmWindowTo).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })} (นับจากวันเริ่มสัญญา)
+            </p>
+          )}
           {pmOver > 0 && (
             <p className="text-xs font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2">
-              ⚠️ ใช้ PM เกินเพดานปีนี้ {formatMoney(pmOver)} บาท — ส่วนเกินเกินสิทธิ์ฟรี ควรเรียกเก็บจากคนขับ
+              ⚠️ ใช้ PM เกินเพดานรอบนี้ {formatMoney(pmOver)} บาท — ส่วนเกินเกินสิทธิ์ฟรี ควรเรียกเก็บจากคนขับ
             </p>
           )}
           {(() => {
-            const pending = data.pmRecords.filter((p) => p.year === currentYear && p.confirmed !== true)
+            const inRound = (d?: string, y?: number) => data.pmWindowFrom && data.pmWindowTo
+              ? !!d && d.slice(0, 10) >= data.pmWindowFrom && d.slice(0, 10) <= data.pmWindowTo
+              : y === currentYear
+            const pending = data.pmRecords.filter((p) => inRound(p.date, p.year) && p.confirmed !== true)
             const pendingTotal = pending.reduce((s, p) => s + (p.amount ?? 0), 0)
             return pending.length > 0 ? (
               <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
@@ -383,8 +391,8 @@ export default function PromoDetailPage() {
                     <div className="tabular-nums text-zinc-500">{s.date || "—"}</div>
                     <div className="text-[10px] text-zinc-400 mt-0.5">
                       ปี {(s.date ?? "").slice(0, 4)}
-                      {!(s.date ?? "").startsWith(String(currentYear)) && (
-                        <span className="ml-1" title="นับในเพดาน PM ของปีตามวันที่รายการ">(เพดานปีนี้)</span>
+                      {data.pmWindowFrom && (s.date ?? "").slice(0, 10) < data.pmWindowFrom && (
+                        <span className="ml-1" title="รายการรอบก่อน — ไม่นับในเพดานรอบปัจจุบัน">(รอบก่อน)</span>
                       )}
                     </div>
                   </td>
