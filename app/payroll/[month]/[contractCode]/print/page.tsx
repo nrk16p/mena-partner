@@ -9,12 +9,15 @@ import type { PayrollEntry, Driver, Contract } from "@/types"
 const INCOME_FIELDS: { key: keyof PayrollEntry; label: string }[] = [
   { key: "transportFee",     label: "ค่าขนส่ง" },
   { key: "ot",               label: "OT" },
+  { key: "attendanceAllowance", label: "เบี้ยวันทำงาน (วินัย/โซน/ฝีมือ/ขยัน/เช่าบ้าน)" },
+  { key: "fuelUnderRefund",  label: "คืนค่าน้ำมัน (ใช้ต่ำกว่าเรต)" },
   { key: "otherIncomeWHT",   label: "รับอื่นๆ (หักภาษี ณ ที่จ่าย)" },
   { key: "otherIncomeNoWHT", label: "รับอื่นๆ (ไม่หักภาษี)" },
 ]
 
 const DEDUCTION_FIELDS: { key: keyof PayrollEntry; label: string }[] = [
   { key: "fuel",                   label: "ค่าเชื้อเพลิง" },
+  { key: "fuelOverCharge",         label: "น้ำมันเกินเรต + ค่าปรับ" },
   { key: "gps",                    label: "GPS" },
   { key: "repairInHouse",          label: "ค่าซ่อมแซม (ใน)" },
   { key: "repairOutside",          label: "ค่าซ่อมแซม (นอก)" },
@@ -27,6 +30,8 @@ const DEDUCTION_FIELDS: { key: keyof PayrollEntry; label: string }[] = [
   { key: "installment",            label: "ค่างวดรถ" },
   { key: "repairInstallment",      label: "ผ่อนชำระค่าซ่อม" },
   { key: "downPaymentInstallment", label: "ผ่อนเงินดาวน์" },
+  { key: "otherDeductWHT",         label: "หักอื่นๆ (หักภาษี ณ ที่จ่าย)" },
+  { key: "otherDeductNoWHT",       label: "หักอื่นๆ (ไม่หักภาษี)" },
 ]
 
 export default function PrintPayslipPage() {
@@ -64,13 +69,33 @@ export default function PrintPayslipPage() {
     return <div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>
   }
 
+  const extras  = entry.extrasItems ?? []
+  const ledgers = entry.ledgerItems ?? []
+  const r2 = (n: number) => Math.round(n * 100) / 100
+  const exSum = (kind: string, wht: boolean) =>
+    extras.filter((x) => x.kind === kind && x.wht === wht).reduce((s, x) => s + x.amount, 0)
+
+  // ยอด "รับ/หักอื่นๆ" ใน doc รวม extras แล้ว — บรรทัดรวมโชว์เฉพาะส่วนปรับปรุง (adjustment)
+  // ส่วน extras แตกเป็นรายบรรทัดของมันเอง → ผลรวมบรรทัด = ยอดรวมท้ายตารางพอดี
+  const OVERRIDE: Partial<Record<keyof PayrollEntry, number>> = {
+    otherIncomeWHT:   r2((entry.otherIncomeWHT   ?? 0) - exSum("income", true)),
+    otherIncomeNoWHT: r2((entry.otherIncomeNoWHT ?? 0) - exSum("income", false)),
+    otherDeductWHT:   r2((entry.otherDeductWHT   ?? 0) - exSum("deduct", true)),
+    otherDeductNoWHT: r2((entry.otherDeductNoWHT ?? 0) - exSum("deduct", false)),
+  }
   const numVal = (key: keyof PayrollEntry) => {
+    if (key in OVERRIDE) return OVERRIDE[key] ?? 0
     const v = entry[key]
     return typeof v === "number" ? v : 0
   }
 
-  const incomeRows = INCOME_FIELDS.filter((f) => numVal(f.key) !== 0)
-  const deductRows = DEDUCTION_FIELDS.filter((f) => numVal(f.key) !== 0)
+  const incomeRows   = INCOME_FIELDS.filter((f) => numVal(f.key) !== 0)
+  const deductRows   = DEDUCTION_FIELDS.filter((f) => numVal(f.key) !== 0)
+  const extraIncomes = extras.filter((x) => x.kind === "income" && x.amount !== 0)
+  const extraDeducts = extras.filter((x) => x.kind === "deduct" && x.amount !== 0)
+  const carryIn  = entry.carryIn  ?? 0
+  const carryOut = entry.carryOut ?? 0
+  const payable  = entry.payable  ?? entry.netPay
 
   return (
     <div>
@@ -134,7 +159,13 @@ export default function PrintPayslipPage() {
                     <td className="px-3 py-1.5 text-right font-medium">{formatMoney(numVal(key))}</td>
                   </tr>
                 ))}
-                {incomeRows.length === 0 && (
+                {extraIncomes.map((x, i) => (
+                  <tr key={`ex-inc-${i}`}>
+                    <td className="px-3 py-1.5 text-zinc-600">{x.label}{x.wht ? " *" : ""}</td>
+                    <td className="px-3 py-1.5 text-right font-medium">{formatMoney(x.amount)}</td>
+                  </tr>
+                ))}
+                {incomeRows.length === 0 && extraIncomes.length === 0 && (
                   <tr><td colSpan={2} className="px-3 py-2 text-zinc-400 text-xs text-center">ไม่มีรายการ</td></tr>
                 )}
               </tbody>
@@ -160,7 +191,19 @@ export default function PrintPayslipPage() {
                     <td className="px-3 py-2 text-right font-medium">{formatMoney(numVal(key))}</td>
                   </tr>
                 ))}
-                {deductRows.length === 0 && (
+                {extraDeducts.map((x, i) => (
+                  <tr key={`ex-ded-${i}`}>
+                    <td className="px-3 py-1.5 text-zinc-600">{x.label}{x.wht ? " *" : ""}</td>
+                    <td className="px-3 py-2 text-right font-medium">{formatMoney(x.amount)}</td>
+                  </tr>
+                ))}
+                {ledgers.map((l, i) => (
+                  <tr key={`lg-${i}`}>
+                    <td className="px-3 py-1.5 text-zinc-600">{l.label}</td>
+                    <td className="px-3 py-2 text-right font-medium">{formatMoney(l.amount)}</td>
+                  </tr>
+                ))}
+                {deductRows.length === 0 && extraDeducts.length === 0 && ledgers.length === 0 && (
                   <tr><td colSpan={2} className="px-3 py-2 text-zinc-400 text-xs text-center">ไม่มีรายการ</td></tr>
                 )}
               </tbody>
@@ -187,6 +230,32 @@ export default function PrintPayslipPage() {
             <p className="text-xs text-zinc-400 mt-0.5">บาท / THB</p>
           </div>
         </div>
+
+        {/* หนี้ยกยอด — โชว์เมื่อมีบรรทัดใดไม่เป็นศูนย์ */}
+        {(carryIn !== 0 || carryOut !== 0) && (
+          <div className="mt-3 border border-zinc-200 rounded-xl px-6 py-3 text-sm space-y-1">
+            <div className="flex justify-between text-zinc-600">
+              <span>เงินได้สุทธิงวดนี้</span>
+              <span className="font-medium">{formatMoney(entry.netPay)}</span>
+            </div>
+            {carryIn !== 0 && (
+              <div className="flex justify-between text-red-600">
+                <span>หัก หนี้ยกมาจากงวดก่อน</span>
+                <span className="font-medium">−{formatMoney(carryIn)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-zinc-200 pt-1 font-semibold">
+              <span>ยอดจ่ายจริงงวดนี้</span>
+              <span>{formatMoney(payable > 0 ? payable : 0)}</span>
+            </div>
+            {carryOut > 0 && (
+              <div className="flex justify-between text-red-600">
+                <span>หนี้ยกไปงวดถัดไป</span>
+                <span className="font-semibold">{formatMoney(carryOut)}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Signature area */}
         <div className="grid grid-cols-2 gap-8 mt-10 text-xs text-zinc-400">

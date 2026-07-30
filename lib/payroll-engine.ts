@@ -1,5 +1,5 @@
 import type { Db } from "mongodb"
-import { nextMonth } from "@/lib/utils"
+import { nextMonth, prevMonth } from "@/lib/utils"
 import { getInsuranceDeductionForPlate } from "@/lib/insurance-tax"
 import { getLedgerDeductions } from "@/lib/driver-ledger"
 
@@ -29,9 +29,16 @@ export interface PayrollResult {
   otherDeductNoWHT: number
   ledgerDeduction: number
   ledgerItems: { entryId: string; debtCode: string; label: string; amount: number }[]
+  fuelOverCharge: number      // น้ำมันเกินเรต (หัก)
+  fuelUnderRefund: number     // คืนน้ำมันต่ำกว่าเรต (รับ)
+  attendanceAllowance: number // เบี้ยวันทำงาน 5 ตัว (สูตร=ได้)
+  extrasItems: { label: string; kind: string; amount: number; wht: boolean }[]
   totalIncome: number
   totalDeductions: number
   netPay: number
+  carryIn: number             // หนี้ยกมาจากเดือนก่อน
+  payable: number             // ยอดจ่ายจริง = netPay − carryIn
+  carryOut: number            // หนี้ยกไปเดือนหน้า (payable ติดลบ)
 }
 
 /**
@@ -83,16 +90,27 @@ export async function calculatePayrollEntry(
   const att = await db.collection("attendance_monthly").findOne({ month, contractCode })
   const workingDays  = att ? ((att.workDays as number) ?? 0) : (trips.uniqueDates as string[]).length
 
-  const fuel             = tf
-    ? Math.round((((tf.fuelDeduct as number) ?? 0) + ((tf.overMoney as number) ?? 0) - ((tf.underMoney as number) ?? 0)) * 100) / 100
-    : ((fuelRec?.deductionAmount as number) ?? 0)
-  const gps              = (gpsRec?.monthlyFee as number) ?? 700
+  // เบี้ยวันทำงาน 5 ตัว (ค่าวินัย/โซนหนาแน่น/ค่าฝีมือ/เบี้ยขยัน/ค่าเช่าบ้าน) — จ่ายเมื่อคอลัมน์ "สูตร" = ได้
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aw: any = att?.allowances ?? {}
+  const attendanceAllowance = att?.eligible === true
+    ? Math.round(((aw.discipline ?? 0) + (aw.denseZone ?? 0) + (aw.skill ?? 0) + (aw.diligence ?? 0) + (aw.houseRent ?? 0)) * 100) / 100
+    : 0
+
+  const fuel             = tf ? ((tf.fuelDeduct as number) ?? 0) : ((fuelRec?.deductionAmount as number) ?? 0)
+  const fuelOverCharge   = tf ? ((tf.overMoney as number) ?? 0) : 0   // เกินเรต (>เกณฑ์+ค่าปรับ)
+  const fuelUnderRefund  = tf ? ((tf.underMoney as number) ?? 0) : 0  // คืนต่ำกว่าเรต (รายรับ)
+  // override รายเดือน (monthly_adjustments) — ใช้เมื่อยอดเก็บจริงต่างจากค่าตั้งต้น
+  // (เดือนพักชำระ/เก็บบางส่วน/ข้อมูลย้อนหลังจากไฟล์) มีค่าเป็นตัวเลขเมื่อไหร่ ชนะค่า default
+  const ovr = (v: unknown, dflt: number) => (typeof v === "number" ? v : dflt)
+
+  const gps              = ovr(adjRec?.gps, (gpsRec?.monthlyFee as number) ?? 700)
   // ภาษี/ประกัน: หักตามรอบของทะเบียนรถ (vehicle_insurance_tax) — ทะเบียนที่ยังไม่มีข้อมูล
   // ในโมดูลใหม่ (null) fallback ไป field เดิมใน contract ช่วงเปลี่ยนผ่าน
   const cycleDeduction   = await getInsuranceDeductionForPlate(db, (contract.licensePlate as string) ?? "", month)
-  const taxInsurance     = cycleDeduction ?? ((contract.taxMonthlyInstallment as number) ?? 0)
-  const installment      = (installRec?.monthlyAmount as number) ?? (contract.monthlyInstallment as number) ?? 0
-  const repairInstallment = (contract.repairMonthlyInstallment as number) ?? 0
+  const taxInsurance     = ovr(adjRec?.taxInsurance, cycleDeduction ?? ((contract.taxMonthlyInstallment as number) ?? 0))
+  const installment      = ovr(adjRec?.installment, (installRec?.monthlyAmount as number) ?? (contract.monthlyInstallment as number) ?? 0)
+  const repairInstallment = ovr(adjRec?.repairInstallment, (contract.repairMonthlyInstallment as number) ?? 0)
 
   // In the Excel data model, `mgmtFee8pct` stores repair management fee (ค่าดำเนินการซ่อม),
   // NOT 8% of transport. repairInHouse stores parts cost only.
@@ -116,18 +134,30 @@ export async function calculatePayrollEntry(
   const otherIncomeNoWHT = (((adjRec?.otherIncomeNoWHT as number) ?? 0) + exSum("income", false))
   const otherDeductWHT   = (((adjRec?.otherDeductWHT as number) ?? 0) + exSum("deduct", true))
   const otherDeductNoWHT = (((adjRec?.otherDeductNoWHT as number) ?? 0) + exSum("deduct", false))
-  const downPaymentInstallment = 0
+  const extrasItems = extras.map((e) => ({
+    label: (e.label as string) ?? (e.type as string), kind: e.kind as string,
+    amount: (e.amount as number) ?? 0, wht: !!e.wht,
+  }))
+  const downPaymentInstallment = ovr(adjRec?.downPaymentInstallment, 0)
 
   // ledger กลาง (หนี้/เงินสะสม พขร.) — ยอดหักของเดือนนี้ตาม balance ปัจจุบัน
   const ledgerItems     = await getLedgerDeductions(db, contractCode, month)
   const ledgerDeduction = Math.round(ledgerItems.reduce((s, i) => s + i.amount, 0) * 100) / 100
 
-  const totalIncome = transportFee + ot + otherIncomeWHT + otherIncomeNoWHT
+  const totalIncome = transportFee + ot + attendanceAllowance + fuelUnderRefund + otherIncomeWHT + otherIncomeNoWHT
   const totalDeductions =
-    fuel + gps + repairInHouse + repairOutside + mgmtFee8pct +
+    fuel + fuelOverCharge + gps + repairInHouse + repairOutside + mgmtFee8pct +
     labor + tire + tirePatch + carWash +
     taxInsurance + installment + repairInstallment + downPaymentInstallment +
     otherDeductWHT + otherDeductNoWHT + ledgerDeduction
+
+  // หนี้ยกยอด: สุทธิเดือนก่อนติดลบ → ยกมาหักเดือนนี้ · เดือนนี้ยังติดลบ → ยกไปเดือนหน้า (ตรงคอลัมน์ NetPay ของ Excel)
+  const prev = await db.collection("payroll_entries").findOne(
+    { contractCode, month: prevMonth(month) }, { projection: { carryOut: 1 } })
+  const carryIn = Math.round((((prev?.carryOut as number) ?? 0)) * 100) / 100
+  const netPay = Math.round((totalIncome - totalDeductions) * 100) / 100
+  const payable = Math.round((netPay - carryIn) * 100) / 100
+  const carryOut = payable < 0 ? Math.round(-payable * 100) / 100 : 0
 
   return {
     contractCode,
@@ -155,8 +185,15 @@ export async function calculatePayrollEntry(
     otherDeductNoWHT,
     ledgerDeduction,
     ledgerItems,
+    fuelOverCharge,
+    fuelUnderRefund,
+    attendanceAllowance,
+    extrasItems,
     totalIncome: Math.round(totalIncome * 100) / 100,
     totalDeductions: Math.round(totalDeductions * 100) / 100,
-    netPay: Math.round((totalIncome - totalDeductions) * 100) / 100,
+    netPay,
+    carryIn,
+    payable,
+    carryOut,
   }
 }

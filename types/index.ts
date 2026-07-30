@@ -202,6 +202,18 @@ export interface PayrollEntry extends PayrollIncomeFields, PayrollDeductionField
   totalIncome: number
   totalDeductions: number
   netPay: number
+  // ── เฟส 5: รายการแยกบรรทัด + หนี้ยกยอด (optional — เอกสารเก่าไม่มี) ──
+  otherDeductWHT?: number       // หักอื่นๆ หัก ณ ที่จ่าย (ปรับปรุง + extras)
+  otherDeductNoWHT?: number     // หักอื่นๆ ไม่หักภาษี
+  attendanceAllowance?: number  // เบี้ยวันทำงาน 5 ตัว (สูตร=ได้)
+  fuelOverCharge?: number       // น้ำมันเกินเรต + ค่าปรับ (หัก)
+  fuelUnderRefund?: number      // คืนน้ำมันต่ำกว่าเรต (รับ)
+  ledgerDeduction?: number
+  ledgerItems?: { entryId: string; debtCode: string; label: string; amount: number }[]
+  extrasItems?: { label: string; kind: string; amount: number; wht: boolean }[]
+  carryIn?: number              // หนี้ยกมาจากงวดก่อน
+  payable?: number              // ยอดจ่ายจริง = netPay − carryIn
+  carryOut?: number             // หนี้ยกไปงวดหน้า
   createdAt?: string
   updatedAt?: string
 }

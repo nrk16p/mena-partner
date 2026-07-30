@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
     const entry = entryMap[d.contractCode as string]
     const trips = tripMap[d.contractCode as string]
     return {
+      ...(entry ?? {}),                 // field รายบรรทัดทั้งหมด (transportFee, fuel, extrasItems, carry ฯลฯ)
+      _id: undefined,                   // ไม่ส่ง ObjectId (JSON ตัด undefined ทิ้ง)
       contractCode:    d.contractCode,
       driverName:      d.driverName,
       truckNumber:     d.truckNumber ?? "",

@@ -33,17 +33,31 @@ type Row = {
   totalDeductions: number
   netPay: number
   hasEntry: boolean
+  // เฟส 5 (optional — เอกสารเก่าไม่มี)
+  attendanceAllowance?: number
+  fuelUnderRefund?: number
+  fuelOverCharge?: number
+  otherDeductWHT?: number
+  otherDeductNoWHT?: number
+  extrasItems?: { label: string; kind: string; amount: number; wht: boolean }[]
+  ledgerItems?: { entryId: string; debtCode: string; label: string; amount: number }[]
+  carryIn?: number
+  payable?: number
+  carryOut?: number
 }
 
 const INCOME_FIELDS: { key: keyof Row; label: string }[] = [
   { key: "transportFee",     label: "ค่าขนส่ง" },
   { key: "ot",               label: "OT" },
+  { key: "attendanceAllowance", label: "เบี้ยวันทำงาน" },
+  { key: "fuelUnderRefund",  label: "คืนค่าน้ำมัน (ต่ำกว่าเรต)" },
   { key: "otherIncomeWHT",   label: "รับอื่นๆ (หักภาษี)" },
   { key: "otherIncomeNoWHT", label: "รับอื่นๆ (ไม่หักภาษี)" },
 ]
 
 const DEDUCTION_FIELDS: { key: keyof Row; label: string }[] = [
   { key: "fuel",                   label: "ค่าเชื้อเพลิง" },
+  { key: "fuelOverCharge",         label: "น้ำมันเกินเรต+ค่าปรับ" },
   { key: "gps",                    label: "GPS" },
   { key: "repairInHouse",          label: "ซ่อมแซม (ใน)" },
   { key: "repairOutside",          label: "ซ่อมแซม (นอก)" },
@@ -56,6 +70,8 @@ const DEDUCTION_FIELDS: { key: keyof Row; label: string }[] = [
   { key: "installment",            label: "ค่างวดรถ" },
   { key: "repairInstallment",      label: "ผ่อนซ่อม" },
   { key: "downPaymentInstallment", label: "ผ่อนดาวน์" },
+  { key: "otherDeductWHT",         label: "หักอื่นๆ (หักภาษี)" },
+  { key: "otherDeductNoWHT",       label: "หักอื่นๆ (ไม่หักภาษี)" },
 ]
 
 function numVal(row: Row, key: keyof Row): number {
@@ -64,8 +80,26 @@ function numVal(row: Row, key: keyof Row): number {
 }
 
 function SingleSlip({ row, month }: { row: Row; month: string }) {
-  const incomeRows = INCOME_FIELDS.filter((f) => numVal(row, f.key) !== 0)
-  const deductRows = DEDUCTION_FIELDS.filter((f) => numVal(row, f.key) !== 0)
+  const extras  = row.extrasItems ?? []
+  const ledgers = row.ledgerItems ?? []
+  const r2 = (n: number) => Math.round(n * 100) / 100
+  const exSum = (kind: string, wht: boolean) =>
+    extras.filter((x) => x.kind === kind && x.wht === wht).reduce((s, x) => s + x.amount, 0)
+  // ยอด "รับ/หักอื่นๆ" รวม extras แล้ว — บรรทัดรวมโชว์เฉพาะส่วนปรับปรุง, extras แตกรายบรรทัด
+  const OVERRIDE: Partial<Record<keyof Row, number>> = {
+    otherIncomeWHT:   r2((row.otherIncomeWHT   ?? 0) - exSum("income", true)),
+    otherIncomeNoWHT: r2((row.otherIncomeNoWHT ?? 0) - exSum("income", false)),
+    otherDeductWHT:   r2((row.otherDeductWHT   ?? 0) - exSum("deduct", true)),
+    otherDeductNoWHT: r2((row.otherDeductNoWHT ?? 0) - exSum("deduct", false)),
+  }
+  const val = (key: keyof Row) => (key in OVERRIDE ? OVERRIDE[key] ?? 0 : numVal(row, key))
+  const incomeRows   = INCOME_FIELDS.filter((f) => val(f.key) !== 0)
+  const deductRows   = DEDUCTION_FIELDS.filter((f) => val(f.key) !== 0)
+  const extraIncomes = extras.filter((x) => x.kind === "income" && x.amount !== 0)
+  const extraDeducts = extras.filter((x) => x.kind === "deduct" && x.amount !== 0)
+  const carryIn  = row.carryIn  ?? 0
+  const carryOut = row.carryOut ?? 0
+  const payable  = row.payable  ?? row.netPay
 
   return (
     <div className="payslip bg-white p-8 max-w-full">
@@ -100,10 +134,16 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
               {incomeRows.map(({ key, label }) => (
                 <tr key={key}>
                   <td className="px-2 py-1 text-zinc-600">{label}</td>
-                  <td className="px-2 py-1 text-right">{formatMoney(numVal(row, key))}</td>
+                  <td className="px-2 py-1 text-right">{formatMoney(val(key))}</td>
                 </tr>
               ))}
-              {incomeRows.length === 0 && <tr><td colSpan={2} className="px-2 py-1 text-zinc-300 text-center">ไม่มีรายการ</td></tr>}
+              {extraIncomes.map((x, i) => (
+                <tr key={`exi-${i}`}>
+                  <td className="px-2 py-1 text-zinc-600">{x.label}{x.wht ? " *" : ""}</td>
+                  <td className="px-2 py-1 text-right">{formatMoney(x.amount)}</td>
+                </tr>
+              ))}
+              {incomeRows.length === 0 && extraIncomes.length === 0 && <tr><td colSpan={2} className="px-2 py-1 text-zinc-300 text-center">ไม่มีรายการ</td></tr>}
             </tbody>
             <tfoot>
               <tr className="bg-emerald-50 text-emerald-700 font-semibold">
@@ -120,10 +160,22 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
               {deductRows.map(({ key, label }) => (
                 <tr key={key}>
                   <td className="px-2 py-1 text-zinc-600">{label}</td>
-                  <td className="px-2 py-1 text-right">{formatMoney(numVal(row, key))}</td>
+                  <td className="px-2 py-1 text-right">{formatMoney(val(key))}</td>
                 </tr>
               ))}
-              {deductRows.length === 0 && <tr><td colSpan={2} className="px-2 py-1 text-zinc-300 text-center">ไม่มีรายการ</td></tr>}
+              {extraDeducts.map((x, i) => (
+                <tr key={`exd-${i}`}>
+                  <td className="px-2 py-1 text-zinc-600">{x.label}{x.wht ? " *" : ""}</td>
+                  <td className="px-2 py-1 text-right">{formatMoney(x.amount)}</td>
+                </tr>
+              ))}
+              {ledgers.map((l, i) => (
+                <tr key={`lg-${i}`}>
+                  <td className="px-2 py-1 text-zinc-600">{l.label}</td>
+                  <td className="px-2 py-1 text-right">{formatMoney(l.amount)}</td>
+                </tr>
+              ))}
+              {deductRows.length === 0 && extraDeducts.length === 0 && ledgers.length === 0 && <tr><td colSpan={2} className="px-2 py-1 text-zinc-300 text-center">ไม่มีรายการ</td></tr>}
             </tbody>
             <tfoot>
               <tr className="bg-red-50 text-red-600 font-semibold">
@@ -142,6 +194,15 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
           {formatMoney(row.netPay)} <span className="text-sm font-normal text-zinc-400">บาท</span>
         </span>
       </div>
+
+      {(carryIn !== 0 || carryOut !== 0) && (
+        <div className="mt-2 border border-zinc-200 rounded-lg px-4 py-2 text-xs space-y-0.5">
+          <div className="flex justify-between text-zinc-600"><span>เงินได้สุทธิงวดนี้</span><span>{formatMoney(row.netPay)}</span></div>
+          {carryIn !== 0 && <div className="flex justify-between text-red-600"><span>หัก หนี้ยกมาจากงวดก่อน</span><span>−{formatMoney(carryIn)}</span></div>}
+          <div className="flex justify-between border-t border-zinc-200 pt-0.5 font-semibold"><span>ยอดจ่ายจริงงวดนี้</span><span>{formatMoney(payable > 0 ? payable : 0)}</span></div>
+          {carryOut > 0 && <div className="flex justify-between text-red-600"><span>หนี้ยกไปงวดถัดไป</span><span className="font-semibold">{formatMoney(carryOut)}</span></div>}
+        </div>
+      )}
 
       {/* Signature */}
       <div className="grid grid-cols-2 gap-8 mt-6 text-[10px] text-zinc-400 text-center">
