@@ -89,7 +89,7 @@ export default function TripFuelPage() {
         <div>
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">Payroll · เฟส 1</p>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2"><Fuel className="w-6 h-6 text-emerald-500" /> ค่าเที่ยว & เชื้อเพลิง</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">ดึงจาก BI (driverCost · รถร่วมมีนา) — สูตรตรงชีต “ค่าขนส่ง” · แถวที่ผูกสัญญาแล้ว payroll ใช้เลขนี้อัตโนมัติ</p>
+          <p className="text-xs text-zinc-400 mt-0.5">ดึงจาก BI (driverCost · รถร่วมมีนา · เฉพาะ Mixer) — ค่าเที่ยวล้วนตรงชีต “ค่าขนส่ง” (ดรอป/เงินเพิ่มแยกหมวดรับอื่นๆ) · แถวที่ผูกสัญญาแล้ว payroll ใช้เลขนี้อัตโนมัติ</p>
         </div>
         <div className="flex items-center gap-2">
           <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-9 w-40 text-sm" />

@@ -62,12 +62,17 @@ export function computeRow(row: any, cfg: TripFuelConfig): any {
   }
 }
 
-/** ดึงสรุปจาก BI ต่อเดือน — กรองเฉพาะรถร่วมมีนา + ตั๋วไม่ยกเลิก · group ต่อ พขร. */
-export async function aggregateFromBI(client: any, month: string) {
+/** ดึงสรุปจาก BI ต่อเดือน — กรองเฉพาะรถร่วมมีนา + ตั๋วไม่ยกเลิก · group ต่อ พขร.
+ *  fleet: mixer = ไม่มีหาง (โม่) · trailer = มีหาง · all = ทั้งหมด — payroll Mixer ใช้ mixer เท่านั้น */
+export async function aggregateFromBI(client: any, month: string, fleet: "mixer" | "trailer" | "all" = "mixer") {
   const [y, m] = month.split("-").map((x) => parseInt(x, 10))
   const bi = client.db(BI_DB).collection("driverCost")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const q: any = { _year: y, _month: m, "ประเภทรถร่วม": "รถร่วมมีนา", "สถานะตั๋ว": { $ne: "ยกเลิก" } }
+  if (fleet === "mixer") q["$or"] = [{ "หาง": null }, { "หาง": "" }]
+  if (fleet === "trailer") q["หาง"] = { $nin: [null, ""] }
   const cur = bi.find(
-    { _year: y, _month: m, "ประเภทรถร่วม": "รถร่วมมีนา", "สถานะตั๋ว": { $ne: "ยกเลิก" } },
+    q,
     { projection: {
         "พจส1": 1, "พจส2": 1, "หัว": 1, "หาง": 1, "LDT": 1,
         "ค่าเที่ยว พจส 1": 1, "ค่าเที่ยว พจส 2": 1,
@@ -111,7 +116,7 @@ export async function aggregateFromBI(client: any, month: string) {
     return {
       driverName: a.driverName,
       tripCount: a.tripCount,
-      tripFee: r2(a.tripFee + a.dropFee + a.extraFee), // ค่าเที่ยวรวมดรอป+เงินเพิ่ม
+      tripFee: r2(a.tripFee), // ค่าเที่ยวล้วน (ตรงชีตสรุปค่าเที่ยว) — ดรอป/เงินเพิ่มแยกหมวด ไม่รวมในนี้
       tripFeeBase: r2(a.tripFee), dropFee: r2(a.dropFee), extraFee: r2(a.extraFee),
       dieselApproved: r2(a.dieselApproved), dieselFilled: r2(a.dieselFilled),
       ngvApproved: r2(a.ngvApproved), ngvFilled: r2(a.ngvFilled),
