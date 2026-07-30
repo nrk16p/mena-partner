@@ -87,6 +87,12 @@ export async function POST(req: NextRequest) {
     }
   } else if (action === "reject") {
     if (!REJECT_ROLES.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // ห้ามตีกลับข้ามโซ่: มีงวดถัดไปที่อนุมัติ/ปิดแล้ว → ต้องปลดล็อคงวดล่าสุดก่อน (ไล่จากปลายโซ่)
+    const later = await db.collection("month_status").findOne(
+      { month: { $gt: month }, phase: { $in: ["approved", "locked"] } }, { projection: { month: 1 } })
+    if (later) {
+      return NextResponse.json({ error: `ตีกลับไม่ได้ — งวด ${later.month} อนุมัติ/ปิดแล้ว ต้องปลดล็อคงวดล่าสุดก่อนไล่ย้อนลงมา` }, { status: 409 })
+    }
     if (curPhase === "locked" && !["admin", "superadmin"].includes(role)) {
       return NextResponse.json({ error: "งวดล็อคแล้ว — ปลดล็อคได้เฉพาะแอดมิน" }, { status: 403 })
     }
