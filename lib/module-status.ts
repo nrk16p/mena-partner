@@ -26,6 +26,10 @@ export const MODULE_STATUS: Record<string, ModuleStatus> = {
   "/attendance":         "testing",
   // รับ-หักอื่นๆ (payroll เฟส 4) — กำลังทดสอบ
   "/payroll-extras":     "testing",
+  // เงินเดือน (เฟส 5 parallel run ผ่าน 112/112) — กำลังทดสอบ
+  "/payroll":            "testing",
+  // SOP/WI ปิดงวด — พร้อมใช้
+  "/payroll/sop":        "ready",
   // ที่เหลือ (เที่ยววิ่ง · เงินเดือน · รายการปรับปรุง · รายงาน · นำเข้า Excel · จัดการรอบเดือน) = dev
 }
 

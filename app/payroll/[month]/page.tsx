@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { formatMoney, formatMonth } from "@/lib/utils"
 import type { PayrollEntry, Driver } from "@/types"
 
-type MonthPhase = "draft" | "review" | "approved" | "locked"
+type MonthPhase = "draft" | "checked" | "submitted" | "approved" | "locked"
 
 interface RowData {
   entry: PayrollEntry
@@ -16,16 +16,18 @@ interface RowData {
 }
 
 const PHASE_LABEL: Record<MonthPhase, string> = {
-  draft:    "ร่าง",
-  review:   "กำลังตรวจสอบ",
-  approved: "อนุมัติแล้ว",
-  locked:   "ล็อคแล้ว",
+  draft:     "จัดทำข้อมูล",
+  checked:   "ตรวจแล้ว (แผนกรถร่วม)",
+  submitted: "รออนุมัติผู้บริหาร",
+  approved:  "อนุมัติแล้ว",
+  locked:    "ปิดงวด",
 }
 const PHASE_COLOR: Record<MonthPhase, string> = {
-  draft:    "bg-zinc-100 text-zinc-600",
-  review:   "bg-amber-100 text-amber-700",
-  approved: "bg-blue-100 text-blue-700",
-  locked:   "bg-emerald-100 text-emerald-700",
+  draft:     "bg-zinc-100 text-zinc-600",
+  checked:   "bg-amber-100 text-amber-700",
+  submitted: "bg-sky-100 text-sky-700",
+  approved:  "bg-blue-100 text-blue-700",
+  locked:    "bg-emerald-100 text-emerald-700",
 }
 
 export default function PayrollMonthPage() {
@@ -46,7 +48,8 @@ export default function PayrollMonthPage() {
     ]).then(([e, d, s]) => {
       setEntries(Array.isArray(e) ? e : [])
       setDrivers(Array.isArray(d) ? d : [])
-      setPhase((s as { phase: MonthPhase }).phase ?? "draft")
+      const ph = (s as { phase: string }).phase ?? "draft"
+      setPhase((ph === "review" ? "checked" : ph) as MonthPhase)
     }).finally(() => setLoading(false))
   }, [month])
 
@@ -104,6 +107,11 @@ export default function PayrollMonthPage() {
           <Link href={`/adjustments/${month}`}>
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
               <SlidersHorizontal className="w-3.5 h-3.5" /> ปรับรับ/หัก
+            </Button>
+          </Link>
+          <Link href={`/payroll/${month}/approval`}>
+            <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+              <SlidersHorizontal className="w-3.5 h-3.5 rotate-90" /> สรุปงวด/อนุมัติ
             </Button>
           </Link>
           <Link href="/admin/month">
