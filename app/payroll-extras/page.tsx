@@ -33,6 +33,23 @@ export default function PayrollExtrasPage() {
   const [preview, setPreview] = useState<any | null>(null)
   const [busy, setBusy] = useState(false)
 
+  async function copyFromPrev() {
+    const [y, m] = month.split("-").map(Number)
+    const from = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, "0")}`
+    const label = window.prompt(
+      `คัดลอกรายการจากเดือน ${from} → ${month}\nระบุชื่อรายการ (เว้นว่าง = ทุกรายการของเดือนก่อน · ข้ามคนที่มีรายการเดิมแล้ว)`,
+      "รับสภาพหนี้ จราจร")
+    if (label === null) return
+    const r = await fetch("/api/payroll-extras", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month, action: "copy-month", from, labels: label.trim() ? [label.trim()] : [] }),
+    })
+    const d = await r.json()
+    if (!r.ok) { setMsg(`✗ ${d.error ?? "คัดลอกไม่สำเร็จ"}`); return }
+    setMsg(`✓ คัดลอก ${d.copied} รายการจาก ${from} (ข้ามซ้ำ ${d.skipped})`)
+    await load()
+  }
+
   const load = useCallback(async () => {
     setLoading(true)
     try { const r = await fetch(`/api/payroll-extras?month=${month}`); if (r.ok) setRows(await r.json()) }
@@ -105,6 +122,9 @@ export default function PayrollExtrasPage() {
           <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-9 w-40 text-sm" />
           <Button variant="outline" className="h-9 gap-1.5" onClick={() => setShowPaste((v) => !v)}>
             <ClipboardPaste className="w-4 h-4" /> นำเข้า (วางจาก Excel)
+          </Button>
+          <Button variant="outline" className="h-9 gap-1.5" onClick={copyFromPrev}>
+            ⟳ คัดลอกรายการประจำจากเดือนก่อน
           </Button>
           <button type="button" onClick={exportExcel}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg h-9 px-3 hover:bg-emerald-100">

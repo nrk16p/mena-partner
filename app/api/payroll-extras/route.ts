@@ -26,8 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json() as any
   const month = String(body.month ?? "")
-  const t = EXTRA_TYPE_MAP[String(body.type ?? "")]
-  if (!MONTH_RE.test(month) || !t) return NextResponse.json({ error: "month + type ไม่ถูกต้อง" }, { status: 400 })
+  if (!MONTH_RE.test(month)) return NextResponse.json({ error: "month ไม่ถูกต้อง" }, { status: 400 })
 
   const client = await clientPromise
   const db = client.db(DB)
@@ -35,6 +34,25 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const now = new Date().toISOString()
   const by = session?.user?.email ?? "unknown"
+
+  // ── คัดลอกรายการประจำจากเดือนก่อน (standing charges เช่น รับสภาพหนี้จราจร 1,000/คน) ──
+  // ข้ามรายการที่เดือนปลายทางมี (contractCode+label+kind) เดิมอยู่แล้ว — กดซ้ำได้
+  if (body.action === "copy-month") {
+    const from = String(body.from ?? "")
+    if (!MONTH_RE.test(from)) return NextResponse.json({ error: "from (YYYY-MM) required" }, { status: 400 })
+    const labels: string[] = Array.isArray(body.labels) ? body.labels.filter((l: unknown) => typeof l === "string" && l) : []
+    const src = await db.collection(COLL).find({ month: from, ...(labels.length ? { label: { $in: labels } } : {}) }).toArray()
+    const existing = await db.collection(COLL).find({ month }).project({ contractCode: 1, label: 1, kind: 1 }).toArray()
+    const seen = new Set(existing.map((e) => `${e.contractCode}|${e.label}|${e.kind}`))
+    const docs = src.filter((sd) => !seen.has(`${sd.contractCode}|${sd.label}|${sd.kind}`))
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .map(({ _id, ...sd }) => ({ ...sd, month, importBatch: `copy-${from}`, createdAt: now, createdBy: by }))
+    if (docs.length) await db.collection(COLL).insertMany(docs as never[])
+    return NextResponse.json({ ok: true, copied: docs.length, skipped: src.length - docs.length, from, to: month })
+  }
+
+  const t = EXTRA_TYPE_MAP[String(body.type ?? "")]
+  if (!t) return NextResponse.json({ error: "type ไม่ถูกต้อง" }, { status: 400 })
 
   if (body.action === "import") {
     // จับคู่ ref → สัญญา: รหัสสัญญา > ทะเบียน (normalize) > ชื่อคนขับ
