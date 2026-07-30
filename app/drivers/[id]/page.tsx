@@ -81,7 +81,11 @@ interface DriverForm {
   startDate:     string
   endDate:       string
   status:        "active" | "inactive"
+  workHistory:   WH[]
 }
+
+// ประวัติการทำงาน 1 ช่วง (เช่น เคยเป็น พจส. 1 ม.ค. 63 – 31 ธ.ค. 65)
+type WH = { role: string; from: string; to: string; note: string }
 
 function toForm(d: Driver): DriverForm {
   return {
@@ -114,6 +118,9 @@ function toForm(d: Driver): DriverForm {
     startDate:     d.startDate     ?? "",
     endDate:       d.endDate       ?? "",
     status:        d.status        ?? "active",
+    workHistory:   (d.workHistory ?? []).map((w) => ({
+      role: w.role ?? "", from: w.from ?? "", to: w.to ?? "", note: w.note ?? "",
+    })),
   }
 }
 
@@ -634,6 +641,7 @@ export default function DriverDetailPage() {
 
           <Card title="ข้อมูลการทำงาน">
             {editing && form ? (
+              <>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                 <EditField label="รหัสพนักงาน">
                   <Input value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className={inputCls} placeholder="EMP-001" />
@@ -654,7 +662,75 @@ export default function DriverDetailPage() {
                   <Input value={form.accountNumber} onChange={(e) => set("accountNumber", e.target.value)} className={`${inputCls} font-mono`} />
                 </EditField>
               </div>
+
+              {/* ── ประวัติการทำงาน (เช่น เคยเป็น พจส. จากวันไหนถึงวันไหน) ── */}
+              <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                    ประวัติการทำงาน (เคยเป็น พจส. / พจร.)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => p ? { ...p, workHistory: [...p.workHistory, { role: "พจส.", from: "", to: "", note: "" }] } : p)}
+                    className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700"
+                  >
+                    + เพิ่มช่วง
+                  </button>
+                </div>
+                <datalist id="wh-roles">
+                  <option value="พจส." />
+                  <option value="พจร." />
+                </datalist>
+                {form.workHistory.length === 0 && (
+                  <p className="text-xs text-zinc-400">ยังไม่มีประวัติ — กด “+ เพิ่มช่วง” เช่น เคยเป็น พจส. 1 ม.ค. 63 – 31 ธ.ค. 65</p>
+                )}
+                <div className="space-y-2">
+                  {form.workHistory.map((w, i) => (
+                    <div key={i} className="grid grid-cols-2 lg:grid-cols-[110px_1fr_1fr_1.2fr_auto] gap-2 items-center">
+                      <Input
+                        list="wh-roles"
+                        value={w.role}
+                        onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, role: e.target.value } : x) } : p)}
+                        className={inputCls}
+                        placeholder="พจส."
+                        title="ตำแหน่ง เช่น พจส. / พจร."
+                      />
+                      <Input
+                        type="date"
+                        value={w.from}
+                        onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, from: e.target.value } : x) } : p)}
+                        className={inputCls}
+                        title="ตั้งแต่วันที่"
+                      />
+                      <Input
+                        type="date"
+                        value={w.to}
+                        onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, to: e.target.value } : x) } : p)}
+                        className={inputCls}
+                        title="ถึงวันที่ (ว่าง = ปัจจุบัน)"
+                      />
+                      <Input
+                        value={w.note}
+                        onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, note: e.target.value } : x) } : p)}
+                        className={inputCls}
+                        placeholder="หมายเหตุ (ถ้ามี)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((p) => p ? { ...p, workHistory: p.workHistory.filter((_, idx) => idx !== i) } : p)}
+                        className="text-zinc-300 hover:text-red-500 px-1"
+                        title="ลบช่วงนี้"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-zinc-400 mt-1.5">เว้น “ถึงวันที่” ว่างไว้ = ยังเป็นอยู่ปัจจุบัน</p>
+              </div>
+              </>
             ) : (
+              <>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                 <Field label="รหัสพนักงาน" value={driver.staffCode} mono />
                 <Field label="รหัสสัญญา" value={driver.contractCode} mono />
@@ -667,6 +743,28 @@ export default function DriverDetailPage() {
                   value={[driver.isDriver && "พนักงานขับรถ", driver.isTruckOwner && "เจ้าของรถ"].filter(Boolean).join(" · ") || undefined}
                 />
               </div>
+
+              {(driver.workHistory?.length ?? 0) > 0 && (
+                <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-2">
+                    ประวัติการทำงาน
+                  </p>
+                  <div className="space-y-1.5">
+                    {driver.workHistory!.map((w, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 shrink-0">
+                          {w.role}
+                        </span>
+                        <span className="text-zinc-600 dark:text-zinc-300 tabular-nums">
+                          {w.from ? formatThaiDate(w.from) : "ไม่ระบุ"} – {w.to ? formatThaiDate(w.to) : "ปัจจุบัน"}
+                        </span>
+                        {w.note && <span className="text-xs text-zinc-400 truncate" title={w.note}>· {w.note}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </>
             )}
           </Card>
 

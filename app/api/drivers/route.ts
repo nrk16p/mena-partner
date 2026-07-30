@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
     isDriver:     body.isDriver          ?? true,
     startDate:    body.startDate?.trim()  ?? null,
     endDate:      body.endDate?.trim()    ?? null,
+    workHistory: [],  // ประวัติการทำงาน — เพิ่มภายหลังในหน้าแก้ไข
     status:       body.status            ?? "active",
     createdAt:    now,
     updatedAt:    now,

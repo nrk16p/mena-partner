@@ -156,6 +156,8 @@ export interface Driver {
   isDriver?:      boolean  // เป็นพนักงานขับรถ
   startDate?:     string   // YYYY-MM-DD เริ่มงานวันที่
   endDate?:       string   // YYYY-MM-DD สิ้นสุด
+  // ประวัติการทำงาน เช่น เคยเป็น พจส. ช่วงวันไหนถึงวันไหน (to ว่าง = ปัจจุบัน)
+  workHistory?:   { role: string; from?: string; to?: string; note?: string }[]
   status:         DriverStatus
   createdAt?: string
   updatedAt?: string

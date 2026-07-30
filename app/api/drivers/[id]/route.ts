@@ -53,6 +53,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     isDriver?:      boolean
     startDate?:     string | null
     endDate?:       string | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    workHistory?: any[]
     status?:        string
   }
 
@@ -84,6 +86,20 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.licenseExpiry  !== undefined) $set.licenseExpiry  = body.licenseExpiry?.trim() ?? null
   if (body.isTruckOwner   !== undefined) $set.isTruckOwner   = body.isTruckOwner
   if (body.isDriver     !== undefined) $set.isDriver     = body.isDriver
+  if (body.workHistory  !== undefined) {
+    // ประวัติการทำงาน (เช่น เคยเป็น พจส.) — เก็บเฉพาะแถวที่มี role, ตัดช่องว่าง
+    $set.workHistory = Array.isArray(body.workHistory)
+      ? body.workHistory
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((w: any) => ({
+            role: String(w?.role ?? "").trim(),
+            from: String(w?.from ?? "").trim() || null,
+            to:   String(w?.to   ?? "").trim() || null,
+            note: String(w?.note ?? "").trim() || null,
+          }))
+          .filter((w: { role: string }) => w.role)
+      : []
+  }
   if (body.startDate    !== undefined) $set.startDate    = body.startDate ?? null
   if (body.endDate      !== undefined) $set.endDate      = body.endDate ?? null
   if (body.status       !== undefined) {
