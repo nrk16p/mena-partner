@@ -21,7 +21,7 @@ import { ObjectId } from "mongodb"
 export const LEDGER_KINDS = ["debt", "deposit"] as const
 export type LedgerKind = typeof LEDGER_KINDS[number]
 
-export const SOURCE_TYPES = ["insurance", "prb", "tax", "inspection", "personal", "debt_acceptance", "down_payment", "vehicle_installment", "tire_deposit", "manual"] as const
+export const SOURCE_TYPES = ["insurance", "prb", "tax", "inspection", "personal", "debt_acceptance", "down_payment", "vehicle_installment", "tire_deposit", "security_deposit", "manual"] as const
 export type SourceType = typeof SOURCE_TYPES[number]
 
 export const SOURCE_LABELS: Record<SourceType, string> = {
@@ -34,6 +34,7 @@ export const SOURCE_LABELS: Record<SourceType, string> = {
   down_payment: "เงินดาวน์",
   vehicle_installment: "ค่างวดรถ",
   tire_deposit: "เงินสะสมค่ายาง",
+  security_deposit: "เงินประกัน",
   manual: "อื่นๆ",
 }
 
