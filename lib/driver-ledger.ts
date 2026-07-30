@@ -116,7 +116,7 @@ function baseDeduction(entry: any, month: string): number {
  * label = `${SOURCE_LABELS[type]}${refLabel ? " "+refLabel : ""} (งวดที่ n)` — n = จำนวน payment เดิม + 1
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getLedgerDeductions(db: any, contractCode: string, month: string): Promise<{ entryId: string; debtCode: string; label: string; amount: number }[]> {
+export async function getLedgerDeductions(db: any, contractCode: string, month: string): Promise<{ entryId: string; debtCode: string; label: string; amount: number; type?: string }[]> {
   const entries = await db.collection(LEDGER)
     .find({ contractCode, status: "active", startMonth: { $lte: month } })
     .toArray()
@@ -136,7 +136,7 @@ export async function getLedgerDeductions(db: any, contractCode: string, month: 
   const skipByEntry = new Map<string, any>(skips.map((s: { entryId: string }) => [s.entryId, s]))
   const countByEntry = new Map<string, number>(payCounts.map((p: { _id: string; count: number }) => [p._id, p.count]))
 
-  const out: { entryId: string; debtCode: string; label: string; amount: number }[] = []
+  const out: { entryId: string; debtCode: string; label: string; amount: number; type?: string }[] = []
   for (const entry of entries) {
     const entryId = entry._id.toString()
     const skip = skipByEntry.get(entryId)
@@ -159,7 +159,7 @@ export async function getLedgerDeductions(db: any, contractCode: string, month: 
     const refLabel = entry.source?.refLabel as string | undefined
     const label = `${SOURCE_LABELS[srcType] ?? srcType}${refLabel ? " " + refLabel : ""} (งวดที่ ${n})`
 
-    out.push({ entryId, debtCode: entry.debtCode as string, label, amount })
+    out.push({ entryId, debtCode: entry.debtCode as string, label, amount, type: (entry.source?.type as string) ?? undefined })
   }
   return out
 }

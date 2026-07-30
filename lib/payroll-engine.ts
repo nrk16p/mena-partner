@@ -144,11 +144,15 @@ export async function calculatePayrollEntry(
   const ledgerItems     = await getLedgerDeductions(db, contractCode, month)
   const ledgerDeduction = Math.round(ledgerItems.reduce((s, i) => s + i.amount, 0) * 100) / 100
 
+  // ค่างวดรถผ่าน ledger (opening จากไฟล์) แล้ว → ไม่หักซ้ำจากช่องสัญญา (override ยังชนะได้)
+  const vehViaLedger = ledgerItems.some((i) => i.type === "vehicle_installment" && i.amount > 0)
+  const installmentFinal = vehViaLedger ? ovr(adjRec?.installment, 0) : installment
+
   const totalIncome = transportFee + ot + attendanceAllowance + fuelUnderRefund + otherIncomeWHT + otherIncomeNoWHT
   const totalDeductions =
     fuel + fuelOverCharge + gps + repairInHouse + repairOutside + mgmtFee8pct +
     labor + tire + tirePatch + carWash +
-    taxInsurance + installment + repairInstallment + downPaymentInstallment +
+    taxInsurance + installmentFinal + repairInstallment + downPaymentInstallment +
     otherDeductWHT + otherDeductNoWHT + ledgerDeduction
 
   // หนี้ยกยอด: สุทธิเดือนก่อนติดลบ → ยกมาหักเดือนนี้ · เดือนนี้ยังติดลบ → ยกไปเดือนหน้า (ตรงคอลัมน์ NetPay ของ Excel)
@@ -178,7 +182,7 @@ export async function calculatePayrollEntry(
     tirePatch,
     carWash,
     taxInsurance,
-    installment,
+    installment: installmentFinal,
     repairInstallment,
     downPaymentInstallment,
     otherDeductWHT,

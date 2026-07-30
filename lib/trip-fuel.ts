@@ -139,3 +139,60 @@ export async function plateContractMap(db: Db): Promise<Map<string, string>> {
   }
   return map
 }
+
+
+// ═══ อัปโหลดไฟล์ "ค่าเที่ยว Mixer พจร. MM.YY" (ชีตสรุปค่าเที่ยว) — แหล่งหลักแทน BI ═══
+export interface TripSummaryRow {
+  driverName: string
+  tripCount: number
+  tripFee: number
+  branch: string
+  overMoney: number   // สรุปยอดเงินเกินกว่า Rate (หัก)
+  underMoney: number  // สรุปยอดเงินเติมต่ำกว่า Rate (คืน)
+  fuelDeduct: number  // หักค่าเชื้อเพลิง (บาท)
+}
+
+/** อ่านชีต "สรุปค่าเที่ยว" — หา header แถวที่คอลัมน์แรกคือ "พจส." แล้วแมพคอลัมน์จากชื่อหัวตาราง */
+export function parseTripSummarySheet(buffer: Buffer): { sheetName: string; rows: TripSummaryRow[] } {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const XLSX = require("xlsx") as typeof import("xlsx")
+  const wb = XLSX.read(buffer, { type: "buffer" })
+  let sheetName = wb.SheetNames.find((n) => n.includes("สรุปค่าเที่ยว")) ?? ""
+  if (!sheetName) {
+    for (const n of wb.SheetNames) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: null })
+      if (rows.some((r) => String(r?.[0] ?? "").trim() === "พจส.")) { sheetName = n; break }
+    }
+  }
+  if (!sheetName) throw new Error("ไม่พบชีตสรุปค่าเที่ยว (หัวตาราง 'พจส.')")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const grid: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: null })
+  const hIdx = grid.findIndex((r) => String(r?.[0] ?? "").trim() === "พจส.")
+  if (hIdx === -1) throw new Error(`ชีต ${sheetName} ไม่มีหัวตาราง "พจส."`)
+  const hdr = grid[hIdx].map((c) => String(c ?? "").replace(/\s+/g, " ").trim())
+  const col = (frag: string) => hdr.findIndex((h) => h.includes(frag))
+  const C = {
+    trips: col("จำนวนเที่ยว"), fee: col("ค่าเที่ยว"), branch: col("สาขา"),
+    over: col("สรุปยอดเงินเกินกว่า"), under: col("สรุปยอดเงินเติมต่ำกว่า"), deduct: col("หักค่าเชื้อเพลิง"),
+  }
+  if (C.fee === -1 || C.deduct === -1) throw new Error("หัวตารางไม่ครบ (ต้องมี ค่าเที่ยว + หักค่าเชื้อเพลิง)")
+  const num = (v: unknown) => (typeof v === "number" ? Math.round(v * 100) / 100 : 0)
+
+  const rows: TripSummaryRow[] = []
+  for (const r of grid.slice(hIdx + 1)) {
+    const name = String(r?.[0] ?? "").trim()
+    if (!name || name.startsWith("รวม")) continue
+    rows.push({
+      driverName: name,
+      tripCount: num(r[C.trips]), tripFee: num(r[C.fee]),
+      branch: C.branch >= 0 ? String(r[C.branch] ?? "").trim() : "",
+      overMoney: C.over >= 0 ? num(r[C.over]) : 0,
+      underMoney: C.under >= 0 ? num(r[C.under]) : 0,
+      fuelDeduct: num(r[C.deduct]),
+    })
+  }
+  if (rows.length === 0) throw new Error("ไม่พบข้อมูล พจส. ในชีต")
+  return { sheetName, rows }
+}

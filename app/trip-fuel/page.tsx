@@ -6,7 +6,7 @@
  * แถวที่มีสัญญา → payroll ใช้ตัวเลขชุดนี้เป็น ค่าขนส่ง + ค่าเชื้อเพลิง อัตโนมัติ
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { Fuel, RefreshCw, Download, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ export default function TripFuelPage() {
   const [cfg, setCfg] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [savingCfg, setSavingCfg] = useState(false)
   const [msg, setMsg] = useState("")
   const [q, setQ] = useState("")
@@ -36,6 +37,28 @@ export default function TripFuelPage() {
     } finally { setLoading(false) }
   }, [month])
   useEffect(() => { load() }, [load])
+
+  async function uploadFile(f: File) {
+    setSyncing(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", f); fd.append("month", month); fd.append("action", "preview")
+      const r = await fetch("/api/import/trip-fuel", { method: "POST", body: fd })
+      const d = await r.json()
+      if (!r.ok) { alert(d.error ?? "อ่านไฟล์ไม่สำเร็จ"); return }
+      const t = d.totals
+      const msg = `ชีต: ${d.sheetName}\nพจส. ${t.drivers} คน · ${t.tripCount.toLocaleString()} เที่ยว\nค่าเที่ยวรวม ${t.tripFee.toLocaleString()} บาท\nหักน้ำมัน ${t.fuelDeduct.toLocaleString()} บาท (เกินเรต ${t.overMoney.toLocaleString()} / คืน ${t.underMoney.toLocaleString()})` +
+        (d.unmatched.length ? `\n\n⚠ จับคู่สัญญาไม่ได้ ${d.unmatched.length} คน: ${d.unmatched.slice(0, 8).join(", ")}${d.unmatched.length > 8 ? "…" : ""}` : "") +
+        `\n\nยืนยันแทนที่ข้อมูลเดือน ${month} ทั้งชุด?`
+      if (!window.confirm(msg)) return
+      const fd2 = new FormData()
+      fd2.append("file", f); fd2.append("month", month); fd2.append("action", "confirm")
+      const r2 = await fetch("/api/import/trip-fuel", { method: "POST", body: fd2 })
+      const d2 = await r2.json()
+      if (!r2.ok) { alert(d2.error ?? "นำเข้าไม่สำเร็จ"); return }
+      await load()
+    } finally { setSyncing(false) }
+  }
 
   async function sync() {
     setSyncing(true); setMsg("")
@@ -89,12 +112,15 @@ export default function TripFuelPage() {
         <div>
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">Payroll · เฟส 1</p>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2"><Fuel className="w-6 h-6 text-emerald-500" /> ค่าเที่ยว & เชื้อเพลิง</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">ดึงจาก BI (driverCost · รถร่วมมีนา · เฉพาะ Mixer) — ค่าเที่ยวล้วนตรงชีต “ค่าขนส่ง” (ดรอป/เงินเพิ่มแยกหมวดรับอื่นๆ) · แถวที่ผูกสัญญาแล้ว payroll ใช้เลขนี้อัตโนมัติ</p>
+          <p className="text-xs text-zinc-400 mt-0.5">อัปโหลดไฟล์ &quot;ค่าเที่ยว Mixer พจร.&quot; จากปฏิบัติการ (ชีตสรุปค่าเที่ยว) — ไฟล์คือแหล่งจริงของเดือน · payroll ใช้เลขนี้อัตโนมัติ</p>
         </div>
         <div className="flex items-center gap-2">
           <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-9 w-40 text-sm" />
-          <Button variant="outline" className="h-9 gap-1.5" disabled={syncing} onClick={sync}>
-            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "กำลังดึง..." : "ดึงจาก BI"}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = "" }} />
+          <Button className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={syncing}
+            onClick={() => fileRef.current?.click()}>
+            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "กำลังนำเข้า..." : "อัปโหลดไฟล์ค่าเที่ยว"}
           </Button>
           <button type="button" onClick={exportExcel}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg h-9 px-3 hover:bg-emerald-100">
