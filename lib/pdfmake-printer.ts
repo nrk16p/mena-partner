@@ -51,7 +51,26 @@ export async function renderPdfmake(docDefinition: any): Promise<Buffer> {
   })
 }
 
+// ── แก้ลำดับ สระอำ + วรรณยุกต์ ให้เรนเดอร์ถูก (fontkit ไม่ reorder ให้) ──
+// "ค้ำ" เก็บเป็น ค+้+ำ → ต้อง decompose เป็น ค+ํ+้+า (นิคหิตชิดพยัญชนะ วรรณยุกต์อยู่บนสุด)
+// ยืนยันด้วย GPOS mkmk ของ CordiaUPC แล้ว — ลำดับนี้ stack ถูกต้อง
+export function fixThaiMarks(s: string): string {
+  return s.replace(/([\u0E48-\u0E4B])ำ/g, "ํ$1า")
+}
+
 // ── ตัดคำไทยด้วย Intl.Segmenter → แทรก ZWSP ให้ pdfmake ขึ้นบรรทัดถูก ──
+// คำประสมที่ Intl.Segmenter แยกเป็นคำย่อยแล้วการตัดบรรทัดกลางคำทำให้อ่านเพี้ยน
+// เช่น "บอกกล่าวล่วง|หน้า", "สัญญาซื้อ|ขาย", "ผู้รับ|จ้าง" — ห้ามมีจุดตัดภายในคำเหล่านี้
+const COMPOUNDS = [
+  "ล่วงหน้า", "บอกกล่าว", "ซื้อขาย", "รับจ้าง", "ว่าจ้าง", "ค้ำประกัน",
+  "เช่าซื้อ", "ขับขี่", "นิติบุคคล", "ชดใช้",
+]
+// regex จับคำประสมที่อาจมี ZWSP คั่นระหว่างอักขระ (ZWSP ถูกแทรกเฉพาะรอยต่อ segment)
+const COMPOUND_RE = new RegExp(
+  COMPOUNDS.map((w) => w.split("").join("\u200B?")).join("|"),
+  "g"
+)
+
 const SEG = new Intl.Segmenter("th", { granularity: "word" })
 /** segment ข้อความไทยแทรก U+200B (เฉพาะข้อความไทย — ห้ามใช้กับเลข/ทะเบียนที่มี "-") */
 export function seg(s: string | null | undefined): string {
@@ -68,11 +87,11 @@ export function seg(s: string | null | undefined): string {
       .replace(/\u200B? \u200B?([ๆฯ])/g, "\u00A0$1")
       // "ผู้" เป็นคำนำหน้านาม (bound prefix) — ห้ามแยกจากคำถัดไป: ผู้ซื้อ/ผู้ขาย/ผู้ว่าจ้าง/ผู้รับจ้าง/ผู้ค้ำประกัน เกาะเป็นคำเดียว
       .replace(/ผู้\u200B/g, "ผู้")
-      // คำประสมหลักของสัญญา — ห้ามแตกกลางคำ (ค้ำ|ประกัน, ว่า|จ้าง)
-      .replace(/ค้ำ\u200Bประกัน/g, "ค้ำประกัน")
-      .replace(/ว่า\u200Bจ้าง/g, "ว่าจ้าง")
+      // คำประสมในสัญญาที่ตัวตัดคำแยกแล้วความหมายเพี้ยน — ลบจุดตัดภายในคำ (ดู COMPOUND_RE ด้านล่าง)
+      .replace(COMPOUND_RE, (m) => m.replace(/\u200B/g, ""))
       // วรรคในเครื่องหมายคำพูด “ ผู้ขาย ” → เกาะเป็นก้อนเดียวกับคำข้างใน ไม่มีเครื่องหมายโดดคนละบรรทัด
       .replace(/“\u200B? \u200B?/g, "“\u00A0")
       .replace(/\u200B? \u200B?”/g, "\u00A0”")
+      .replace(/([\u0E48-\u0E4B])ำ/g, "ํ$1า")
   )
 }

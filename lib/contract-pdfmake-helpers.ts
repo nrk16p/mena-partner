@@ -6,7 +6,7 @@
  *   ปรับ typography ระดับ law-firm — ห้ามแตะถ้อยคำสัญญา (แก้ได้เฉพาะ presentation)
  */
 import "server-only"
-import { seg } from "@/lib/pdfmake-printer"
+import { seg, fixThaiMarks } from "@/lib/pdfmake-printer"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -58,7 +58,7 @@ export const B = (txt: string) => ({ text: S(txt), bold: true })
  *  v(): โทเค็นสั้น (ทะเบียน/เลขบัตร/เลขบัญชี/เลขตัวถัง) ห้ามแตกกลางบรรทัด (pdfmake ตัดหลัง "-" ได้)
  *  — noWrap เฉพาะค่าสั้น ≤ 24 ตัวอักษร; ค่ายาว (เช่น รายการงวด "10, 20, 30...") ปล่อยตัดที่ช่องว่างตามปกติ */
 export const v = (x: string) => {
-  const t = x ?? ""
+  const t = fixThaiMarks(x ?? "")
   return { text: t, bold: true, ...(t.length > 0 && t.length <= 24 ? { noWrap: true } : {}) }
 }
 export const vS = (x: string) => ({ text: S(x), bold: true })
@@ -154,9 +154,15 @@ export function docShell(opts: { fileTitle: string; docTitle: string; contractCo
     info: { title: opts.fileTitle },
     header: runningHeader(opts.docTitle, opts.contractCode),
     footer: pageFooter(opts.contractCode),
-    // หัวข้อ (headlineLevel 1) ห้ามตกท้ายหน้าโดยไม่มีเนื้อหาตาม — ยกขึ้นหน้าใหม่
+    // กติกาแบ่งหน้าให้อ่านง่าย:
+    //  (1) หัวข้อ (headlineLevel 1) ห้ามตกท้ายหน้าโดยไม่มีเนื้อหาตาม
+    //  (2) ข้อสัญญา (clauseKeep) ที่เริ่มท้ายหน้ามาก (เหลือ < ~3 บรรทัด) → ยกทั้งข้อขึ้นหน้าใหม่
+    // หมายเหตุ: pageBreakBefore ได้ nodeInfo (เฉพาะ prop มาตรฐาน เช่น headlineLevel/startPosition)
+    // custom prop ถูกกรองทิ้ง — จึงใช้ headlineLevel: 2 แทน "ข้อสัญญา" (clause)
     pageBreakBefore: (node: any, followingNodesOnPage: any[]) =>
-      node.headlineLevel === 1 && followingNodesOnPage.length === 0,
+      (node.headlineLevel === 1 && followingNodesOnPage.length === 0) ||
+      ((node.headlineLevel === 1 || node.headlineLevel === 2) &&
+        (node.startPosition?.verticalRatio ?? 0) > 0.93),
     content: opts.content,
   }
 }

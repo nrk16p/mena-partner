@@ -13,7 +13,7 @@ const DOTS = "…………………………"
 
 // เลขข้อ (หนา นำหน้าเนื้อความ ไม่ขีดเส้นใต้ ตามต้นฉบับ) — เว้นระยะก่อนข้อเล็กน้อยให้จังหวะอ่านชัด
 const clause = (no: string, parts: any) =>
-  body([B(no + "  "), ...(Array.isArray(parts) ? parts : [S(parts)])], { margin: [0, 6, 0, 1.5] })
+  body([B(no + "  "), ...(Array.isArray(parts) ? parts : [S(parts)])], { margin: [0, 6, 0, 1.5], headlineLevel: 2 })
 
 // เซลล์ตารางแบบมีเส้นขอบ
 const th = (t: string) => ({ text: S(t), bold: true, alignment: "center", margin: [0, 1, 0, 1] })

@@ -9,7 +9,7 @@ import { S, COMPANY, body, B, sigCell, sigRow, v, vS, titleLine, headRule, docSh
 
 // ── clause ข้อ N: เว้นระยะก่อนหัวข้อเล็กน้อยให้อ่านง่ายและดูเป็นทางการ ──
 const clause = (num: string, parts: any[]) =>
-  body([B(`ข้อ ${num}. `), ...parts], { margin: [0, 6, 0, 1.5] })
+  body([B(`ข้อ ${num}. `), ...parts], { margin: [0, 6, 0, 1.5], headlineLevel: 2 })
 
 function content(c: Contract, promo: PromoMasterData | null): any[] {
   const d = guaranteeDocxData(c, promo)
