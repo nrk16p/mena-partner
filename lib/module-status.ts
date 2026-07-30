@@ -24,6 +24,8 @@ export const MODULE_STATUS: Record<string, ModuleStatus> = {
   "/trip-fuel":          "testing",
   // วันทำงาน พจร. (payroll เฟส 2) — กำลังทดสอบ
   "/attendance":         "testing",
+  // รับ-หักอื่นๆ (payroll เฟส 4) — กำลังทดสอบ
+  "/payroll-extras":     "testing",
   // ที่เหลือ (เที่ยววิ่ง · เงินเดือน · รายการปรับปรุง · รายงาน · นำเข้า Excel · จัดการรอบเดือน) = dev
 }
 

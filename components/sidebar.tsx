@@ -42,6 +42,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     items: [
       { href: "/trip-fuel", label: "ค่าเที่ยว & เชื้อเพลิง", icon: Fuel },
       { href: "/attendance", label: "วันทำงาน พจร.", icon: CalendarCheck },
+      { href: "/payroll-extras", label: "รับ-หักอื่นๆ", icon: SlidersHorizontal },
       { href: "/payroll", label: "เงินเดือน", icon: Banknote },
       { href: "/driver-ledger", label: "หนี้สิน & เงินสะสม", icon: HandCoins },
       { href: "/adjustments", label: "รายการปรับปรุง", icon: SlidersHorizontal },

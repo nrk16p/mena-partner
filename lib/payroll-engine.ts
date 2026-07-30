@@ -105,10 +105,17 @@ export async function calculatePayrollEntry(
   const mgmtFee8pct   = (repairRec?.managementFee as number) ?? 0
 
   const ot               = (adjRec?.ot as number) ?? 0
-  const otherIncomeWHT   = (adjRec?.otherIncomeWHT as number) ?? 0
-  const otherIncomeNoWHT = (adjRec?.otherIncomeNoWHT as number) ?? 0
-  const otherDeductWHT   = (adjRec?.otherDeductWHT as number) ?? 0
-  const otherDeductNoWHT = (adjRec?.otherDeductNoWHT as number) ?? 0
+
+  // เฟส 4: รายการรับ-หักมีชื่อ (payroll_extras) — บวกเข้า 4 ช่องเดิมตาม kind+wht
+  const extras = await db.collection("payroll_extras").find({ month, contractCode }).toArray()
+  const exSum = (kind: string, wht: boolean) =>
+    Math.round(extras.filter((e) => e.kind === kind && !!e.wht === wht)
+      .reduce((s, e) => s + ((e.amount as number) ?? 0), 0) * 100) / 100
+
+  const otherIncomeWHT   = (((adjRec?.otherIncomeWHT as number) ?? 0) + exSum("income", true))
+  const otherIncomeNoWHT = (((adjRec?.otherIncomeNoWHT as number) ?? 0) + exSum("income", false))
+  const otherDeductWHT   = (((adjRec?.otherDeductWHT as number) ?? 0) + exSum("deduct", true))
+  const otherDeductNoWHT = (((adjRec?.otherDeductNoWHT as number) ?? 0) + exSum("deduct", false))
   const downPaymentInstallment = 0
 
   // ledger กลาง (หนี้/เงินสะสม พขร.) — ยอดหักของเดือนนี้ตาม balance ปัจจุบัน
