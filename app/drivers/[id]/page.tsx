@@ -645,6 +645,20 @@ export default function DriverDetailPage() {
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                 <EditField label="รหัสพนักงาน">
                   <Input value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className={inputCls} placeholder="EMP-001" />
+                  {/* พนักงานขับรถที่ไม่ใช่เจ้าของรถ → รหัสอิงสัญญาที่ไปวิ่งงานให้ (เช่น MTM145-01) */}
+                  {form.isDriver && !form.isTruckOwner && form.contractCode.trim() !== "" && (
+                    <button
+                      type="button"
+                      className="mt-1 text-[11px] font-semibold text-emerald-600 hover:underline"
+                      onClick={async () => {
+                        const r = await fetch(`/api/drivers/next-code?contractCode=${encodeURIComponent(form.contractCode.trim())}`)
+                        const d = r.ok ? await r.json() : null
+                        if (d?.code) set("staffCode", d.code)
+                      }}
+                    >
+                      ใช้รหัสจากสัญญา ({form.contractCode.trim()}-01…)
+                    </button>
+                  )}
                 </EditField>
                 <EditField label="รหัสสัญญา" hint="ซ้ำกับพนักงานคนอื่นได้">
                   <Input value={form.contractCode} onChange={(e) => set("contractCode", e.target.value)} className={`${inputCls} font-mono`} placeholder="MTM145" />

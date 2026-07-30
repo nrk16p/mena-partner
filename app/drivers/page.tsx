@@ -254,6 +254,20 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">รหัสพนักงาน <span className="text-zinc-300">(auto)</span></label>
               <Input placeholder="MTM192" value={form.staffCode} onChange={(e) => set("staffCode", e.target.value)} className="h-9 text-sm font-mono" />
+              {/* พนักงานขับรถที่ไม่ใช่เจ้าของรถ → รหัสอิงสัญญาที่ไปวิ่งงานให้ (เช่น MTM145-01) */}
+              {form.isDriver && !form.isTruckOwner && form.contractCode.trim() !== "" && (
+                <button
+                  type="button"
+                  className="mt-1 text-[11px] font-semibold text-emerald-600 hover:underline"
+                  onClick={async () => {
+                    const r = await fetch(`/api/drivers/next-code?contractCode=${encodeURIComponent(form.contractCode.trim())}`)
+                    const d = r.ok ? await r.json() : null
+                    if (d?.code) set("staffCode", d.code)
+                  }}
+                >
+                  ใช้รหัสจากสัญญา ({form.contractCode.trim()}-01…)
+                </button>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1.5">รหัสสัญญา</label>
