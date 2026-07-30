@@ -72,7 +72,7 @@ export function saleDocxData(c: Contract, promo: PromoMasterData | null): Record
     chassisNumber: s(c.chassisNumber),
     engineNumber: s(c.engineNumber),
     engineSize: s(c.engineSize),
-    mileage: c.mileage ? money(c.mileage) : "-",
+    mileage: c.mileage ? money(c.mileage) : DOTS, // ว่าง = เส้นประให้เติมมือ (เหมือนช่องอื่น)
     // ข้อ 2 price
     totalPrice: m(c.totalPrice),
     totalPriceText: bt(c.totalPrice),
