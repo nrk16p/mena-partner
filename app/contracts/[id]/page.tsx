@@ -93,7 +93,7 @@ export default function ContractDetailPage() {
   const { id }             = useParams<{ id: string }>()
   const router             = useRouter()
   const { data: session }  = useSession()
-  const isAdmin            = session?.user?.role === "admin"
+  const isAdmin            = ["admin", "superadmin"].includes(session?.user?.role ?? "")
   const [form, setForm]    = useState<Contract | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]  = useState(false)
@@ -655,6 +655,45 @@ export default function ContractDetailPage() {
       )}
 
       {/* ภาษี & ประกันภัย — ย้ายไปจัดการตามทะเบียนรถที่ /insurance-tax (การ์ดนี้ read-only) */}
+      {/* 🔒 ล็อคสัญญา — ล็อคแล้วห้ามแก้ทุกคนจนกว่าแอดมินจะปลด */}
+      {step === 0 && (
+        <div className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+          form.locked
+            ? "border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30"
+            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+        }`}>
+          <div className="text-xs">
+            {form.locked ? (
+              <span className="font-semibold text-amber-700 dark:text-amber-300">
+                🔒 สัญญาถูกล็อคโดย {form.locked.by} เมื่อ {new Date(form.locked.at).toLocaleDateString("th-TH")} — แก้ไข/แนบไฟล์ไม่ได้จนกว่าจะปลดล็อค
+              </span>
+            ) : (
+              <span className="text-zinc-500">สัญญายังไม่ถูกล็อค — แอดมินล็อคได้เพื่อกันการแก้ไข</span>
+            )}
+          </div>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={async () => {
+                const r = await fetch(`/api/contracts/${id}/lock`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ locked: !form.locked }),
+                })
+                if (r.ok) reloadContract()
+                else setError((await r.json().catch(() => ({}))).error ?? "ล็อคไม่สำเร็จ")
+              }}
+              className={`shrink-0 text-xs font-semibold rounded-lg px-3 py-1.5 border ${
+                form.locked
+                  ? "text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300"
+                  : "text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300"
+              }`}
+            >
+              {form.locked ? "🔓 ปลดล็อค" : "🔒 ล็อคสัญญา"}
+            </button>
+          )}
+        </div>
+      )}
       {step === 0 && <InsuranceTaxCard plate={form.licensePlate} />}
       {step === 0 && <ContractAttachments contractId={id} />}
 

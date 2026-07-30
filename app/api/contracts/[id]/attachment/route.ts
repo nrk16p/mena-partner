@@ -51,6 +51,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const client = await clientPromise
   const col = client.db(DB).collection(COLL)
 
+  // สัญญาที่ถูกล็อค — ห้ามแนบ/ลบไฟล์จนกว่าจะปลดล็อค
+  const existing = await col.findOne({ _id: new ObjectId(id) }, { projection: { locked: 1 } })
+  if (existing?.locked) {
+    return NextResponse.json({ error: "สัญญาถูกล็อค — ปลดล็อคก่อนจึงจะแก้ไฟล์แนบได้" }, { status: 423 })
+  }
+
   const before = await col.findOne(
     { _id: new ObjectId(id) }, { projection: { contractCode: 1, [field]: 1 } },
   )

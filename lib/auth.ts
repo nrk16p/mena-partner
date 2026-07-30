@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
-import { isAdmin } from "./roles"
+import { resolveRole } from "./roles"
 
 const ALLOWED_DOMAIN = "menatransport.co.th"
 
@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
       if (account) {
         token.email = token.email ?? (profile as { email?: string })?.email
       }
-      token.role = isAdmin(token.email as string) ? "admin" : "viewer"
+      token.role = await resolveRole(token.email as string)
       return token
     },
     async session({ session, token }) {

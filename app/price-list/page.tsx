@@ -363,7 +363,7 @@ const STATUS_TABS = [
 
 export default function PriceListPage() {
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const [rows,    setRows]    = useState<PriceRow[]>([])
   const [loading, setLoading] = useState(true)

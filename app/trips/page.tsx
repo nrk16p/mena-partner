@@ -129,7 +129,7 @@ export default function TripsPage() {
             )}
           </p>
         </div>
-        {session?.user?.role === "admin" && (
+        {["admin", "superadmin"].includes(session?.user?.role ?? "") && (
           <div className="flex gap-2">
             {items.length > 0 && (
               <button
@@ -240,14 +240,14 @@ export default function TripsPage() {
                 <th className="px-2.5 py-2 text-left">แพล้นท์</th>
                 <th className="px-2.5 py-2 text-left">ปลายทาง / จังหวัด</th>
                 <th className="px-2.5 py-2 text-right">ค่าเที่ยว</th>
-                {session?.user?.role === "admin" && <th className="px-2.5 py-2" />}
+                {["admin", "superadmin"].includes(session?.user?.role ?? "") && <th className="px-2.5 py-2" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {loading ? (
-                <tr><td colSpan={session?.user?.role === "admin" ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
+                <tr><td colSpan={["admin", "superadmin"].includes(session?.user?.role ?? "") ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">กำลังโหลด...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={session?.user?.role === "admin" ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
+                <tr><td colSpan={["admin", "superadmin"].includes(session?.user?.role ?? "") ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">ไม่พบข้อมูล</td></tr>
               ) : pg.paged.map((t) => (
                 <tr key={t._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                   {/* วันที่ */}
@@ -271,7 +271,7 @@ export default function TripsPage() {
                   {/* ค่าเที่ยว */}
                   <td className="px-2.5 py-2 align-top text-right tabular-nums whitespace-nowrap">{formatMoney(t.tripFee)}</td>
 
-                  {session?.user?.role === "admin" && (
+                  {["admin", "superadmin"].includes(session?.user?.role ?? "") && (
                     <td className="px-2.5 py-2 align-top text-right">
                       <div className="flex items-center justify-end gap-2.5">
                         <Link href={`/trips/${t._id}`} className="text-xs text-zinc-500 hover:underline">แก้ไข</Link>

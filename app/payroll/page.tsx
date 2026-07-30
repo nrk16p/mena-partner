@@ -14,7 +14,7 @@ import { useSession } from "next-auth/react"
 export default function PayrollPage() {
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const [months, setMonths]     = useState<string[]>([])
   const [month, setMonth]       = useState<string | null>(null)

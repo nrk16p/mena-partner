@@ -342,7 +342,7 @@ export default function NewContractPage() {
     }
   }
 
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
   const priceRow = prices.find((p) => p.licensePlate === form.licensePlate.trim())
 
   // ── live preview: ใช้เกณฑ์/เอกสารชุดเดียวกับหน้าแก้ไขสัญญา ──

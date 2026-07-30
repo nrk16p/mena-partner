@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
+import { hasPerm } from "@/lib/rbac"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "contracts"
@@ -39,6 +40,26 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const now    = new Date().toISOString()
 
   const before = await col.findOne({ _id: new ObjectId(id) })
+  if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  // ── สัญญาที่ถูกล็อค: ห้ามแก้ทุกกรณี จนกว่า admin จะปลดล็อค (ผ่าน endpoint /lock) ──
+  if (before.locked) {
+    return NextResponse.json(
+      { error: `สัญญาถูกล็อคโดย ${before.locked.by ?? "แอดมิน"} — ปลดล็อคก่อนจึงจะแก้ไขได้` },
+      { status: 423 }
+    )
+  }
+
+  const session0 = await getServerSession(authOptions)
+  const role = (session0?.user as { role?: string } | undefined)?.role
+
+  // ── ยกเลิกสัญญา (status → terminated) = สิทธิ์ระดับแอดมินเท่านั้น ──
+  if (update.status === "terminated" && before.status !== "terminated" && !hasPerm(role, "cancel_contract")) {
+    return NextResponse.json({ error: "ยกเลิกสัญญาได้เฉพาะแอดมิน" }, { status: 403 })
+  }
+
+  // ห้ามแก้ field ล็อคผ่าน PUT (ต้องผ่าน endpoint /lock ที่เช็คสิทธิ์แยก)
+  delete (update as Record<string, unknown>).locked
 
   const result = await col.findOneAndUpdate(
     { _id: new ObjectId(id) },

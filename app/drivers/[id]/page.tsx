@@ -248,7 +248,7 @@ export default function DriverDetailPage() {
   const { id }     = useParams<{ id: string }>()
   const router     = useRouter()
   const { data: session } = useSession()
-  const isAdmin    = session?.user?.role === "admin"
+  const isAdmin    = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const [driver, setDriver]     = useState<Driver | null>(null)
   const [contract, setContract] = useState<Contract | null>(null)

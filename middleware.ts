@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
+import { domainOfApiPath, hasPerm, isAdminRole, canUpload } from "@/lib/rbac"
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
 
@@ -24,16 +25,34 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Write routes: admin only — ยกเว้นเส้นทางที่อนุญาตให้ user ทั่วไปเขียนได้
-  // (price-list: เพิ่ม/แก้ราคา + สถานะความพร้อมขาย — ตามข้อกำหนด 2026-07-15)
-  const userWritable =
-    pathname.startsWith("/api/price-list") ||
-    // สถานะความคืบหน้าโมดูล (ติ๊กข้อมูลครบ/วันคาดเสร็จ ในหน้าแรก) — ทุกคนที่ login แก้ได้
-    pathname.startsWith("/api/module-status") ||
-    // จัดการไฟล์แนบสัญญา (แนบ/ลบ) — เฉพาะ endpoint attachment ไม่ใช่แก้ข้อมูลสัญญา
-    (pathname.startsWith("/api/contracts/") && pathname.endsWith("/attachment"))
-  if (!READ_METHODS.has(request.method) && token.role !== "admin" && !userWritable) {
-    return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 })
+  // ── เขียน (non-GET): เช็คสิทธิ์ตาม RBAC matrix (lib/rbac.ts) ──
+  if (!READ_METHODS.has(request.method) && pathname.startsWith("/api/")) {
+    const role = (token.role as string) ?? "viewer"
+
+    // team tracker หน้าแรก — ทุกคนที่ login ติ๊กได้ (พฤติกรรมเดิม)
+    if (pathname.startsWith("/api/module-status")) return NextResponse.next()
+
+    // อัปโหลดไฟล์ — ทุกบทบาทที่มีสิทธิ์เขียนอย่างน้อยหนึ่งโดเมน
+    if (pathname.startsWith("/api/upload")) {
+      return canUpload(role)
+        ? NextResponse.next()
+        : NextResponse.json({ error: "Forbidden — ไม่มีสิทธิ์อัปโหลด" }, { status: 403 })
+    }
+
+    // ลบข้อมูล = admin ขึ้นไปเท่านั้น (ทุก endpoint)
+    if (request.method === "DELETE" && !isAdminRole(role)) {
+      return NextResponse.json({ error: "Forbidden — ลบข้อมูลได้เฉพาะแอดมิน" }, { status: 403 })
+    }
+
+    const domain = domainOfApiPath(pathname)
+    if (domain === null) {
+      // path ที่ไม่อยู่ใน map = default-closed (admin ขึ้นไป)
+      if (!isAdminRole(role)) {
+        return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 })
+      }
+    } else if (!hasPerm(role, domain)) {
+      return NextResponse.json({ error: "Forbidden — ไม่มีสิทธิ์ในส่วนนี้" }, { status: 403 })
+    }
   }
 
   return NextResponse.next()

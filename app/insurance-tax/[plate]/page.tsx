@@ -18,7 +18,7 @@ export default function InsuranceTaxPlatePage() {
   const { plate } = useParams<{ plate: string }>()
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const plateKey = decodeURIComponent(plate ?? "")
   const [row, setRow] = useState<Row | null | undefined>(undefined) // undefined = กำลังโหลด

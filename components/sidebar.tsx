@@ -85,7 +85,8 @@ function NavLink({ href, label, icon: Icon, active }: {
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const role = session?.user?.role ?? ""
+  const isAdmin = ["admin", "superadmin"].includes(role)
 
   const initial = (session?.user?.email ?? session?.user?.name ?? "?")[0].toUpperCase()
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
@@ -130,6 +131,9 @@ export function Sidebar() {
               {ADMIN_NAV.map((item) => (
                 <NavLink key={item.href} {...item} active={isActive(item.href)} />
               ))}
+              {role === "superadmin" && (
+                <NavLink href="/admin/users" label="ผู้ใช้ & สิทธิ์" icon={Users} active={isActive("/admin/users")} />
+              )}
             </div>
           </div>
         )}

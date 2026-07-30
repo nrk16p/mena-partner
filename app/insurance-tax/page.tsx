@@ -23,7 +23,7 @@ import {
 function InsuranceTaxContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const [items, setItems]   = useState<Row[]>([])
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS)

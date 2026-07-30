@@ -198,7 +198,7 @@ export default function ContractsPage() {
               <Download className="w-3.5 h-3.5" /> Excel
             </button>
           )}
-          {session?.user?.role === "admin" && (
+          {["admin", "superadmin"].includes(session?.user?.role ?? "") && (
             <Link href="/contracts/new">
               <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
                 <PlusCircle className="w-4 h-4 mr-1.5" /> เพิ่มสัญญา
@@ -310,6 +310,7 @@ export default function ContractsPage() {
                     >
                       {c.contractCode}
                     </Link>
+                    {c.locked && <span title={`ล็อคโดย ${c.locked.by}`} className="ml-1 text-[11px]">🔒</span>}
                     <div className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[180px]" title={c.buyerName}>{c.buyerName}</div>
                     {c.driverName && c.driverName !== c.buyerName && (
                       <div className="text-[10px] text-zinc-400 truncate max-w-[180px]" title={c.driverName}>{c.driverName}</div>

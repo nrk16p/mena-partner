@@ -47,7 +47,7 @@ const PHASE_ICON: Record<Phase, React.ReactNode> = {
 
 export default function AdminMonthPage() {
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const [statuses, setStatuses]       = useState<MonthStatus[]>([])
   const [payrollMonths, setPayrollMonths] = useState<string[]>([])

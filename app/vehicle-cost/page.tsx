@@ -2022,7 +2022,7 @@ const PAGE_TABS: { id: PageTab; label: string }[] = [
 
 export default function VehicleCostPage() {
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
   const [tab,       setTab]       = useState<PageTab>("cost")
   const [contracts, setContracts] = useState<Contract[]>([])
   const [initialQ,  setInitialQ]  = useState("")

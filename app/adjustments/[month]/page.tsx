@@ -28,7 +28,7 @@ interface Driver {
 export default function AdjustmentsPage() {
   const { month } = useParams<{ month: string }>()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
 
   const [drivers, setDrivers]         = useState<Driver[]>([])
   const [adjustments, setAdjustments] = useState<Record<string, Adjustment>>({})

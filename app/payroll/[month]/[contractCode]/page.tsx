@@ -44,7 +44,7 @@ export default function PayrollEntryPage() {
   const { month, contractCode } = useParams<{ month: string; contractCode: string }>()
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin"
+  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
   const [form, setForm]     = useState<NumericFields & { workingDays: number; tripCount: number }>({
     workingDays: 0, tripCount: 0, ...ZERO_ENTRY,
   })
