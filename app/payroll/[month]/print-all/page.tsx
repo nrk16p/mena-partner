@@ -44,6 +44,8 @@ type Row = {
   carryIn?: number
   payable?: number
   carryOut?: number
+  whtAmount?: number
+  paidNet?: number
 }
 
 const INCOME_FIELDS: { key: keyof Row; label: string }[] = [
@@ -100,6 +102,8 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
   const carryIn  = row.carryIn  ?? 0
   const carryOut = row.carryOut ?? 0
   const payable  = row.payable  ?? row.netPay
+  const wht      = row.whtAmount ?? 0
+  const paidNet  = row.paidNet ?? r2(Math.max(0, payable) - wht)
 
   return (
     <div className="payslip bg-white p-8 max-w-full">
@@ -195,12 +199,14 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
         </span>
       </div>
 
-      {(carryIn !== 0 || carryOut !== 0) && (
+      {(carryIn !== 0 || carryOut !== 0 || wht > 0) && (
         <div className="mt-2 border border-zinc-200 rounded-lg px-4 py-2 text-xs space-y-0.5">
           <div className="flex justify-between text-zinc-600"><span>เงินได้สุทธิงวดนี้</span><span>{formatMoney(row.netPay)}</span></div>
           {carryIn !== 0 && <div className="flex justify-between text-red-600"><span>หัก หนี้ยกมาจากงวดก่อน</span><span>−{formatMoney(carryIn)}</span></div>}
           <div className="flex justify-between border-t border-zinc-200 pt-0.5 font-semibold"><span>ยอดจ่ายจริงงวดนี้</span><span>{formatMoney(payable > 0 ? payable : 0)}</span></div>
           {carryOut > 0 && <div className="flex justify-between text-red-600"><span>หนี้ยกไปงวดถัดไป</span><span className="font-semibold">{formatMoney(carryOut)}</span></div>}
+          {wht > 0 && <div className="flex justify-between text-zinc-600"><span>หักภาษี ณ ที่จ่าย 3%</span><span>−{formatMoney(wht)}</span></div>}
+          {wht > 0 && <div className="flex justify-between border-t border-zinc-300 pt-0.5 font-bold"><span>ยอดโอนสุทธิ</span><span>{formatMoney(paidNet)}</span></div>}
         </div>
       )}
 

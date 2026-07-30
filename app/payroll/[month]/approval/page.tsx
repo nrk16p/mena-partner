@@ -30,7 +30,7 @@ type Brief = { contractCode: string; driverName: string; netPay: number; totalIn
 interface Summary {
   month: string; phase: Phase
   history: { phase: Phase; by: string; at: string; note?: string; action: string }[]
-  totals: { drivers: number; income: number; deductions: number; netPay: number; payable: number; carryIn: number; carryOut: number; trips: number; fuel: number }
+  totals: { drivers: number; income: number; deductions: number; netPay: number; payable: number; carryIn: number; carryOut: number; trips: number; fuel: number; wht: number; paidNet: number }
   prev: { drivers: number; income: number; netPay: number }
   mom: { income: number | null; netPay: number | null }
   plants: { plant: string; drivers: number; income: number; netPay: number }[]
@@ -63,7 +63,7 @@ export default function ApprovalPage() {
       if (!note) return
     } else {
       const msg = s.phase === "submitted"
-        ? `ยืนยันอนุมัติจ่ายเงินเดือนงวด ${formatMonth(month)}\nจ่ายจริงรวม ${formatMoney(s.totals.payable)} บาท (${s.totals.drivers} คน)?`
+        ? `ยืนยันอนุมัติจ่ายเงินเดือนงวด ${formatMonth(month)}\nโอนสุทธิรวม ${formatMoney(s.totals.paidNet)} บาท (${s.totals.drivers} คน · หัก WHT ${formatMoney(s.totals.wht)})?`
         : `ยืนยัน: ${NEXT_LABEL[s.phase]}?`
       if (!window.confirm(msg)) return
     }
@@ -120,7 +120,8 @@ export default function ApprovalPage() {
         <Card label="รายรับรวม" value={formatMoney(s.totals.income)} sub={momText(s.mom.income)} good />
         <Card label="รายหักรวม" value={formatMoney(s.totals.deductions)} sub={`น้ำมันสุทธิ ${formatMoney(s.totals.fuel)}`} />
         <Card label="สุทธิงวดนี้" value={formatMoney(s.totals.netPay)} sub={momText(s.mom.netPay)} />
-        <Card label="ยอดจ่ายจริง" value={formatMoney(s.totals.payable)} sub={`ยกไปงวดหน้า ${formatMoney(s.totals.carryOut)}`} strong />
+        <Card label="ยอดโอนสุทธิ (หลัง WHT)" value={formatMoney(s.totals.paidNet)}
+          sub={`WHT 3% ${formatMoney(s.totals.wht)} · ยกไปงวดหน้า ${formatMoney(s.totals.carryOut)}`} strong />
       </div>
 
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</div>}
@@ -142,6 +143,9 @@ export default function ApprovalPage() {
         <a href={`/payroll/${month}/print-all`} className="flex items-center gap-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm px-4 py-2.5 rounded-lg">
           <FileDown className="w-4 h-4" /> สลิปทั้งงวด
         </a>
+        <Link href={`/payroll/${month}/compare`} className="flex items-center gap-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm px-4 py-2.5 rounded-lg">
+          ⚖ เทียบไฟล์ (Parallel)
+        </Link>
         <Link href="/payroll/sop" className="text-xs text-zinc-400 hover:text-zinc-600 underline ml-auto">SOP/WI การปิดงวด →</Link>
       </div>
 

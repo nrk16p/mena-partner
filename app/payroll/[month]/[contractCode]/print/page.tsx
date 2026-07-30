@@ -96,6 +96,8 @@ export default function PrintPayslipPage() {
   const carryIn  = entry.carryIn  ?? 0
   const carryOut = entry.carryOut ?? 0
   const payable  = entry.payable  ?? entry.netPay
+  const wht      = entry.whtAmount ?? 0
+  const paidNet  = entry.paidNet ?? r2(Math.max(0, payable) - wht)
 
   return (
     <div>
@@ -232,7 +234,7 @@ export default function PrintPayslipPage() {
         </div>
 
         {/* หนี้ยกยอด — โชว์เมื่อมีบรรทัดใดไม่เป็นศูนย์ */}
-        {(carryIn !== 0 || carryOut !== 0) && (
+        {(carryIn !== 0 || carryOut !== 0 || wht > 0) && (
           <div className="mt-3 border border-zinc-200 rounded-xl px-6 py-3 text-sm space-y-1">
             <div className="flex justify-between text-zinc-600">
               <span>เงินได้สุทธิงวดนี้</span>
@@ -253,6 +255,18 @@ export default function PrintPayslipPage() {
                 <span>หนี้ยกไปงวดถัดไป</span>
                 <span className="font-semibold">{formatMoney(carryOut)}</span>
               </div>
+            )}
+            {wht > 0 && (
+              <>
+                <div className="flex justify-between text-zinc-600">
+                  <span>หักภาษี ณ ที่จ่าย 3%</span>
+                  <span className="font-medium">−{formatMoney(wht)}</span>
+                </div>
+                <div className="flex justify-between border-t border-zinc-300 pt-1 text-base font-bold">
+                  <span>ยอดโอนสุทธิ</span>
+                  <span>{formatMoney(paidNet)}</span>
+                </div>
+              </>
             )}
           </div>
         )}

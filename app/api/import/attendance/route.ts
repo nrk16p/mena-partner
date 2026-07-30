@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { parseAttendanceSheet, ATT_COLL } from "@/lib/attendance"
 import { plateContractMap } from "@/lib/trip-fuel"
 
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
   }
 
   // confirm — ทับข้อมูลเดือนนี้ทั้งชุด (ไฟล์คือ source of truth ของเดือน)
+  if (await monthClosed(db, month)) return NextResponse.json(closedError(month), { status: 423 })
   const session = await getServerSession(authOptions)
   const now = new Date().toISOString()
   await db.collection(ATT_COLL).deleteMany({ month })

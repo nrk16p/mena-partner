@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { calculatePayrollEntry } from "@/lib/payroll-engine"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
@@ -42,6 +43,10 @@ export async function PUT(req: NextRequest) {
 
   if (!contractCode || !month) {
     return NextResponse.json({ error: "contractCode and month required" }, { status: 400 })
+  }
+  {
+    const client = await clientPromise
+    if (await monthClosed(client.db(DB), month)) return NextResponse.json(closedError(month), { status: 423 })
   }
 
   const client = await clientPromise

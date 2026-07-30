@@ -214,6 +214,9 @@ export interface PayrollEntry extends PayrollIncomeFields, PayrollDeductionField
   carryIn?: number              // หนี้ยกมาจากงวดก่อน
   payable?: number              // ยอดจ่ายจริง = netPay − carryIn
   carryOut?: number             // หนี้ยกไปงวดหน้า
+  whtBase?: number              // ฐานภาษีหัก ณ ที่จ่าย
+  whtAmount?: number            // WHT 3%
+  paidNet?: number              // ยอดโอนสุทธิหลัง WHT
   createdAt?: string
   updatedAt?: string
 }

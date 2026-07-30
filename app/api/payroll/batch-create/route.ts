@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { calculatePayrollEntry } from "@/lib/payroll-engine"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
 
   const client = await clientPromise
   const db     = client.db(DB)
+  if (await monthClosed(db, month)) return NextResponse.json(closedError(month), { status: 423 })
 
   // 1. All active drivers
   const drivers = await db.collection("drivers").find({ status: "active" }).toArray()

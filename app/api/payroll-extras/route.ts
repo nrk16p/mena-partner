@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { EXTRA_TYPE_MAP } from "@/lib/payroll-extras"
 import { normPlate } from "@/lib/promo-usage"
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
 
   const client = await clientPromise
   const db = client.db(DB)
+  if (await monthClosed(db, month)) return NextResponse.json(closedError(month), { status: 423 })
   const session = await getServerSession(authOptions)
   const now = new Date().toISOString()
   const by = session?.user?.email ?? "unknown"
@@ -98,6 +100,8 @@ export async function PATCH(req: NextRequest) {
   if (body.wht !== undefined) $set.wht = !!body.wht
   if (body.note !== undefined) $set.note = String(body.note).trim() || null
   const client = await clientPromise
+  const _doc = await client.db(DB).collection(COLL).findOne({ _id: new ObjectId(body.id) }, { projection: { month: 1 } })
+  if (_doc && await monthClosed(client.db(DB), _doc.month as string)) return NextResponse.json(closedError(_doc.month as string), { status: 423 })
   await client.db(DB).collection(COLL).updateOne({ _id: new ObjectId(body.id) }, { $set })
   return NextResponse.json({ ok: true })
 }
@@ -108,10 +112,14 @@ export async function DELETE(req: NextRequest) {
   const client = await clientPromise
   const col = client.db(DB).collection(COLL)
   if (body.importBatch) {
+    const _b = await col.findOne({ importBatch: String(body.importBatch) }, { projection: { month: 1 } })
+    if (_b && await monthClosed(client.db(DB), _b.month as string)) return NextResponse.json(closedError(_b.month as string), { status: 423 })
     const r = await col.deleteMany({ importBatch: String(body.importBatch) })
     return NextResponse.json({ ok: true, deleted: r.deletedCount })
   }
   if (!body.id || !ObjectId.isValid(body.id)) return NextResponse.json({ error: "id required" }, { status: 400 })
+  const _d = await col.findOne({ _id: new ObjectId(body.id) }, { projection: { month: 1 } })
+  if (_d && await monthClosed(client.db(DB), _d.month as string)) return NextResponse.json(closedError(_d.month as string), { status: 423 })
   await col.deleteOne({ _id: new ObjectId(body.id) })
   return NextResponse.json({ ok: true })
 }

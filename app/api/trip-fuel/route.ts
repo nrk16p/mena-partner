@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { TF_COLL, TF_CONFIG, DEFAULT_CONFIG, aggregateFromBI, computeRow, plateContractMap, type TripFuelConfig } from "@/lib/trip-fuel"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
@@ -36,6 +37,7 @@ export async function PUT(req: NextRequest) {
   if (!MONTH_RE.test(month)) return NextResponse.json({ error: "month required" }, { status: 400 })
   const client = await clientPromise
   const db = client.db(DB)
+  if (await monthClosed(db, month)) return NextResponse.json(closedError(month), { status: 423 })
   const cfg: TripFuelConfig = { ...DEFAULT_CONFIG, ...(await getConfig(db, month)), ...body, month }
   const { month: _m, ...cfgSet } = cfg as any
   void _m
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
   const client = await clientPromise
   const db = client.db(DB)
+  if (await monthClosed(db, month!)) return NextResponse.json(closedError(month!), { status: 423 })
   const cfg = await getConfig(db, month!)
   const [agg, pMap, existing] = await Promise.all([
     aggregateFromBI(client, month!),
@@ -104,6 +107,7 @@ export async function PATCH(req: NextRequest) {
   const db = client.db(DB)
   const row = await db.collection(TF_COLL).findOne({ _id: new ObjectId(id) })
   if (!row) return NextResponse.json({ error: "not found" }, { status: 404 })
+  if (await monthClosed(db, row.month as string)) return NextResponse.json(closedError(row.month as string), { status: 423 })
   const cfg = await getConfig(db, row.month as string)
   const editable = ["dieselCarryIn", "dieselCarryOut", "ngvCarryIn", "ngvCarryOut", "contractCode", "notes"] as const
   const patch: any = {}

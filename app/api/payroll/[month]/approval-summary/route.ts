@@ -41,6 +41,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ mon
     carryOut:   r2(entries.reduce((s, e) => s + num(e.carryOut), 0)),
     trips:      entries.reduce((s, e) => s + num(e.tripCount), 0),
     fuel:       r2(entries.reduce((s, e) => s + num(e.fuel) + num(e.fuelOverCharge) - num(e.fuelUnderRefund), 0)),
+    wht:        r2(entries.reduce((s, e) => s + num(e.whtAmount), 0)),
+    paidNet:    r2(entries.reduce((s, e) => s + (typeof e.paidNet === "number" ? (e.paidNet as number) : Math.max(0, num(e.payable ?? e.netPay)) - num(e.whtAmount)), 0)),
   }
   const prev = {
     drivers: prevEntries.length,

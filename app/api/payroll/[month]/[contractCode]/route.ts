@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { computePayroll } from "@/lib/utils"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
@@ -25,6 +26,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const now    = new Date().toISOString()
 
   const client = await clientPromise
+  if (await monthClosed(client.db(DB), month)) return NextResponse.json(closedError(month), { status: 423 })
   const col    = client.db(DB).collection(COLL)
 
   const result = await col.findOneAndUpdate(
@@ -38,6 +40,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const { month, contractCode } = await params
   const client = await clientPromise
+  if (await monthClosed(client.db(DB), month)) return NextResponse.json(closedError(month), { status: 423 })
   const col    = client.db(DB).collection(COLL)
   const result = await col.deleteOne({ month, contractCode })
   if (result.deletedCount === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })

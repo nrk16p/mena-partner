@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
+import { monthClosed, closedError } from "@/lib/month-lock"
 import { TF_COLL, parseTripSummarySheet } from "@/lib/trip-fuel"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   // confirm — แทนที่ทั้งเดือน
+  if (await monthClosed(db, month)) return NextResponse.json(closedError(month), { status: 423 })
   const session = await getServerSession(authOptions)
   const now = new Date().toISOString()
   await db.collection(TF_COLL).deleteMany({ month })

@@ -39,6 +39,9 @@ export interface PayrollResult {
   carryIn: number             // หนี้ยกมาจากเดือนก่อน
   payable: number             // ยอดจ่ายจริง = netPay − carryIn
   carryOut: number            // หนี้ยกไปเดือนหน้า (payable ติดลบ)
+  whtBase: number             // ฐานภาษีหัก ณ ที่จ่าย
+  whtAmount: number           // WHT 3% (ฐาน > 0)
+  paidNet: number             // ยอดโอนสุทธิ = max(0, payable) − WHT
 }
 
 /**
@@ -163,6 +166,19 @@ export async function calculatePayrollEntry(
   const payable = Math.round((netPay - carryIn) * 100) / 100
   const carryOut = payable < 0 ? Math.round(-payable * 100) / 100 : 0
 
+  // WHT 3% — สูตรพิสูจน์กับไฟล์จริง 112/112: ฐาน = รายรับฝั่ง WHT − รายจ่ายเกี่ยวกับรถ − หักอื่นฝั่ง WHT
+  // (ประกัน/ภาษีที่เดินผ่าน ledger นับเป็นรายจ่ายรถด้วย — เทียบเท่าคอลัมน์ต่อภาษีประกันของไฟล์)
+  const insLedger = ledgerItems
+    .filter((i) => ["insurance", "prb", "tax", "inspection", "personal"].includes(i.type ?? ""))
+    .reduce((s, i) => s + i.amount, 0)
+  const whtBase = Math.round((
+    (transportFee + ot + attendanceAllowance + otherIncomeWHT)
+    - (fuel + fuelOverCharge - fuelUnderRefund + gps + repairInHouse + repairOutside +
+       mgmtFee8pct + labor + tire + tirePatch + carWash + taxInsurance + insLedger)
+    - otherDeductWHT) * 100) / 100
+  const whtAmount = whtBase > 0 ? Math.round(whtBase * 0.03 * 100) / 100 : 0
+  const paidNet = Math.round((Math.max(0, payable) - whtAmount) * 100) / 100 // ยอดโอนจริงหลังภาษี
+
   return {
     contractCode,
     month,
@@ -199,5 +215,8 @@ export async function calculatePayrollEntry(
     carryIn,
     payable,
     carryOut,
+    whtBase,
+    whtAmount,
+    paidNet,
   }
 }
