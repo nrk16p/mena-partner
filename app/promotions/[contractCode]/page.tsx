@@ -17,12 +17,6 @@ export default function PromoDetailPage() {
   const [data, setData]     = useState<PromoDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [rDate, setRDate]   = useState("")
-  const [rMr, setRMr]       = useState("")
-  const [rDesc, setRDesc]   = useState("")
-  const [rAmt, setRAmt]     = useState("")
-  const [rSaving, setRSaving] = useState(false)
-
   // เลข MR ของ claim (ใช้จับคู่รายการเบิกคลัง) — field mr ก่อน fallback description
   const claimMr = (c: RepairClaim) => (c.mr ?? c.description ?? "").trim()
 
@@ -46,19 +40,6 @@ export default function PromoDetailPage() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { load() }, [contractCode])
-
-  const handleRepairSave = async () => {
-    if (!rDate || !rDesc || !rAmt) return
-    setRSaving(true)
-    try {
-      const r = await fetch("/api/promotions/repair", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contractCode, date: rDate, mr: rMr, description: rDesc, amount: Number(rAmt) }),
-      })
-      if (r.ok) { setRDate(""); setRMr(""); setRDesc(""); setRAmt(""); await load() }
-    } catch {} finally { setRSaving(false) }
-  }
 
   const handleRepairDelete = async (id: string) => {
     if (!confirm("ลบรายการนี้?")) return
@@ -327,36 +308,6 @@ export default function PromoDetailPage() {
           </table>
         </div>
 
-        {/* Add repair form */}
-        <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 space-y-3">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">บันทึกการซ่อม (จองงบ reserve — อิงจากใบ MR · ยังไม่ตัดงบจริงจนกดเปลี่ยนเป็น actual)</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">วันที่ซ่อม</Label>
-              <Input type="date" value={rDate} onChange={(e) => setRDate(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">เลขที่ MR</Label>
-              <Input placeholder="เช่น MR-xxxxx" value={rMr} onChange={(e) => setRMr(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">รายละเอียด</Label>
-              <Input placeholder="เช่น เปลี่ยนปะเก็น" value={rDesc} onChange={(e) => setRDesc(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">ยอด (บาท)</Label>
-              <Input type="number" min="0" step="0.01" placeholder="0" value={rAmt} onChange={(e) => setRAmt(e.target.value)} />
-            </div>
-          </div>
-          <p className="text-[11px] text-zinc-400">ระบุเลขที่ MR เพื่อให้ระบบจับคู่กับรายการเบิกคลังอัตโนมัติ (ถ้ามี MR ตรงกัน → ตัดงบจากคลังให้)</p>
-          <Button
-            onClick={handleRepairSave}
-            disabled={rSaving || !rDate || !rDesc || !rAmt}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            {rSaving ? "กำลังบันทึก..." : "บันทึก"}
-          </Button>
-        </div>
       </div>
 
       {/* ─── Promo 3: PM ─── */}
