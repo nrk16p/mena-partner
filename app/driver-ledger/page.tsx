@@ -68,6 +68,7 @@ const SOURCE_LABEL: Record<string, string> = {
   prb:             "พรบ.",
   tax:             "ภาษีทะเบียน",
   inspection:      "ตรวจสภาพ",
+  personal:        "ประกันภาคสมัครใจ (บุคคล)",
   debt_acceptance: "ใบรับสภาพหนี้",
   down_payment:    "เงินดาวน์",
   vehicle_installment: "ค่างวดรถ",
@@ -93,7 +94,7 @@ const TABS = [
   { key: "closed",  label: "ปิดแล้ว" },
 ]
 
-const DEBT_SOURCES: string[]    = ["manual", "debt_acceptance", "down_payment", "insurance", "prb", "tax", "inspection"]
+const DEBT_SOURCES: string[]    = ["manual", "debt_acceptance", "down_payment", "insurance", "prb", "tax", "inspection", "personal"]
 const DEPOSIT_SOURCES: string[] = ["tire_deposit", "manual"]
 
 /* ────────────────────────────── helpers ────────────────────────────── */

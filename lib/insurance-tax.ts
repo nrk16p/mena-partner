@@ -5,14 +5,15 @@ export function normPlateIT(p?: string | null): string {
   return (p ?? "").replace(/^[^0-9]*/, "").trim()
 }
 
-// ── รายการแยก 4 ประเภท (item-level) ──────────────────────────────────────────
-export const ITEM_TYPES = ["insurance", "prb", "tax", "inspection"] as const
+// ── รายการแยกรายประเภท (item-level) — รวมประกันภาคสมัครใจของตัวบุคคล (พขร.) ──
+export const ITEM_TYPES = ["insurance", "prb", "tax", "inspection", "personal"] as const
 export type ItemType = typeof ITEM_TYPES[number]
 export const ITEM_LABELS: Record<ItemType, string> = {
   insurance: "ประกันภัย",
   prb: "พรบ.",
   tax: "ภาษีทะเบียน",
   inspection: "ตรวจสภาพ",
+  personal: "ประกันภาคสมัครใจ (บุคคล)",
 }
 
 /** 1 doc = 1 รายการ (ประกัน/พรบ./ภาษี/ตรวจสภาพ) ต่ออายุแยกอิสระต่อกัน */

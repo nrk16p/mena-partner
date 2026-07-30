@@ -16,8 +16,8 @@ import { formatMoney } from "@/lib/utils"
 // ────────────────────────── types (ตาม API /api/insurance-tax แบบ item-level) ──────────────────────────
 export type Attachment = { name: string; url: string }
 
-export type ItemType = "insurance" | "prb" | "tax" | "inspection"
-export const ITEM_TYPES: ItemType[] = ["insurance", "prb", "tax", "inspection"]
+export type ItemType = "insurance" | "prb" | "tax" | "inspection" | "personal"
+export const ITEM_TYPES: ItemType[] = ["insurance", "prb", "tax", "inspection", "personal"]
 
 export interface Item {
   _id: string
@@ -61,12 +61,12 @@ export const EMPTY_COUNTS: Counts = { total: 0, active: 0, expiring: 0, expired:
 
 // ────────────────────────── labels / colors ──────────────────────────
 export const ITEM_LABEL: Record<ItemType, string> = {
-  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษีทะเบียน", inspection: "ตรวจสภาพ",
+  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษีทะเบียน", inspection: "ตรวจสภาพ", personal: "ประกันภาคสมัครใจ (บุคคล)",
 }
 export const ITEM_COL_LABEL: Record<ItemType, string> = {
-  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษี", inspection: "ตรวจสภาพ",
+  insurance: "ประกันภัย", prb: "พรบ.", tax: "ภาษี", inspection: "ตรวจสภาพ", personal: "ป.สมัครใจ",
 }
-export const HAS_COMPANY: Record<ItemType, boolean> = { insurance: true, prb: true, tax: false, inspection: false }
+export const HAS_COMPANY: Record<ItemType, boolean> = { insurance: true, prb: true, tax: false, inspection: false, personal: true }
 
 export const STATUS_LABEL: Record<string, string> = {
   active: "ใช้งาน", expiring: "ใกล้หมดอายุ", expired: "หมดอายุ", renewed: "ต่ออายุแล้ว", none: "ยังไม่มีข้อมูล",
@@ -534,7 +534,7 @@ export function ItemFormPanel({ row, itemType, item, mode, onClose, onSaved }: {
   )
 }
 
-// ────────────────────────── ฟอร์ม bulk: ต่ออายุทั้งชุด (4 รายการในฟอร์มเดียว) ──────────────────────────
+// ────────────────────────── ฟอร์ม bulk: ต่ออายุทั้งชุด (ทุกรายการในฟอร์มเดียว) ──────────────────────────
 export function BulkRenewPanel({ row, onClose, onSaved }: {
   row: Row
   onClose: () => void
@@ -672,7 +672,7 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
   fullPage?: boolean
 }) {
   const [history, setHistory] = useState<Item[] | null>(null)
-  const [expanded, setExpanded] = useState<Record<ItemType, boolean>>({ insurance: false, prb: false, tax: false, inspection: false })
+  const [expanded, setExpanded] = useState<Record<ItemType, boolean>>({ insurance: false, prb: false, tax: false, inspection: false, personal: false })
   const [deleting, setDeleting] = useState<string | null>(null)
   const [formPanel, setFormPanel] = useState<{ itemType: ItemType; item: Item | null; mode: "renew" | "edit" } | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -725,7 +725,7 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
   useEffect(() => { setHistory(null); loadHistory() }, [loadHistory])
 
   const historyByType = useMemo(() => {
-    const out = { insurance: [], prb: [], tax: [], inspection: [] } as Record<ItemType, Item[]>
+    const out = { insurance: [], prb: [], tax: [], inspection: [], personal: [] } as Record<ItemType, Item[]>
     for (const it of history ?? []) out[it.itemType]?.push(it)
     return out
   }, [history])
@@ -973,7 +973,7 @@ export function ManageDrawer({ row, isAdmin, onClose, onChanged, fullPage = fals
           {/* สรุปรวมของทะเบียน */}
           <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex items-center justify-between text-sm">
             <span className="text-xs font-semibold text-zinc-500">
-              รวมค่าใช้จ่าย 4 รายการ
+              รวมค่าใช้จ่ายทุกรายการ
               {sumMonthly(row) !== null && <> · หัก/เดือนรวม ฿{formatMoney(sumMonthly(row)!)}</>}
             </span>
             <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
