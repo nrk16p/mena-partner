@@ -54,9 +54,16 @@ export const H = (txt: string) => ({
 /** run ตัวหนา (ใช้ใน text array) */
 export const B = (txt: string) => ({ text: S(txt), bold: true })
 
-/** ค่าที่กรอก (input data) แบบตัวหนา — v() สำหรับเลข/ทะเบียน/โค้ด (raw), vS() สำหรับข้อความไทย (ตัดคำ) */
-export const v = (x: string) => ({ text: x ?? "", bold: true })
+/** ค่าที่กรอก (input data) แบบตัวหนา — v() สำหรับเลข/ทะเบียน/โค้ด (raw), vS() สำหรับข้อความไทย (ตัดคำ)
+ *  v(): โทเค็นสั้น (ทะเบียน/เลขบัตร/เลขบัญชี/เลขตัวถัง) ห้ามแตกกลางบรรทัด (pdfmake ตัดหลัง "-" ได้)
+ *  — noWrap เฉพาะค่าสั้น ≤ 24 ตัวอักษร; ค่ายาว (เช่น รายการงวด "10, 20, 30...") ปล่อยตัดที่ช่องว่างตามปกติ */
+export const v = (x: string) => {
+  const t = x ?? ""
+  return { text: t, bold: true, ...(t.length > 0 && t.length <= 24 ? { noWrap: true } : {}) }
+}
 export const vS = (x: string) => ({ text: S(x), bold: true })
+/** ค่าในวงเล็บ (เช่น จำนวนเงินตัวหนังสือ) — วงเล็บติดกับค่าเสมอ ไม่มี "(" ค้างท้าย / ")" โดดต้นบรรทัด */
+export const pv = (x: string) => vS(`(${x})`)
 
 /** ชื่อเรื่องเอกสาร (กึ่งกลาง หนา) */
 export const titleLine = (txt: string) => ({
