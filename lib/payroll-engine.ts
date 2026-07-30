@@ -72,11 +72,17 @@ export async function calculatePayrollEntry(
   if (!contract) return null
 
   const trips       = tripAgg[0] ?? { total: 0, count: 0, uniqueDates: [] }
-  const transportFee = trips.total as number
-  const tripCount    = trips.count as number
+
+  // เฟส 1: สรุปเที่ยว+เชื้อเพลิงจาก BI (trip_fuel_monthly) — ถ้ามีของเดือนนี้ ใช้แทน trips/fuel_records เดิม
+  const tf = await db.collection("trip_fuel_monthly").findOne({ month, contractCode })
+
+  const transportFee = tf ? ((tf.tripFee as number) ?? 0) : (trips.total as number)
+  const tripCount    = tf ? ((tf.tripCount as number) ?? 0) : (trips.count as number)
   const workingDays  = (trips.uniqueDates as string[]).length
 
-  const fuel             = (fuelRec?.deductionAmount as number) ?? 0
+  const fuel             = tf
+    ? Math.round((((tf.fuelDeduct as number) ?? 0) + ((tf.overMoney as number) ?? 0) - ((tf.underMoney as number) ?? 0)) * 100) / 100
+    : ((fuelRec?.deductionAmount as number) ?? 0)
   const gps              = (gpsRec?.monthlyFee as number) ?? 700
   // ภาษี/ประกัน: หักตามรอบของทะเบียนรถ (vehicle_insurance_tax) — ทะเบียนที่ยังไม่มีข้อมูล
   // ในโมดูลใหม่ (null) fallback ไป field เดิมใน contract ช่วงเปลี่ยนผ่าน

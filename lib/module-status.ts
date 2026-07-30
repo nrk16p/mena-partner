@@ -20,6 +20,8 @@ export const MODULE_STATUS: Record<string, ModuleStatus> = {
   "/reports/promotions": "ready",
   // หนี้สิน & เงินสะสม พขร. — กำลังทดสอบ
   "/driver-ledger":      "testing",
+  // ค่าเที่ยว & เชื้อเพลิง (payroll เฟส 1) — กำลังทดสอบ
+  "/trip-fuel":          "testing",
   // ที่เหลือ (เที่ยววิ่ง · เงินเดือน · รายการปรับปรุง · รายงาน · นำเข้า Excel · จัดการรอบเดือน) = dev
 }
 
