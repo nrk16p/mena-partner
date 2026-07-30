@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import clientPromise from "@/lib/mongo"
+import { parseAttendanceSheet, ATT_COLL } from "@/lib/attendance"
+import { plateContractMap } from "@/lib/trip-fuel"
+
+const DB = process.env.MONGO_DB ?? "mena_partner"
+const MONTH_RE = /^\d{4}-\d{2}$/
+
+/** นำเข้า Excel วันทำงาน พจร. — action=preview (ตรวจก่อน) | confirm (บันทึกทับของเดือน) */
+export async function POST(req: NextRequest) {
+  const fd = await req.formData()
+  const file = fd.get("file") as File | null
+  const month = String(fd.get("month") ?? "")
+  const action = String(fd.get("action") ?? "preview")
+  if (!file) return NextResponse.json({ error: "แนบไฟล์ Excel" }, { status: 400 })
+  if (!MONTH_RE.test(month)) return NextResponse.json({ error: "ระบุเดือน (YYYY-MM)" }, { status: 400 })
+
+  let parsed
+  try {
+    parsed = parseAttendanceSheet(Buffer.from(await file.arrayBuffer()))
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "อ่านไฟล์ไม่สำเร็จ" }, { status: 400 })
+  }
+
+  const client = await clientPromise
+  const db = client.db(DB)
+  const pMap = await plateContractMap(db)
+  const { normPlate } = await import("@/lib/promo-usage")
+
+  const rows = parsed.rows.map((r) => ({
+    ...r,
+    contractCode: pMap.get(normPlate(r.licensePlate)) ?? "",
+  }))
+  const noContract = rows.filter((r) => !r.contractCode).length
+  const withWarn = rows.filter((r) => r.warnings.length > 0).length
+
+  if (action === "preview") {
+    return NextResponse.json({
+      sheetName: parsed.sheetName, month,
+      total: rows.length, noContract, withWarn,
+      rows: rows.map(({ days, ...rest }) => ({ ...rest, daysPreview: days.join("") })),
+    })
+  }
+
+  // confirm — ทับข้อมูลเดือนนี้ทั้งชุด (ไฟล์คือ source of truth ของเดือน)
+  const session = await getServerSession(authOptions)
+  const now = new Date().toISOString()
+  await db.collection(ATT_COLL).deleteMany({ month })
+  if (rows.length > 0) {
+    await db.collection(ATT_COLL).insertMany(rows.map((r) => ({
+      ...r, month, importedAt: now, importedBy: session?.user?.email ?? "unknown",
+    })))
+  }
+  return NextResponse.json({ ok: true, imported: rows.length, noContract, withWarn })
+}

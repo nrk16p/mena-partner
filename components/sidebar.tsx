@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
-  ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel,
+  ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
@@ -41,6 +41,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     title: "เงินเดือน & ปิดเดือน",
     items: [
       { href: "/trip-fuel", label: "ค่าเที่ยว & เชื้อเพลิง", icon: Fuel },
+      { href: "/attendance", label: "วันทำงาน พจร.", icon: CalendarCheck },
       { href: "/payroll", label: "เงินเดือน", icon: Banknote },
       { href: "/driver-ledger", label: "หนี้สิน & เงินสะสม", icon: HandCoins },
       { href: "/adjustments", label: "รายการปรับปรุง", icon: SlidersHorizontal },

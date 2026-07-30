@@ -62,6 +62,7 @@ export function domainOfApiPath(pathname: string): PermDomain | null {
   if (
     p.startsWith("/api/ledger") ||
     p.startsWith("/api/trip-fuel") ||
+    p.startsWith("/api/attendance") ||
     p.startsWith("/api/insurance-tax") ||
     p.startsWith("/api/payroll") ||
     p.startsWith("/api/adjustments") ||

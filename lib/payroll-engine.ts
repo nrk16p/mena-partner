@@ -78,7 +78,10 @@ export async function calculatePayrollEntry(
 
   const transportFee = tf ? ((tf.tripFee as number) ?? 0) : (trips.total as number)
   const tripCount    = tf ? ((tf.tripCount as number) ?? 0) : (trips.count as number)
-  const workingDays  = (trips.uniqueDates as string[]).length
+
+  // เฟส 2: วันทำงานจากไฟล์ "สถานะวันทำงาน พจร." (attendance_monthly) — ถ้ามี ใช้แทนการนับวันจากเที่ยว
+  const att = await db.collection("attendance_monthly").findOne({ month, contractCode })
+  const workingDays  = att ? ((att.workDays as number) ?? 0) : (trips.uniqueDates as string[]).length
 
   const fuel             = tf
     ? Math.round((((tf.fuelDeduct as number) ?? 0) + ((tf.overMoney as number) ?? 0) - ((tf.underMoney as number) ?? 0)) * 100) / 100
