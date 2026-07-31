@@ -110,7 +110,7 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
       {/* Header */}
       <div className="border-b-2 border-zinc-800 pb-3 mb-4 flex items-start justify-between">
         <div>
-          <h2 className="text-base font-bold">บริษัท เมน่า ทรานสปอร์ต จำกัด</h2>
+          <h2 className="text-base font-bold">บริษัท มีนา ทรานสปอร์ต จำกัด</h2>
           <p className="text-xs text-zinc-400">Mena Transport Co., Ltd.</p>
         </div>
         <div className="text-right">

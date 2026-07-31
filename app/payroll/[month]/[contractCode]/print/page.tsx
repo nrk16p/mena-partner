@@ -124,7 +124,7 @@ export default function PrintPayslipPage() {
         <div className="border-b-2 border-zinc-800 pb-4 mb-6">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-xl font-bold tracking-wide">บริษัท เมน่า ทรานสปอร์ต จำกัด</h1>
+              <h1 className="text-xl font-bold tracking-wide">บริษัท มีนา ทรานสปอร์ต จำกัด</h1>
               <p className="text-xs text-zinc-500 mt-0.5">Mena Transport Co., Ltd.</p>
             </div>
             <div className="text-right">
