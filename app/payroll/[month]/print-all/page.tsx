@@ -131,9 +131,9 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
 
       {/* Income / Deduction */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
+        <div className="flex flex-col">
           <div className="text-[10px] font-semibold uppercase tracking-wide bg-zinc-100 px-2 py-1 rounded-t">รายการรับ</div>
-          <table className="w-full text-xs border border-zinc-200">
+          <table className="w-full text-xs border border-zinc-200 flex-1 flex flex-col [&>tbody]:flex-1 [&>tbody]:block [&>tbody>tr]:flex [&>tbody>tr]:justify-between [&>tfoot]:block [&>tfoot>tr]:flex [&>tfoot>tr]:justify-between">
             <tbody className="divide-y divide-zinc-100">
               {incomeRows.map(({ key, label }) => (
                 <tr key={key}>
@@ -157,9 +157,9 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
             </tfoot>
           </table>
         </div>
-        <div>
+        <div className="flex flex-col">
           <div className="text-[10px] font-semibold uppercase tracking-wide bg-zinc-100 px-2 py-1 rounded-t">รายการหัก</div>
-          <table className="w-full text-xs border border-zinc-200">
+          <table className="w-full text-xs border border-zinc-200 flex-1 flex flex-col [&>tbody]:flex-1 [&>tbody]:block [&>tbody>tr]:flex [&>tbody>tr]:justify-between [&>tfoot]:block [&>tfoot>tr]:flex [&>tfoot>tr]:justify-between">
             <tbody className="divide-y divide-zinc-100">
               {deductRows.map(({ key, label }) => (
                 <tr key={key}>
@@ -204,17 +204,12 @@ function SingleSlip({ row, month }: { row: Row; month: string }) {
           <div className="flex justify-between text-zinc-600"><span>เงินได้สุทธิงวดนี้</span><span>{formatMoney(row.netPay)}</span></div>
           {carryIn !== 0 && <div className="flex justify-between text-red-600"><span>หัก หนี้ยกมาจากงวดก่อน</span><span>−{formatMoney(carryIn)}</span></div>}
           <div className="flex justify-between border-t border-zinc-200 pt-0.5 font-semibold"><span>ยอดจ่ายจริงงวดนี้</span><span>{formatMoney(payable > 0 ? payable : 0)}</span></div>
-          {carryOut > 0 && <div className="flex justify-between text-red-600"><span>หนี้ยกไปงวดถัดไป</span><span className="font-semibold">{formatMoney(carryOut)}</span></div>}
           {wht > 0 && <div className="flex justify-between text-zinc-600"><span>หักภาษี ณ ที่จ่าย 3%</span><span>−{formatMoney(wht)}</span></div>}
           {wht > 0 && <div className="flex justify-between border-t border-zinc-300 pt-0.5 font-bold"><span>ยอดโอนสุทธิ</span><span>{formatMoney(paidNet)}</span></div>}
+          {carryOut > 0 && <div className="flex justify-between text-red-600"><span>หนี้ยกไปงวดถัดไป{wht > 0 && payable < wht ? " (รวมภาษีที่ออกแทน)" : ""}</span><span className="font-semibold">{formatMoney(carryOut)}</span></div>}
         </div>
       )}
 
-      {/* Signature */}
-      <div className="grid grid-cols-2 gap-8 mt-6 text-[10px] text-zinc-400 text-center">
-        <div><div className="border-b border-zinc-300 mb-1 pb-5" />ผู้รับเงิน</div>
-        <div><div className="border-b border-zinc-300 mb-1 pb-5" />ผู้จ่ายเงิน</div>
-      </div>
     </div>
   )
 }

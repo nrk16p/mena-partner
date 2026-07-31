@@ -149,11 +149,11 @@ export default function PrintPayslipPage() {
         {/* Income / Deductions table */}
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Income */}
-          <div>
+          <div className="flex flex-col">
             <div className="bg-zinc-100 px-3 py-1.5 rounded-t text-xs font-semibold text-zinc-700 uppercase tracking-wide">
               รายการรับ
             </div>
-            <table className="w-full text-sm border border-zinc-200 rounded-b overflow-hidden">
+            <table className="w-full text-sm border border-zinc-200 rounded-b overflow-hidden flex-1 flex flex-col [&>tbody]:flex-1 [&>tbody]:block [&>tbody>tr]:flex [&>tbody>tr]:justify-between [&>tfoot]:block [&>tfoot>tr]:flex [&>tfoot>tr]:justify-between">
               <tbody className="divide-y divide-zinc-100">
                 {incomeRows.map(({ key, label }) => (
                   <tr key={key}>
@@ -181,11 +181,11 @@ export default function PrintPayslipPage() {
           </div>
 
           {/* Deductions */}
-          <div>
+          <div className="flex flex-col">
             <div className="bg-zinc-100 px-3 py-1.5 rounded-t text-xs font-semibold text-zinc-700 uppercase tracking-wide">
               รายการหัก
             </div>
-            <table className="w-full text-sm border border-zinc-200 rounded-b overflow-hidden">
+            <table className="w-full text-sm border border-zinc-200 rounded-b overflow-hidden flex-1 flex flex-col [&>tbody]:flex-1 [&>tbody]:block [&>tbody>tr]:flex [&>tbody>tr]:justify-between [&>tfoot]:block [&>tfoot>tr]:flex [&>tfoot>tr]:justify-between">
               <tbody className="divide-y divide-zinc-100">
                 {deductRows.map(({ key, label }) => (
                   <tr key={key}>
@@ -250,12 +250,6 @@ export default function PrintPayslipPage() {
               <span>ยอดจ่ายจริงงวดนี้</span>
               <span>{formatMoney(payable > 0 ? payable : 0)}</span>
             </div>
-            {carryOut > 0 && (
-              <div className="flex justify-between text-red-600">
-                <span>หนี้ยกไปงวดถัดไป</span>
-                <span className="font-semibold">{formatMoney(carryOut)}</span>
-              </div>
-            )}
             {wht > 0 && (
               <>
                 <div className="flex justify-between text-zinc-600">
@@ -268,20 +262,14 @@ export default function PrintPayslipPage() {
                 </div>
               </>
             )}
+            {carryOut > 0 && (
+              <div className="flex justify-between text-red-600">
+                <span>หนี้ยกไปงวดถัดไป{wht > 0 && payable < wht ? " (รวมภาษีที่บริษัทออกแทน)" : ""}</span>
+                <span className="font-semibold">{formatMoney(carryOut)}</span>
+              </div>
+            )}
           </div>
         )}
-
-        {/* Signature area */}
-        <div className="grid grid-cols-2 gap-8 mt-10 text-xs text-zinc-400">
-          <div className="text-center">
-            <div className="border-b border-zinc-300 mb-1 pb-6" />
-            <p>ผู้รับเงิน / Recipient</p>
-          </div>
-          <div className="text-center">
-            <div className="border-b border-zinc-300 mb-1 pb-6" />
-            <p>ผู้จ่ายเงิน / Payer</p>
-          </div>
-        </div>
 
         <p className="text-[10px] text-zinc-300 mt-6 text-center print:text-zinc-400">
           พิมพ์โดยระบบ Mena Partner · {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}

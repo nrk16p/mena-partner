@@ -164,7 +164,6 @@ export async function calculatePayrollEntry(
   const carryIn = Math.round((((prev?.carryOut as number) ?? 0)) * 100) / 100
   const netPay = Math.round((totalIncome - totalDeductions) * 100) / 100
   const payable = Math.round((netPay - carryIn) * 100) / 100
-  const carryOut = payable < 0 ? Math.round(-payable * 100) / 100 : 0
 
   // WHT 3% — สูตรพิสูจน์กับไฟล์จริง 112/112: ฐาน = รายรับฝั่ง WHT − รายจ่ายเกี่ยวกับรถ − หักอื่นฝั่ง WHT
   // (ประกัน/ภาษีที่เดินผ่าน ledger นับเป็นรายจ่ายรถด้วย — เทียบเท่าคอลัมน์ต่อภาษีประกันของไฟล์)
@@ -177,7 +176,12 @@ export async function calculatePayrollEntry(
        mgmtFee8pct + labor + tire + tirePatch + carWash + taxInsurance + insLedger)
     - otherDeductWHT) * 100) / 100
   const whtAmount = whtBase > 0 ? Math.round(whtBase * 0.03 * 100) / 100 : 0
-  const paidNet = Math.round((Math.max(0, payable) - whtAmount) * 100) / 100 // ยอดโอนจริงหลังภาษี
+
+  // ภาษีนำส่งสรรพากรเสมอ — เงินงวดไม่พอจ่ายภาษี → ส่วนที่บริษัทออกแทนบวกเข้าหนี้ยกไป
+  // (ตรงไฟล์: MTM124 NetPay 0, ยกไป = ยอดติดลบ + WHT 890.98)
+  const afterWht = Math.round((payable - whtAmount) * 100) / 100
+  const paidNet = Math.max(0, afterWht)                                    // ยอดโอนจริงหลังภาษี
+  const carryOut = afterWht < 0 ? Math.round(-afterWht * 100) / 100 : 0    // หนี้ยกไป (รวมภาษีที่ออกแทน)
 
   return {
     contractCode,

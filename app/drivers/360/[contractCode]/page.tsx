@@ -97,23 +97,53 @@ export default function Driver360Page() {
         <Card label="หนี้ยกยอดปัจจุบัน" value={formatMoney(d.kpi.carryNow)} tone={d.kpi.carryNow > 0 ? "bad" : undefined} />
       </div>
 
-      {/* Chart 12 เดือน */}
-      <Section title={`แนวโน้ม ${d.months.length} งวดล่าสุด (เขียว = รายรับ · แดง = รายหัก · จุด = สุทธิ)`}>
+      {/* Bar chart งวดย้อนหลัง */}
+      <Section title={`แนวโน้ม ${d.months.length} งวดล่าสุด`}>
         {d.months.length === 0 ? <Empty /> : (
-          <div className="flex items-end gap-2 h-40 pt-6">
-            {d.months.map((m) => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-0.5 min-w-0 group relative">
-                <div className="absolute -top-5 text-[9px] text-zinc-500 opacity-0 group-hover:opacity-100 whitespace-nowrap bg-white border border-zinc-200 rounded px-1.5 py-0.5 z-10">
-                  สุทธิ {formatMoney(m.netPay)}{m.carryOut > 0 ? ` · ยกไป ${formatMoney(m.carryOut)}` : ""}
-                </div>
-                <div className="w-full flex items-end justify-center gap-[2px] flex-1">
-                  <div className="w-[45%] bg-emerald-400/80 rounded-t" style={{ height: `${(m.totalIncome / maxBar) * 100}%` }} />
-                  <div className="w-[45%] bg-red-400/70 rounded-t" style={{ height: `${(m.totalDeductions / maxBar) * 100}%` }} />
-                </div>
-                <div className={`w-1.5 h-1.5 rounded-full ${m.netPay < 0 ? "bg-red-600" : "bg-zinc-700"}`} />
-                <span className="text-[9px] text-zinc-400">{m.month.slice(5)}{m.carryOut > 0 ? "⚠" : ""}</span>
+          <div className="overflow-x-auto">
+            <div className="min-w-fit">
+              {/* legend */}
+              <div className="flex items-center gap-4 text-[10px] text-zinc-500 mb-2">
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> รายรับ</span>
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400" /> รายหัก</span>
+                <span className="inline-flex items-center gap-1"><span className="w-2.5 h-0.5 bg-zinc-800" /> สุทธิ</span>
               </div>
-            ))}
+              <div className="relative h-44">
+                {/* gridlines */}
+                {[0, 25, 50, 75].map((p) => (
+                  <div key={p} className="absolute left-0 right-0 border-t border-zinc-100" style={{ bottom: `${p}%` }} />
+                ))}
+                <div className="relative flex items-end gap-5 h-full px-1">
+                  {d.months.map((m) => (
+                    <div key={m.month} className="w-16 shrink-0 h-full flex flex-col justify-end items-center group relative">
+                      <div className="absolute -top-1 text-[9px] text-zinc-600 opacity-0 group-hover:opacity-100 whitespace-nowrap bg-white border border-zinc-200 shadow-sm rounded px-1.5 py-0.5 z-10">
+                        รับ {formatMoney(m.totalIncome)} · หัก {formatMoney(m.totalDeductions)} · สุทธิ {formatMoney(m.netPay)}{m.carryOut > 0 ? ` · ยกไป ${formatMoney(m.carryOut)}` : ""}
+                      </div>
+                      <div className="flex items-end gap-1 w-full justify-center" style={{ height: "85%" }}>
+                        <div className="flex flex-col items-center justify-end h-full">
+                          <span className="text-[8px] text-emerald-600 mb-0.5">{kFmt(m.totalIncome)}</span>
+                          <div className="w-5 bg-emerald-500 rounded-t-sm" style={{ height: `${(m.totalIncome / maxBar) * 100}%`, minHeight: m.totalIncome > 0 ? 2 : 0 }} />
+                        </div>
+                        <div className="flex flex-col items-center justify-end h-full">
+                          <span className="text-[8px] text-red-500 mb-0.5">{kFmt(m.totalDeductions)}</span>
+                          <div className="w-5 bg-red-400 rounded-t-sm" style={{ height: `${(m.totalDeductions / maxBar) * 100}%`, minHeight: m.totalDeductions > 0 ? 2 : 0 }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* แกน x: เดือน + สุทธิ */}
+              <div className="flex gap-5 px-1 border-t border-zinc-200 pt-1">
+                {d.months.map((m) => (
+                  <div key={m.month} className="w-16 shrink-0 text-center">
+                    <p className="text-[10px] text-zinc-500">{formatMonth(m.month).replace(" 25", " ")}</p>
+                    <p className={`text-[10px] font-semibold ${m.netPay < 0 ? "text-red-600" : "text-zinc-700"}`}>{kFmt(m.netPay)}</p>
+                    {m.carryOut > 0 && <p className="text-[8px] text-red-500">ยกไป {kFmt(m.carryOut)}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </Section>
@@ -255,6 +285,12 @@ export default function Driver360Page() {
       </div>
     </div>
   )
+}
+
+const kFmt = (n: number) => {
+  const a = Math.abs(n)
+  const s = a >= 1000 ? `${(n / 1000).toFixed(a >= 100000 ? 0 : 1)}k` : String(Math.round(n))
+  return s
 }
 
 function Card({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
