@@ -11,6 +11,11 @@ interface MonthRow {
   totalIncome: number; totalDeductions: number; netPay: number
   carryIn: number; carryOut: number; payable: number; whtAmount: number; paidNet: number; fuelNet: number
 }
+interface AttMonth {
+  month: string; workDays: number
+  days: { c: string; g: string }[]
+  counts: { work: number; late: number; half: number; leave: number; absent: number; train: number; other: number }
+}
 interface Data {
   contractCode: string
   driver: { driverName: string; licensePlate: string; truckNumber: string; plant: string; phone: string; accountNumber: string; bankName: string; status: string; staffCode: string } | null
@@ -18,6 +23,7 @@ interface Data {
   installmentInfo: { monthly: number; paidMonths: number | null; totalMonths: number | null; remaining: number | null } | null
   kpi: { incomeAvg3: number; netLast: number; paidNetLast: number; lastMonth: string | null; totalDebtRemaining: number; totalDeposit: number; totalMonthlyDebt: number; carryNow: number }
   months: MonthRow[]
+  attendanceMonths: AttMonth[]
   debtsLedger: { debtCode: string; type: string; refLabel: string; principal: number; paid: number; remaining: number; monthly: number; monthsLeft: number | null; startMonth: string; pctPaid: number }[]
   deposits: { debtCode: string; type: string; balance: number; target: number | null; monthly: number }[]
   insurance: { itemType: string; expiry: string | null; collectEnd: string | null; monthly: number; status: string }[]
@@ -144,6 +150,81 @@ export default function Driver360Page() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+      </Section>
+
+      {/* เที่ยว + วันทำงาน + ปฏิทินขาดลามาสาย */}
+      <Section title="การมาทำงาน & เที่ยววิ่ง รายเดือน">
+        {d.months.length === 0 && d.attendanceMonths.length === 0 ? <Empty /> : (
+          <div className="space-y-4">
+            {/* combo bars: เที่ยว (ม่วง) + วันทำงาน (ฟ้า) */}
+            <div className="overflow-x-auto">
+              <div className="min-w-fit">
+                <div className="flex items-center gap-4 text-[10px] text-zinc-500 mb-2">
+                  <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-violet-500" /> เที่ยว</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-sky-400" /> วันทำงาน</span>
+                </div>
+                <div className="relative h-32">
+                  {[0, 50].map((p) => <div key={p} className="absolute left-0 right-0 border-t border-zinc-100" style={{ bottom: `${p}%` }} />)}
+                  <div className="relative flex items-end gap-5 h-full px-1">
+                    {d.months.map((m) => {
+                      const maxTrip = Math.max(...d.months.map((x) => x.tripCount), 1)
+                      return (
+                        <div key={m.month} className="w-16 shrink-0 h-full flex items-end justify-center gap-1">
+                          <div className="flex flex-col items-center justify-end h-full">
+                            <span className="text-[8px] text-violet-600 mb-0.5">{m.tripCount}</span>
+                            <div className="w-5 bg-violet-500 rounded-t-sm" style={{ height: `${(m.tripCount / maxTrip) * 88}%`, minHeight: m.tripCount > 0 ? 2 : 0 }} />
+                          </div>
+                          <div className="flex flex-col items-center justify-end h-full">
+                            <span className="text-[8px] text-sky-600 mb-0.5">{m.workingDays}</span>
+                            <div className="w-5 bg-sky-400 rounded-t-sm" style={{ height: `${(m.workingDays / 31) * 88}%`, minHeight: m.workingDays > 0 ? 2 : 0 }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="flex gap-5 px-1 border-t border-zinc-200 pt-1">
+                  {d.months.map((m) => (
+                    <div key={m.month} className="w-16 shrink-0 text-center text-[10px] text-zinc-500">{formatMonth(m.month).replace(" 25", " ")}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* heatmap ปฏิทินรายวัน */}
+            {d.attendanceMonths.length > 0 && (
+              <div>
+                <div className="flex flex-wrap items-center gap-3 text-[10px] text-zinc-500 mb-2">
+                  <span className="font-semibold text-zinc-600">ปฏิทินรายวัน:</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500" /> มา</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-orange-400" /> มาสาย</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-200" /> ครึ่งวัน</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-300" /> ลา/ป่วย/กิจ</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500" /> ขาด</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-blue-300" /> ฝึกอบรม</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-violet-300" /> อื่นๆ</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-zinc-100 border border-zinc-200" /> ไม่มีข้อมูล</span>
+                </div>
+                <div className="space-y-1.5 overflow-x-auto">
+                  {[...d.attendanceMonths].reverse().map((am) => (
+                    <div key={am.month} className="flex items-center gap-2 min-w-fit">
+                      <span className="text-[10px] text-zinc-500 w-14 shrink-0 text-right">{formatMonth(am.month).replace(" 25", " ")}</span>
+                      <div className="flex gap-[3px]">
+                        {am.days.map((dy, i) => (
+                          <span key={i} title={`วันที่ ${i + 1}: ${dy.c || "ไม่มีข้อมูล"}`}
+                            className={`w-3.5 h-3.5 rounded-sm ${GCOLOR[dy.g] ?? "bg-violet-300"}`} />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-zinc-400 whitespace-nowrap pl-1">
+                        มา {am.counts.work}{am.counts.late > 0 && <span className="text-orange-500"> · สาย {am.counts.late}</span>}{am.counts.leave > 0 && <span className="text-amber-600"> · ลา {am.counts.leave}</span>}{am.counts.absent > 0 && <span className="text-red-600 font-semibold"> · ขาด {am.counts.absent}</span>}{am.counts.train > 0 && <span className="text-blue-500"> · ฝึก {am.counts.train}</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Section>
@@ -285,6 +366,12 @@ export default function Driver360Page() {
       </div>
     </div>
   )
+}
+
+const GCOLOR: Record<string, string> = {
+  work: "bg-emerald-500", late: "bg-orange-400", half: "bg-emerald-200",
+  leave: "bg-amber-300", absent: "bg-red-500", train: "bg-blue-300",
+  other: "bg-violet-300", none: "bg-zinc-100 border border-zinc-200",
 }
 
 const kFmt = (n: number) => {

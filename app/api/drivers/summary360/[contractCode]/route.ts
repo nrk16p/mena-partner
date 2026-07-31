@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ con
     db.collection("trip_fuel_monthly").find({ contractCode }).sort({ month: -1 }).limit(12)
       .project({ month: 1, fuelDeduct: 1, overMoney: 1, underMoney: 1, tripFee: 1, tripCount: 1 }).toArray(),
     db.collection("attendance_monthly").find({ contractCode }).sort({ month: -1 }).limit(12)
-      .project({ month: 1, workDays: 1 }).toArray(),
+      .project({ month: 1, workDays: 1, days: 1 }).toArray(),
     db.collection("debt_acceptances").find({ contractCode })
       .project({ debtAcceptanceNo: 1, issueDate: 1, liabilityAmount: 1, outstandingBalance: 1, ledgerDebtCode: 1, repairType: 1 }).toArray(),
   ])
@@ -104,6 +104,33 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ con
       risks.push({ level: "warn", label: `วันทำงานตก ${Math.round((1 - last.workingDays / prevAvgDays) * 100)}%`, detail: `ล่าสุด ${last.workingDays} วัน vs เฉลี่ยก่อนหน้า ${prevAvgDays} วัน` })
   }
 
+  // ── ปฏิทินวันทำงานรายวัน (จากไฟล์สถานะวันทำงาน): จัดกลุ่มรหัสแบบโปร่งใส เก็บรหัสดิบไว้ด้วย ──
+  // A=มา · มี "ส"=สาย · A50=ครึ่งวัน · ข=ขาด · ล/ป/ก=ลา (กิจ/ป่วย) · ฝ=ฝึกอบรม · ว่าง=ไม่มีข้อมูล
+  const classify = (code: string): string => {
+    const c = (code ?? "").trim()
+    if (!c) return "none"
+    if (c.includes("ข")) return "absent"
+    if (c.startsWith("A")) return c.includes("ส") ? "late" : (c.includes("50") ? "half" : "work")
+    if (c.startsWith("ล") || c === "ป" || c === "ก") return "leave"
+    if (c === "ฝ") return "train"
+    return "other"
+  }
+  const attendanceMonths = [...att].reverse().map((a) => {
+    const days = ((a.days as string[]) ?? []).map((c) => ({ c: (c ?? "").trim(), g: classify(c) }))
+    const cnt = (g: string) => days.filter((d) => d.g === g).length
+    return {
+      month: a.month as string, workDays: num(a.workDays), days,
+      counts: { work: cnt("work") + cnt("late") + cnt("half"), late: cnt("late"), half: cnt("half"), leave: cnt("leave"), absent: cnt("absent"), train: cnt("train"), other: cnt("other") },
+    }
+  })
+
+  // สัญญาณจากปฏิทินวันทำงานงวดล่าสุด
+  const lastAtt = attendanceMonths[attendanceMonths.length - 1]
+  if (lastAtt) {
+    if (lastAtt.counts.absent >= 2) risks.push({ level: "high", label: `ขาดงาน ${lastAtt.counts.absent} วัน (งวดล่าสุด)`, detail: `เดือน ${lastAtt.month} — ตรวจสาเหตุ/ความพร้อมวิ่งงาน` })
+    if (lastAtt.counts.late >= 8) risks.push({ level: "warn", label: `มาสายบ่อย ${lastAtt.counts.late} วัน (งวดล่าสุด)`, detail: `เดือน ${lastAtt.month} — สายเกิน 1 ใน 4 ของเดือน กระทบคิวงานแพล้นท์` })
+  }
+
   // ── ประกัน/ภาษี + โปรโมชั่น ──
   const insuranceOut = insurance.map((i) => ({
     itemType: i.itemType as string,
@@ -132,7 +159,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ con
       lastMonth: last?.month ?? null, totalDebtRemaining, totalDeposit, totalMonthlyDebt,
       carryNow: last?.carryOut ?? 0,
     },
-    months, debtsLedger, deposits,
+    months, attendanceMonths, debtsLedger, deposits,
     insurance: insuranceOut,
     promo: promo ? {
       repairBudget: num(promo.repairBudget), repairUsed: num(promo.repairUsed),
