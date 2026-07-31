@@ -180,7 +180,9 @@ export default function PayrollMonthPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-200 print:text-gray-800">
-                  {driver?.driverName ?? entry.contractCode}
+                  <Link href={`/drivers/360/${entry.contractCode}`} className="hover:text-blue-600 hover:underline print:no-underline">
+                    {driver?.driverName ?? entry.contractCode}
+                  </Link>
                 </td>
                 <td className="px-4 py-2.5 text-right text-xs tabular-nums text-zinc-500 hidden lg:table-cell">{entry.workingDays}</td>
                 <td className="px-4 py-2.5 text-right text-xs tabular-nums text-zinc-500">{entry.tripCount}</td>

@@ -177,7 +177,7 @@ export default function ApprovalPage() {
               <tbody className="divide-y divide-zinc-50">
                 {s.carryList.slice(0, 15).map((r) => (
                   <tr key={r.contractCode}>
-                    <td className="py-1.5">{r.contractCode} · {r.driverName}</td>
+                    <td className="py-1.5"><Link href={`/drivers/360/${r.contractCode}`} className="hover:text-blue-600 hover:underline">{r.contractCode} · {r.driverName}</Link></td>
                     <td className="text-right">{formatMoney(r.netPay)}</td>
                     <td className="text-right">{formatMoney(r.carryIn)}</td>
                     <td className="text-right text-red-600 font-medium">{formatMoney(r.carryOut)}</td>
@@ -194,7 +194,7 @@ export default function ApprovalPage() {
               {s.anomalies.slice(0, 20).map((a, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">{a.type}</span>
-                  <span className="text-zinc-600">{a.row.contractCode} · {a.row.driverName} — {a.detail}</span>
+                  <span className="text-zinc-600"><Link href={`/drivers/360/${a.row.contractCode}`} className="hover:text-blue-600 hover:underline">{a.row.contractCode} · {a.row.driverName}</Link> — {a.detail}</span>
                 </li>
               ))}
             </ul>
@@ -225,7 +225,7 @@ export default function ApprovalPage() {
           <tbody className="divide-y divide-zinc-50">
             {s.topPay.map((r) => (
               <tr key={r.contractCode}>
-                <td className="py-1.5">{r.contractCode} · {r.driverName}</td>
+                <td className="py-1.5"><Link href={`/drivers/360/${r.contractCode}`} className="hover:text-blue-600 hover:underline">{r.contractCode} · {r.driverName}</Link></td>
                 <td className="text-right text-zinc-400">{r.workingDays}/{r.tripCount}</td>
                 <td className="text-right">{formatMoney(r.totalIncome)}</td>
                 <td className="text-right">{formatMoney(r.totalDeductions)}</td>

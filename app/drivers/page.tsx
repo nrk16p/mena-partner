@@ -793,6 +793,14 @@ export default function DriversPage() {
                       {/* Actions */}
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {d.contractCode && (
+                            <Link
+                              href={`/drivers/360/${d.contractCode.trim()}`}
+                              className="px-2 py-1 text-[10px] font-semibold text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                            >
+                              360°
+                            </Link>
+                          )}
                           <button
                             onClick={() => setPanelDriver(d)}
                             className="px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors"
