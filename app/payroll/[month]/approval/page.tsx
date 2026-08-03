@@ -140,6 +140,10 @@ export default function ApprovalPage() {
             <Undo2 className="w-4 h-4" /> ตีกลับแก้ไข
           </button>
         )}
+        <a href={`/api/payroll/${month}/packet`} target="_blank" rel="noreferrer"
+          className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-700 text-white text-sm px-4 py-2.5 rounded-lg">
+          <FileDown className="w-4 h-4" /> ชุดอนุมัติ PDF
+        </a>
         <a href={`/payroll/${month}/print-all`} className="flex items-center gap-2 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-sm px-4 py-2.5 rounded-lg">
           <FileDown className="w-4 h-4" /> สลิปทั้งงวด
         </a>
