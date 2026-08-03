@@ -265,6 +265,9 @@ export default function DriverDetailPage() {
       .then(setDriver)
   }, [id])
 
+  const reload = () =>
+    fetch(`/api/drivers/${id}`).then((r) => (r.ok ? r.json() : null)).then(setDriver)
+
   // สัญญาที่ผูกกับพนักงานคนนี้ (ผ่าน contractCode ที่ sync มาจากสัญญา)
   const contractCode = driver?.contractCode
   useEffect(() => {
@@ -854,8 +857,7 @@ export default function DriverDetailPage() {
                   editing && form ? form.licenseUrl  : driver.licenseUrl,
                   editing && form ? form.houseRegUrl : driver.houseRegUrl,
                   editing && form ? form.bankBookUrl : driver.bankBookUrl,
-                  editing && form ? form.tax50BisUrl : driver.tax50BisUrl,
-                ].filter(Boolean).length}/5 ไฟล์
+                ].filter(Boolean).length}/4 ไฟล์
               </span>
             }
           >
@@ -865,8 +867,7 @@ export default function DriverDetailPage() {
                 { field: "licenseUrl",  label: "ใบขับขี่" },
                 { field: "houseRegUrl", label: "ทะเบียนบ้าน" },
                 { field: "bankBookUrl", label: "หน้าบุ๊คแบงค์" },
-                { field: "tax50BisUrl", label: "50 ทวิ" },
-              ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl"; label: string }[]).map(({ field, label }) => (
+              ] as { field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl"; label: string }[]).map(({ field, label }) => (
                 <DocThumb
                   key={field}
                   url={editing && form ? form[field] : driver[field]}
@@ -879,6 +880,8 @@ export default function DriverDetailPage() {
               ))}
             </div>
           </Card>
+
+          <Tax50Card driver={driver} isAdmin={isAdmin} onSaved={reload} />
         </div>
       </div>
 
@@ -917,5 +920,92 @@ export default function DriverDetailPage() {
         </div>
       )}
     </div>
+  )
+}
+
+
+// ── 50 ทวิ แยกรายเดือน — บันทึกทันที (ไม่ผูกโหมดแก้ไขทั้งหน้า) ──
+function Tax50Card({ driver, isAdmin, onSaved }: { driver: Driver; isAdmin: boolean; onSaved: () => void }) {
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState("")
+  const items = [...(driver.tax50BisMonthly ?? [])].sort((a, b) => (a.month < b.month ? 1 : -1))
+
+  async function save(list: { month: string; url: string }[]) {
+    setBusy(true); setErr("")
+    try {
+      const r = await fetch(`/api/drivers/${driver._id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tax50BisMonthly: list }),
+      })
+      if (!r.ok) throw new Error("บันทึกไม่สำเร็จ")
+      onSaved()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ")
+    } finally { setBusy(false) }
+  }
+
+  async function upload(file: File) {
+    if (!/^\d{4}-\d{2}$/.test(month)) { setErr("เลือกเดือนก่อน"); return }
+    setBusy(true); setErr("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "drivers/tax50bis")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!res.ok) throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
+      const { url } = await res.json()
+      await save([...items.filter((x) => x.month !== month), { month, url }])
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "อัปโหลดไฟล์ไม่สำเร็จ")
+      setBusy(false)
+    }
+  }
+
+  const thMonth = (m: string) => {
+    const [y, mm] = m.split("-").map(Number)
+    const names = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+    return `${names[mm - 1]} ${y + 543}`
+  }
+
+  return (
+    <Card
+      title="50 ทวิ (แยกรายเดือน)"
+      action={<span className="text-[10px] text-zinc-400">{items.length} เดือน</span>}
+    >
+      {isAdmin && (
+        <div className="flex items-center gap-2 mb-3">
+          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+            className="h-8 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-transparent" />
+          <label className={`text-xs px-3 py-1.5 rounded-lg cursor-pointer ${busy ? "bg-zinc-100 text-zinc-400" : "bg-emerald-600 hover:bg-emerald-700 text-white"}`}>
+            {busy ? "กำลังอัปโหลด..." : "+ แนบไฟล์เดือนนี้"}
+            <input type="file" accept="image/*,.pdf" className="hidden" disabled={busy}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = "" }} />
+          </label>
+          {err && <span className="text-[11px] text-red-500">{err}</span>}
+        </div>
+      )}
+      {items.length === 0 && !driver.tax50BisUrl && (
+        <p className="text-xs text-zinc-300 text-center py-3">ยังไม่มีไฟล์ 50 ทวิ</p>
+      )}
+      <div className="space-y-1.5">
+        {items.map((x) => (
+          <div key={x.month} className="flex items-center gap-2 text-xs border border-zinc-100 dark:border-zinc-800 rounded-lg px-3 py-1.5">
+            <span className="font-medium w-20">{thMonth(x.month)}</span>
+            <a href={x.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate flex-1">เปิดไฟล์</a>
+            {isAdmin && (
+              <button disabled={busy} onClick={() => { if (window.confirm(`ลบไฟล์ 50 ทวิ ${thMonth(x.month)}?`)) save(items.filter((y) => y.month !== x.month)) }}
+                className="text-zinc-300 hover:text-red-500">ลบ</button>
+            )}
+          </div>
+        ))}
+        {driver.tax50BisUrl && (
+          <div className="flex items-center gap-2 text-xs border border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-1.5">
+            <span className="text-zinc-400 w-20">ไฟล์เดิม</span>
+            <a href={driver.tax50BisUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate flex-1">เปิดไฟล์ (ไม่ระบุเดือน)</a>
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }

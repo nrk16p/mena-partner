@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { ShieldCheck, Trash2, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { RoleMatrix } from "@/components/role-matrix"
 import { Button } from "@/components/ui/button"
 import { ROLES, ROLE_LABELS } from "@/lib/rbac"
 
@@ -50,10 +51,7 @@ export default function AdminUsersPage() {
       <div>
         <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">Superadmin</p>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2"><ShieldCheck className="w-6 h-6 text-emerald-500" /> ผู้ใช้ & สิทธิ์</h1>
-        <p className="text-xs text-zinc-400 mt-0.5">
-          บทบาท: แอดมิน (ทำได้ทุกอย่าง+ลบ+ล็อค) · แผนกรถร่วม (ข้อมูลหลัก/สัญญา/โปรฯ/ค่าใช้จ่ายรถ) · การเงิน (ledger/ภาษีประกัน/payroll/รอบเดือน) · ดูอย่างเดียว
-          — คนที่ไม่อยู่ในลิสต์ = ดูอย่างเดียว · superadmin ตั้งผ่าน env <span className="font-mono">SUPERADMIN_EMAILS</span>
-        </p>
+        <p className="text-xs text-zinc-400 mt-0.5">ตั้งบทบาทรายคน — ดูขอบเขตสิทธิ์แต่ละบทบาทจากตารางท้ายหน้า</p>
       </div>
 
       {/* เพิ่มผู้ใช้ */}
@@ -112,6 +110,7 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+          <RoleMatrix />
     </div>
   )
 }

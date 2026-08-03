@@ -5,6 +5,7 @@ import {
   CheckCircle2, Upload, Banknote, BadgeCheck, HandCoins, FileDown,
 } from "lucide-react"
 import { ModuleStatusBoard } from "@/components/module-status-board"
+import { RoleMatrix } from "@/components/role-matrix"
 
 /**
  * หน้าหลัก — สรุป flow การทำงานของทีม + คู่มือประกอบต่อโมดูล
@@ -225,6 +226,9 @@ export default function HomePage() {
 
       {/* ── สถานะการใช้งานแต่ละระบบ (ติ๊กข้อมูลครบ + วันคาดเสร็จ ได้จริง) ── */}
       <ModuleStatusBoard />
+
+      {/* ── บทบาท & สิทธิ์ (สร้างจาก lib/rbac.ts อัตโนมัติ) ── */}
+      <RoleMatrix />
 
       {/* ── business rules ── */}
       <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
