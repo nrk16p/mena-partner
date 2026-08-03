@@ -801,12 +801,6 @@ export default function DriversPage() {
                               360°
                             </Link>
                           )}
-                          <button
-                            onClick={() => setPanelDriver(d)}
-                            className="px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors"
-                          >
-                            แก้ไข
-                          </button>
                           <Link
                             href={`/drivers/${d._id}`}
                             className="p-1 text-zinc-300 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors"
