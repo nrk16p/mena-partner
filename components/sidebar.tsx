@@ -66,14 +66,13 @@ function NavLink({ href, label, icon: Icon, active, hint }: {
   return (
     <Link
       href={href}
-      title={hint}
       className={cn(
         "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-[13px] transition-colors relative",
         active
           ? "bg-zinc-800 text-white font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
           : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200"
       )}
-      title={meta.label}
+      title={hint ? `${label} — ${hint}` : meta.label}
     >
       <Icon className={cn("w-[15px] h-[15px] shrink-0", active ? "text-emerald-400" : "text-zinc-500")} />
       <span className="truncate min-w-0 flex-1">{label}</span>
