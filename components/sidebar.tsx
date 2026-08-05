@@ -10,35 +10,33 @@ import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
 import { statusOf, STATUS_META } from "@/lib/module-status"
 
-// จัดหมวดตาม Flow หลัก 5 ขั้น (ดูหน้าแรก)
-const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] }[] = [
+// จัดหมวดเป็น 3 ระบบหลัก: สัญญา · โปรโมชั่น · เงินเดือน (ปรับตามคำสั่ง 2026-08-05)
+const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; hint?: string }[] }[] = [
   {
     title: null,
     items: [{ href: "/", label: "หน้าหลัก · คู่มือ", icon: Home }],
   },
   {
-    title: "ข้อมูลหลัก",
+    title: "ระบบสัญญา",
     items: [
-      { href: "/drivers", label: "พนักงานขับรถ", icon: Users },
-      { href: "/vehicles", label: "ทะเบียนรถ", icon: Truck },
-      { href: "/price-list", label: "ราคาขาย", icon: Tag },
+      { href: "/drivers", label: "คนขับ", icon: Users, hint: "บัตร ปชช. / วันเกิด / ที่อยู่ / บัญชี" },
+      { href: "/vehicles", label: "รถ", icon: Truck, hint: "ยี่ห้อ รุ่น เลขตัวถัง เลขเครื่อง" },
+      { href: "/price-list", label: "ราคาขาย", icon: Tag, hint: "เพิ่ม/แก้ไขได้ในหน้า" },
+      { href: "/contracts", label: "สัญญา", icon: FileText },
     ],
   },
   {
-    title: "สัญญา",
-    items: [{ href: "/contracts", label: "สัญญา", icon: FileText }],
+    title: "ระบบโปรโมชั่น",
+    items: [
+      { href: "/promotions", label: "โปรโมชั่น", icon: ShieldCheck },
+      { href: "/reports/promotions", label: "รายงานสรุปยอดโปรโมชั่น", icon: Receipt },
+    ],
   },
   {
-    title: "งานประจำวัน",
+    title: "ระบบเงินเดือน",
     items: [
       { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ", icon: Wrench },
       { href: "/insurance-tax", label: "ภาษี & ประกันภัย", icon: BadgeCheck },
-      { href: "/promotions", label: "โปรโมชั่น", icon: ShieldCheck },
-    ],
-  },
-  {
-    title: "เงินเดือน & ปิดเดือน",
-    items: [
       { href: "/trip-fuel", label: "ค่าเที่ยว & เชื้อเพลิง", icon: Fuel },
       { href: "/attendance", label: "วันทำงาน พจร.", icon: CalendarCheck },
       { href: "/payroll-extras", label: "รับ-หักอื่นๆ", icon: SlidersHorizontal },
@@ -47,7 +45,6 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
       { href: "/driver-ledger", label: "หนี้สิน & เงินสะสม", icon: HandCoins },
       { href: "/adjustments", label: "รายการปรับปรุง", icon: SlidersHorizontal },
       { href: "/reports", label: "รายงาน", icon: BarChart3 },
-      { href: "/reports/promotions", label: "รายงานสรุปยอดโปรโมชั่น", icon: Receipt },
     ],
   },
 ]
@@ -57,17 +54,19 @@ const ADMIN_NAV = [
   { href: "/admin/month", label: "จัดการรอบเดือน", icon: Settings },
 ]
 
-function NavLink({ href, label, icon: Icon, active }: {
+function NavLink({ href, label, icon: Icon, active, hint }: {
   href: string
   label: string
   icon: React.ComponentType<{ className?: string }>
   active: boolean
+  hint?: string
 }) {
   const status = statusOf(href)
   const meta = STATUS_META[status]
   return (
     <Link
       href={href}
+      title={hint}
       className={cn(
         "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-[13px] transition-colors relative",
         active
