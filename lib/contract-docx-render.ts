@@ -11,6 +11,7 @@ import Docxtemplater from "docxtemplater"
 import clientPromise from "@/lib/mongo"
 import type { Contract } from "@/types"
 import { DOCX_TEMPLATES, normPlate, type DocxType, type PromoMasterData } from "@/lib/contract-docx"
+import { appendDocxAttachments } from "@/lib/docx-attachments"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -40,6 +41,8 @@ export async function renderContractDocx(
     nullGetter: () => "................",
   })
   doc.render(data)
-  const buffer = doc.getZip().generate({ type: "nodebuffer", compression: "DEFLATE" })
+  const rendered = doc.getZip().generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer
+  // แนบรูปเอกสารท้ายไฟล์ — ชุดเดียวกับ PDF (sale/hire/guarantee; creditor ไม่แนบ)
+  const buffer = await appendDocxAttachments(db, contract, rendered, type)
   return { buffer, filename: tpl.filename(contract) }
 }

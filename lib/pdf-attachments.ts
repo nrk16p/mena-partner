@@ -48,11 +48,12 @@ function buildEntries(type: string, driver: any, contract: Contract): Entry[] {
  * ต่อเอกสารแนบเป็นหน้าใหม่ท้าย PDF สัญญา (แก้ docDef.content โดยตรง)
  * type = ชนิดสัญญา (sale / hire / guarantee / creditor / promotion)
  */
-export async function appendContractAttachments(
-  db: Db, contract: Contract, docDef: any, type: string,
-): Promise<void> {
+/** รายการเอกสารแนบจริง (มี url) ของสัญญา — ใช้ร่วมทั้ง PDF และ DOCX */
+export async function resolveContractAttachments(
+  db: Db, contract: Contract, type: string,
+): Promise<{ url: string; heading: string }[]> {
   const entries = buildEntries(type, null, contract) // placeholder — เติม driver แล้ว rebuild
-  if (entries.length === 0) return // creditor/promotion — ไม่ต้องหา driver
+  if (entries.length === 0) return [] // creditor/promotion — ไม่ต้องหา driver
 
   // หา driver: driverId ก่อน → contractCode
   let driver: any = null
@@ -63,8 +64,13 @@ export async function appendContractAttachments(
   if (!driver && contract.contractCode) {
     driver = await db.collection("drivers").findOne({ contractCode: contract.contractCode })
   }
+  return buildEntries(type, driver, contract).filter((e) => e.url) as { url: string; heading: string }[]
+}
 
-  const real = buildEntries(type, driver, contract).filter((e) => e.url)
+export async function appendContractAttachments(
+  db: Db, contract: Contract, docDef: any, type: string,
+): Promise<void> {
+  const real = await resolveContractAttachments(db, contract, type)
   if (real.length === 0) return
 
   let appended = 0
