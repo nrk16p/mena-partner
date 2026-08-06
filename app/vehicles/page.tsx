@@ -39,6 +39,12 @@ const FORM_FIELDS: { key: keyof Vehicle; label: string; type?: string; placehold
   { key: "engineSize",    label: "ขนาดกำลังเครื่องยนต์",      placeholder: "7790 cc / 240 hp",      section: "ตัวถัง / เครื่องยนต์" },
 ]
 
+/** ข้อมูลครบ = กรอกครบทุกช่องใน FORM_FIELDS (คำนวณอัตโนมัติ — เลิกติ๊กมือ 2026-08-06) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isVehicleComplete(v: any): boolean {
+  return FORM_FIELDS.every((f) => String(v?.[f.key] ?? "").trim() !== "")
+}
+
 const EMPTY_FORM: Omit<Vehicle, "_id" | "createdAt" | "updatedAt"> = {
   truckType: "mixer",
   vehicleType: "", characteristic: "", brand: "", model: "",
@@ -137,7 +143,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, dataComplete: isVehicleComplete(form) }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
@@ -280,22 +286,16 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
               </div>
             </div>
 
-            {/* ── ยืนยันข้อมูลครบถ้วน (manual) + วันที่คาดจะเสร็จ ── */}
+            {/* ── สถานะข้อมูลครบ (อัตโนมัติจากช่องที่กรอก) + วันที่คาดจะเสร็จเมื่อยังไม่ครบ ── */}
             <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={form.dataComplete === true}
-                  onChange={(e) => setForm((p) => ({ ...p, dataComplete: e.target.checked }))}
-                  className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">ข้อมูลครบถ้วน</span>
-                {form.dataComplete
-                  ? <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">🟢 ครบ</span>
-                  : <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full">🟡 ยังไม่ครบ</span>
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                ข้อมูลครบถ้วน
+                {complete
+                  ? <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">🟢 ครบ (อัตโนมัติ)</span>
+                  : <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full">🟡 ขาด {total - filled} ช่อง</span>
                 }
-              </label>
-              {!form.dataComplete && (
+              </span>
+              {!complete && (
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-zinc-500 whitespace-nowrap">วันที่คาดจะเสร็จ</label>
                   <div className="w-48">
@@ -516,8 +516,8 @@ export default function VehiclesPage() {
     const lq = q.toLowerCase()
     return items.filter((v) => {
       if (typeFilter && vType(v) !== typeFilter) return false
-      if (dataFilter === "complete"   && v.dataComplete !== true) return false
-      if (dataFilter === "incomplete" && v.dataComplete === true) return false
+      if (dataFilter === "complete"   && !isVehicleComplete(v)) return false
+      if (dataFilter === "incomplete" && isVehicleComplete(v)) return false
       if (!q) return true
       return [v.truckNumber, v.licensePlate, v.brand, v.model, v.vehicleType,
         v.chassisNumber, v.engineNumber, v.characteristic]
@@ -532,7 +532,7 @@ export default function VehiclesPage() {
   const inactiveCount = items.filter((v) => v.status !== "active").length
   const mixerCount    = items.filter((v) => vType(v) === "mixer").length
   const trailerCount  = items.filter((v) => vType(v) === "trailer").length
-  const completeCount   = items.filter((v) => v.dataComplete === true).length
+  const completeCount   = items.filter((v) => isVehicleComplete(v)).length
   const incompleteCount = items.length - completeCount
   const showPanel     = panel !== null
   const editVehicle   = panel === "new" ? null : panel
@@ -553,8 +553,8 @@ export default function VehiclesPage() {
       "เลขเครื่อง":    v.engineNumber  ?? "",
       "กำลังเครื่อง":  v.engineSize    ?? "",
       "สถานะ":         v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน",
-      "ข้อมูลครบถ้วน": v.dataComplete ? "ครบ" : "ไม่ครบ",
-      "วันที่คาดจะเสร็จ": v.dataComplete ? "" : (v.dataExpectedDate ?? ""),
+      "ข้อมูลครบถ้วน": isVehicleComplete(v) ? "ครบ" : "ไม่ครบ",
+      "วันที่คาดจะเสร็จ": isVehicleComplete(v) ? "" : (v.dataExpectedDate ?? ""),
     }))
     await exportToExcel([{ name: "ทะเบียนรถ", rows }], `vehicles-${todayStamp()}`)
   }
@@ -772,7 +772,7 @@ export default function VehiclesPage() {
 
                     {/* ข้อมูลครบ / ไม่ครบ (ยึด tick box manual) */}
                     <td className="px-2.5 py-2 align-top">
-                      {v.dataComplete ? (
+                      {isVehicleComplete(v) ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ครบ
                         </span>
