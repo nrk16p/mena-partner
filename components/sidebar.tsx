@@ -68,14 +68,14 @@ function NavLink({ href, label, icon: Icon, active, hint }: {
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-[13px] transition-colors relative",
+        "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-sm transition-colors relative",
         active
-          ? "bg-zinc-800 text-white font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
-          : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200"
+          ? "bg-white text-zinc-900 font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
+          : "text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900"
       )}
       title={hint ? `${label} — ${hint}` : meta.label}
     >
-      <Icon className={cn("w-[15px] h-[15px] shrink-0", active ? "text-emerald-400" : "text-zinc-500")} />
+      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-600" : "text-zinc-500")} />
       <span className="truncate min-w-0 flex-1">{label}</span>
       {status !== "ready" && (
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
@@ -115,15 +115,15 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-52 shrink-0 bg-zinc-900 h-screen border-r border-zinc-800">
+    <aside className="flex flex-col w-56 shrink-0 bg-zinc-100 h-screen border-r border-zinc-200">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-zinc-800 shrink-0">
+      <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-zinc-200 shrink-0">
         <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
           M
         </div>
         <div className="min-w-0">
-          <p className="text-[11px] font-bold text-white tracking-widest leading-tight">MENA PARTNER</p>
-          <p className="text-[10px] text-zinc-500 leading-tight mt-0.5">รถร่วม Mixer</p>
+          <p className="text-sm font-bold text-zinc-900 tracking-widest leading-tight">MENA PARTNER</p>
+          <p className="text-xs text-zinc-500 leading-tight mt-0.5">รถร่วม Mixer</p>
         </div>
       </div>
 
@@ -148,13 +148,13 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => toggleGroup(g.title!)}
-                className="w-full flex items-center justify-between px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600 hover:text-zinc-400 transition-colors"
+                className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-zinc-500 hover:text-zinc-800 transition-colors"
               >
                 <span className="flex items-center gap-1.5">
                   {g.title}
                   {!open && hasActive && <span className="w-1 h-1 rounded-full bg-emerald-500" />}
                 </span>
-                <ChevronDown className={cn("w-3 h-3 transition-transform", !open && "-rotate-90")} />
+                <ChevronDown className={cn("w-4 h-4 transition-transform", !open && "-rotate-90")} />
               </button>
               {open && (
                 <div className="space-y-0.5">
@@ -173,10 +173,10 @@ export function Sidebar() {
             <button
               type="button"
               onClick={() => toggleGroup("Admin")}
-              className="w-full flex items-center justify-between px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600 hover:text-zinc-400 transition-colors"
+              className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-zinc-500 hover:text-zinc-800 transition-colors"
             >
               <span>Admin</span>
-              <ChevronDown className={cn("w-3 h-3 transition-transform", !(openGroups["Admin"] ?? false) && "-rotate-90")} />
+              <ChevronDown className={cn("w-4 h-4 transition-transform", !(openGroups["Admin"] ?? false) && "-rotate-90")} />
             </button>
             {(openGroups["Admin"] ?? false) && (
               <div className="space-y-0.5">
@@ -194,12 +194,12 @@ export function Sidebar() {
 
       {/* Bottom user chip */}
       {session?.user && (
-        <div className="px-4 py-3 border-t border-zinc-800 shrink-0">
+        <div className="px-4 py-3 border-t border-zinc-200 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-300 shrink-0">
+            <div className="w-6 h-6 rounded-full bg-zinc-300 flex items-center justify-center text-[10px] font-bold text-zinc-700 shrink-0">
               {initial}
             </div>
-            <p className="text-[11px] text-zinc-500 truncate min-w-0">
+            <p className="text-xs text-zinc-500 truncate min-w-0">
               {session.user.email ?? session.user.name}
             </p>
           </div>
