@@ -30,8 +30,8 @@ const baht = (n: number) =>
 function thaiShort(iso: string) {
   const [y, m, d] = (iso || "").slice(0, 10).split("-")
   if (!y || !m || !d) return iso
-  const be = Number(y) > 2500 ? Number(y) : Number(y) + 543
-  return `${parseInt(d)} ${THAI_MONTHS[parseInt(m) - 1]} ${String(be).slice(-2)}`
+  const ce = Number(y) > 2500 ? Number(y) - 543 : Number(y)
+  return `${parseInt(d)} ${THAI_MONTHS[parseInt(m) - 1]} ${String(ce).slice(-2)}/${String(ce + 543).slice(-2)}`
 }
 
 function currentMonth() {

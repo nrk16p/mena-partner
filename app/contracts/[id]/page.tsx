@@ -665,7 +665,7 @@ export default function ContractDetailPage() {
           <div className="text-xs">
             {form.locked ? (
               <span className="font-semibold text-amber-700 dark:text-amber-300">
-                🔒 สัญญาถูกล็อคโดย {form.locked.by} เมื่อ {new Date(form.locked.at).toLocaleDateString("th-TH")} — แก้ไข/แนบไฟล์ไม่ได้จนกว่าจะปลดล็อค
+                🔒 สัญญาถูกล็อคโดย {form.locked.by} เมื่อ {`${new Date(form.locked.at).getDate()}/${new Date(form.locked.at).getMonth() + 1}/${new Date(form.locked.at).getFullYear()}/${new Date(form.locked.at).getFullYear() + 543}`} — แก้ไข/แนบไฟล์ไม่ได้จนกว่าจะปลดล็อค
               </span>
             ) : (
               <span className="text-zinc-500">สัญญายังไม่ถูกล็อค — แอดมินล็อคได้เพื่อกันการแก้ไข</span>

@@ -14,15 +14,15 @@ const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.
 
 export function formatMonth(yyyyMM: string): string {
   const [year, month] = yyyyMM.split("-").map(Number)
-  const thaiYear = year + 543
-  return `${THAI_MONTHS[month - 1]} ${thaiYear}`
+  // แสดงปีคู่ ค.ศ./พ.ศ. ตามมาตรฐานระบบ (2026/2569) — กันสับสนช่องเลือกเดือนที่เป็น ค.ศ.
+  return `${THAI_MONTHS[month - 1]} ${year}/${year + 543}`
 }
 
 /** Format ISO date string to DD/MM/BBBB (Thai Buddhist year) */
 export function formatDate(isoDate: string | undefined | null): string {
   if (!isoDate) return "-"
   const [year, month, day] = isoDate.slice(0, 10).split("-").map(Number)
-  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year + 543}`
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year} (${year + 543})`
 }
 
 /** Return the previous YYYY-MM */

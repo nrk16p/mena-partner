@@ -143,7 +143,7 @@ export default function Driver360Page() {
               <div className="flex gap-5 px-1 border-t border-zinc-200 pt-1">
                 {d.months.map((m) => (
                   <div key={m.month} className="w-16 shrink-0 text-center">
-                    <p className="text-[10px] text-zinc-500">{formatMonth(m.month).replace(" 25", " ")}</p>
+                    <p className="text-[10px] text-zinc-500">{shortMonth(m.month)}</p>
                     <p className={`text-[10px] font-semibold ${m.netPay < 0 ? "text-red-600" : "text-zinc-700"}`}>{kFmt(m.netPay)}</p>
                     {m.carryOut > 0 && <p className="text-[8px] text-red-500">ยกไป {kFmt(m.carryOut)}</p>}
                   </div>
@@ -187,7 +187,7 @@ export default function Driver360Page() {
                 </div>
                 <div className="flex gap-5 px-1 border-t border-zinc-200 pt-1">
                   {d.months.map((m) => (
-                    <div key={m.month} className="w-16 shrink-0 text-center text-[10px] text-zinc-500">{formatMonth(m.month).replace(" 25", " ")}</div>
+                    <div key={m.month} className="w-16 shrink-0 text-center text-[10px] text-zinc-500">{shortMonth(m.month)}</div>
                   ))}
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default function Driver360Page() {
                 <div className="space-y-1.5 overflow-x-auto">
                   {[...d.attendanceMonths].reverse().map((am) => (
                     <div key={am.month} className="flex items-center gap-2 min-w-fit">
-                      <span className="text-[10px] text-zinc-500 w-14 shrink-0 text-right">{formatMonth(am.month).replace(" 25", " ")}</span>
+                      <span className="text-[10px] text-zinc-500 w-14 shrink-0 text-right">{shortMonth(am.month)}</span>
                       <div className="flex gap-[3px]">
                         {am.days.map((dy, i) => (
                           <span key={i} title={`วันที่ ${i + 1}: ${dy.c || "ไม่มีข้อมูล"}`}
@@ -372,6 +372,13 @@ const GCOLOR: Record<string, string> = {
   work: "bg-emerald-500", late: "bg-orange-400", half: "bg-emerald-200",
   leave: "bg-amber-300", absent: "bg-red-500", train: "bg-blue-300",
   other: "bg-violet-300", none: "bg-zinc-100 border border-zinc-200",
+}
+
+const TH_S = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+// ป้ายแกนกราф: ปีคู่แบบย่อ "26/69"
+const shortMonth = (mm: string) => {
+  const [y, m] = mm.split("-").map(Number)
+  return `${TH_S[m - 1]} ${String(y).slice(-2)}/${String(y + 543).slice(-2)}`
 }
 
 const kFmt = (n: number) => {

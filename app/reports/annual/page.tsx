@@ -45,7 +45,7 @@ type SortDir = "asc" | "desc"
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
 
 function thaiYear(year: string): string {
-  return String(Number(year) + 543)
+  return `${year}/${Number(year) + 543}`
 }
 
 export default function AnnualReportPage() {

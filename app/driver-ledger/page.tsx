@@ -956,7 +956,7 @@ function ManageDrawer({ entry, onClose, onChanged }: {
                       {w.note && <span className="text-zinc-400 ml-1.5 truncate">· {w.note}</span>}
                     </div>
                     <span className="text-[10px] text-zinc-400 shrink-0">
-                      {w.at ? new Date(w.at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : ""}
+                      {w.at ? `${new Date(w.at).getDate()}/${new Date(w.at).getMonth() + 1}/${String(new Date(w.at).getFullYear()).slice(-2)}/${String(new Date(w.at).getFullYear() + 543).slice(-2)}` : ""}
                     </span>
                   </div>
                 ))}

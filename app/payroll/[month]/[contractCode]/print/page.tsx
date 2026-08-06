@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Printer } from "lucide-react"
-import { formatMoney, formatMonth } from "@/lib/utils"
+import { formatMoney, formatMonth, formatDate } from "@/lib/utils"
 import type { PayrollEntry, Driver, Contract } from "@/types"
 
 const INCOME_FIELDS: { key: keyof PayrollEntry; label: string }[] = [
@@ -272,7 +272,7 @@ export default function PrintPayslipPage() {
         )}
 
         <p className="text-[10px] text-zinc-300 mt-6 text-center print:text-zinc-400">
-          พิมพ์โดยระบบ Mena Partner · {new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
+          พิมพ์โดยระบบ Mena Partner · {formatDate(new Date().toISOString())}
         </p>
       </div>
 

@@ -51,7 +51,7 @@ function thaiShortDate(iso?: string | null) {
   if (!iso) return ""
   const [y, m, d] = iso.slice(0, 10).split("-")
   const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
-  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${parseInt(y) + 543 - 2500}`
+  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${String(parseInt(y)).slice(-2)}/${String(parseInt(y) + 543).slice(-2)}`
 }
 
 // ── สถานะความพร้อมขาย ──

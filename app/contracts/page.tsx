@@ -21,7 +21,7 @@ function fmtThaiShort(iso?: string): string {
   if (!iso) return ""
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ""
-  return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })
+  return `${d.getDate()} ${["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."][d.getMonth()]} ${String(d.getFullYear()).slice(-2)}/${String(d.getFullYear() + 543).slice(-2)}`
 }
 const STATUS_COLOR: Record<string, string> = {
   active:     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",

@@ -25,7 +25,7 @@ function formatThaiDateShort(dateStr: string | null | undefined): string {
   if (!dateStr) return "—"
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return "—"
-  return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })
+  return `${d.getDate()} ${["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."][d.getMonth()]} ${String(d.getFullYear()).slice(-2)}/${String(d.getFullYear() + 543).slice(-2)}`
 }
 
 const AVATAR_BG = [

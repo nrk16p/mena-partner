@@ -17,7 +17,7 @@ const fm = (n: number) =>
 const THM = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
 const thMonth = (m: string) => {
   const [y, mm] = m.split("-").map(Number)
-  return `${THM[mm]} ${y + 543}`
+  return `${THM[mm]} ${y}/${y + 543}`
 }
 
 const GRAY = "#f4f4f5"

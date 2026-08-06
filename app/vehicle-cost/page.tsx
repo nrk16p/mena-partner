@@ -109,7 +109,7 @@ function thaiDate(d: string) {
   if (!d) return "—"
   const [y, m, day] = d.slice(0, 10).split("-")
   const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
-  return `${parseInt(day)} ${months[parseInt(m) - 1]} ${parseInt(y) + 543}`
+  return `${parseInt(day)} ${months[parseInt(m) - 1]} ${parseInt(y)}/${parseInt(y) + 543}`
 }
 
 // ─── Shared Components ───────────────────────────────────────────────────────

@@ -29,13 +29,13 @@ function thaiDateTime(iso: string) {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
   const time = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
-  return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543} ${time} น.`
+  return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear()}/${d.getFullYear() + 543} ${time} น.`
 }
 
 function thaiDate(v: string) {
   const [y, m, dd] = v.slice(0, 10).split("-")
   if (!y || !m || !dd) return v
-  return `${parseInt(dd)} ${THAI_MONTHS[parseInt(m) - 1]} ${parseInt(y) + 543}`
+  return `${parseInt(dd)} ${THAI_MONTHS[parseInt(m) - 1]} ${parseInt(y)}/${parseInt(y) + 543}`
 }
 
 /** แปลงค่า from/to เป็นข้อความอ่านง่ายตามชนิดของ field */

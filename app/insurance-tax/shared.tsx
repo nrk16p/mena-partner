@@ -124,7 +124,7 @@ export function displayThaiMonth(ym?: string): string {
   const m = /^(\d{4})-(\d{2})/.exec(ym || "")
   if (!m) return "—"
   const MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
-  return `${MONTHS[Number(m[2]) - 1]} ${Number(m[1]) + 543}`
+  return `${MONTHS[Number(m[2]) - 1]} ${Number(m[1])}/${Number(m[1]) + 543}`
 }
 /** ISO → "15 ก.ค. 69" (พ.ศ. 2 หลัก สำหรับ cell แคบ ๆ) */
 export function shortThaiDate(iso?: string): string {

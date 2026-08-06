@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PromoDetail, RepairClaim, PmRecord } from "@/types"
-import { formatMoney } from "@/lib/utils"
+import { formatMoney, formatDate } from "@/lib/utils"
 
 export default function PromoDetailPage() {
   const { contractCode } = useParams<{ contractCode: string }>()
@@ -342,7 +342,7 @@ export default function PromoDetailPage() {
           </p>
           {data.pmWindowFrom && data.pmWindowTo && (
             <p className="text-[11px] text-zinc-400 text-right">
-              รอบปีสัญญา {new Date(data.pmWindowFrom).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })} – {new Date(data.pmWindowTo).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })} (นับจากวันเริ่มสัญญา)
+              รอบปีสัญญา {formatDate(data.pmWindowFrom)} – {formatDate(data.pmWindowTo)} (นับจากวันเริ่มสัญญา)
             </p>
           )}
           {pmOver > 0 && (

@@ -46,7 +46,7 @@ function thaiDate(iso?: string | null): string {
   if (!iso) return ""
   const [y, m, d] = iso.slice(0, 10).split("-")
   const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
-  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${parseInt(y) + 543}`
+  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${parseInt(y)}/${parseInt(y) + 543}`
 }
 
 function fmt(n?: number | null): string {

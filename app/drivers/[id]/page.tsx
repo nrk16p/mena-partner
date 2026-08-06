@@ -29,7 +29,7 @@ function formatThaiDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—"
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return "—"
-  return d.toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })
+  return `${d.getDate()} ${["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."][d.getMonth()]} ${d.getFullYear()}/${d.getFullYear() + 543}`
 }
 
 const AVATAR_BG = [
@@ -965,7 +965,7 @@ function Tax50Card({ driver, isAdmin, onSaved }: { driver: Driver; isAdmin: bool
   const thMonth = (m: string) => {
     const [y, mm] = m.split("-").map(Number)
     const names = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
-    return `${names[mm - 1]} ${y + 543}`
+    return `${names[mm - 1]} ${y}/${y + 543}`
   }
 
   return (
