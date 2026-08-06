@@ -83,6 +83,7 @@ function SectionCard({ icon: Icon, title, children }: {
 
 function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
   const isEdit = !!vehicle
+  const draftKey = `vehicle-draft-${vehicle?._id ?? "new"}`
   const [form, setForm]       = useState({ ...EMPTY_FORM })
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState("")
@@ -111,8 +112,25 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
     } else {
       setForm({ ...EMPTY_FORM })
     }
+    // ร่างที่ค้างจากรอบก่อน (เช่นกด F5 กลางคัน) — กู้ทับค่าจาก DB
+    try {
+      const draft = sessionStorage.getItem(draftKey)
+      if (draft) setForm((base) => ({ ...base, ...JSON.parse(draft) }))
+    } catch { /* ร่างเสีย — ใช้ค่าจาก DB */ }
     setError("")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle])
+
+  // เก็บร่างทุกครั้งที่แก้ (ลบเมื่อบันทึกสำเร็จ/กดยกเลิกเอง)
+  useEffect(() => {
+    try { sessionStorage.setItem(draftKey, JSON.stringify(form)) } catch { /* เต็ม/ปิดกั้น */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form])
+
+  const discardDraftAndClose = () => {
+    try { sessionStorage.removeItem(draftKey) } catch { /* noop */ }
+    onClose()
+  }
 
   async function uploadDoc(file: File) {
     setUploading(true); setError("")
@@ -149,6 +167,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
         const j = await res.json().catch(() => ({}))
         setError((j as { error?: string }).error ?? "เกิดข้อผิดพลาด"); return
       }
+      try { sessionStorage.removeItem(draftKey) } catch { /* noop */ }
       onSaved(); onClose()
     } finally { setSaving(false) }
   }
@@ -157,7 +176,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
 
   // ปิดด้วยปุ่ม Esc
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") discardDraftAndClose() }
     window.addEventListener("keydown", onEsc)
     return () => window.removeEventListener("keydown", onEsc)
   }, [onClose])
@@ -205,7 +224,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             {isEdit ? "แก้ไขข้อมูลรถ" : "เพิ่มรถใหม่"}
           </p>
           <button
-            onClick={onClose}
+            onClick={discardDraftAndClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -416,7 +435,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
           {/* ปุ่มลบรถถอดออกตามคำสั่ง 2026-08-06 — ป้องกันลบข้อมูลโยงสัญญา/เงินเดือน (ลบได้เฉพาะระดับ DB) */}
           <span />
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-9 text-sm text-zinc-500">ยกเลิก</Button>
+            <Button variant="ghost" size="sm" onClick={discardDraftAndClose} className="h-9 text-sm text-zinc-500">ยกเลิก</Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
               onClick={handleSave}
@@ -453,6 +472,19 @@ export default function VehiclesPage() {
   const [dataFilter, setDataFilter]     = useState<"" | "complete" | "incomplete">("")
   const [loading, setLoading]           = useState(true)
   const [panel, setPanel]               = useState<Vehicle | null | "new">(null)
+  // เปิด/ปิดพร้อมจำใน URL — กด F5 ระหว่างแก้ไขแล้วไม่เด้งออกจากฟอร์ม
+  const openPanel = (v: Vehicle | "new") => {
+    setPanel(v)
+    const u = new URL(window.location.href)
+    u.searchParams.set("edit", v === "new" ? "new" : (v._id ?? ""))
+    window.history.replaceState(null, "", u.toString())
+  }
+  const closePanel = () => {
+    setPanel(null)
+    const u = new URL(window.location.href)
+    u.searchParams.delete("edit")
+    window.history.replaceState(null, "", u.toString())
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -478,6 +510,7 @@ export default function VehiclesPage() {
     const plate  = params.get("plate")?.trim()
 
     if (editId) {
+      if (editId === "new") { deepLinked.current = true; setPanel("new"); return }
       const v = items.find((x) => x._id === editId)
       if (v) { deepLinked.current = true; setPanel(v); setQ(v.licensePlate ?? "") }
       return
@@ -593,7 +626,7 @@ export default function VehiclesPage() {
           </button>
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm gap-1.5"
-            onClick={() => setPanel("new")}
+            onClick={() => openPanel("new")}
           >
             <Plus className="w-4 h-4" />เพิ่มรถ
           </Button>
@@ -714,7 +747,7 @@ export default function VehiclesPage() {
                 pg.paged.map((v) => {
                   const specLine = [v.vehicleType, v.characteristic, v.color].filter(Boolean).join(" · ")
                   return (
-                  <tr key={v._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group cursor-pointer" onClick={() => setPanel(v)}>
+                  <tr key={v._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group cursor-pointer" onClick={() => openPanel(v)}>
                     {/* เบอร์รถ / ทะเบียน */}
                     <td className="px-2.5 py-2 align-top">
                       <div className="font-bold text-zinc-800 dark:text-zinc-100 font-mono">{v.truckNumber || "—"}</div>
@@ -810,7 +843,7 @@ export default function VehiclesPage() {
       {showPanel && (
         <SlidePanel
           vehicle={editVehicle}
-          onClose={() => setPanel(null)}
+          onClose={closePanel}
           onSaved={load}
           onDeleted={load}
         />
