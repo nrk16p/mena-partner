@@ -108,7 +108,7 @@ export function Sidebar() {
   }, [pathname])
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => {
-      const next = { ...prev, [title]: !(prev[title] ?? true) }
+      const next = { ...prev, [title]: !(prev[title] ?? false) }
       try { localStorage.setItem("sidebar-groups", JSON.stringify(next)) } catch { /* private mode */ }
       return next
     })
@@ -142,7 +142,7 @@ export function Sidebar() {
             )
           }
           const hasActive = g.items.some((item) => isActive(item.href))
-          const open = openGroups[g.title] ?? true
+          const open = openGroups[g.title] ?? false // default พับทุกหมวด (คำสั่ง 2026-08-06)
           return (
             <div key={gi} className="px-2 mt-3">
               <button
@@ -176,9 +176,9 @@ export function Sidebar() {
               className="w-full flex items-center justify-between px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600 hover:text-zinc-400 transition-colors"
             >
               <span>Admin</span>
-              <ChevronDown className={cn("w-3 h-3 transition-transform", !(openGroups["Admin"] ?? true) && "-rotate-90")} />
+              <ChevronDown className={cn("w-3 h-3 transition-transform", !(openGroups["Admin"] ?? false) && "-rotate-90")} />
             </button>
-            {(openGroups["Admin"] ?? true) && (
+            {(openGroups["Admin"] ?? false) && (
               <div className="space-y-0.5">
                 {ADMIN_NAV.map((item) => (
                   <NavLink key={item.href} {...item} active={isActive(item.href)} />
