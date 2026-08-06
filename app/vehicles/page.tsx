@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink, Hash, Wrench, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
@@ -295,12 +296,12 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
               {!form.dataComplete && (
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-zinc-500 whitespace-nowrap">วันที่คาดจะเสร็จ</label>
-                  <Input
-                    type="date"
-                    value={form.dataExpectedDate ?? ""}
-                    onChange={(e) => set("dataExpectedDate", e.target.value)}
-                    className="h-8 text-sm w-40"
-                  />
+                  <div className="w-48">
+                    <ThaiDateInput
+                      value={form.dataExpectedDate ?? ""}
+                      onChange={(iso) => set("dataExpectedDate", iso)}
+                    />
+                  </div>
                 </div>
               )}
             </div>

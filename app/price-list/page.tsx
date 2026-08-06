@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download, ExternalLink } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { PriceHistoryDrawer } from "@/components/price-history-drawer"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
@@ -132,22 +133,14 @@ function SaleStatusEditor({ row, onSaved, onClose }: {
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
             <label className="block text-[10px] text-zinc-400 mb-0.5">วันเริ่มซ่อม</label>
-            <input
-              type="date" value={start}
-              onChange={(e) => {
-                setStart(e.target.value)
-                if (e.target.value) setEnd(addDays(e.target.value, SALE_STATUS_CONFIG[status as SaleStatus].days!))
-              }}
-              className="w-full h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent px-2 text-xs"
-            />
+            <ThaiDateInput value={start} onChange={(iso) => {
+                setStart(iso)
+                if (iso) setEnd(addDays(iso, SALE_STATUS_CONFIG[status as SaleStatus].days!))
+              }} />
           </div>
           <div>
             <label className="block text-[10px] text-zinc-400 mb-0.5">กำหนดเสร็จ</label>
-            <input
-              type="date" value={end}
-              onChange={(e) => setEnd(e.target.value)}
-              className="w-full h-8 rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent px-2 text-xs"
-            />
+            <ThaiDateInput value={end} onChange={(iso) => setEnd(iso)} />
           </div>
         </div>
       )}

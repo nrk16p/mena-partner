@@ -22,10 +22,10 @@ function parseISO(v: string): { y: number; m: number; d: number } | null {
 const toISO = (y: number, m: number, d: number) =>
   `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
 
-/** "YYYY-MM-DD" (ค.ศ.) → "10 ก.ค. 2569" (พ.ศ.) */
+/** "YYYY-MM-DD" (ค.ศ.) → "10 ก.ค. 2026/2569" (ปีคู่ ค.ศ./พ.ศ. ตามมาตรฐานระบบ) */
 export function displayThaiDate(v: string): string {
   const p = parseISO(v)
-  return p ? `${p.d} ${TH_MONTHS_SHORT[p.m - 1]} ${p.y + 543}` : ""
+  return p ? `${p.d} ${TH_MONTHS_SHORT[p.m - 1]} ${p.y}/${p.y + 543}` : ""
 }
 
 export function ThaiDateInput({ value, onChange, disabled, placeholder = "เลือกวันที่", className = "" }: {
@@ -128,7 +128,7 @@ export function ThaiDateInput({ value, onChange, disabled, placeholder = "เล
                 className="bg-transparent font-semibold text-sm outline-none cursor-pointer text-zinc-800 dark:text-zinc-100"
                 aria-label="ปี พ.ศ."
               >
-                {years.map((by) => <option key={by} value={by}>{by}</option>)}
+                {years.map((by) => <option key={by} value={by}>{by - 543}/{by}</option>)}
               </select>
             </div>
             <button type="button" onClick={nextMonth} className="p-1 rounded-md text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">

@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { DebtImport, StockImport } from "@/components/excel-import"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
 
@@ -239,7 +240,7 @@ function AddModal({ contracts, defaultCode, onClose, onSaved }: {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-zinc-500 mb-1.5">วันที่</label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10 text-sm" />
+            <ThaiDateInput value={date} onChange={(iso) => setDate(iso)} className="h-10 text-sm" />
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-500 mb-1.5">จำนวนเงิน (บาท)</label>

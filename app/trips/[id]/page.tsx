@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { Label } from "@/components/ui/label"
 import type { Trip } from "@/types"
 
@@ -81,7 +82,7 @@ export default function EditTripPage() {
           </div>
           <div className="space-y-1">
             <Label>วันที่ *</Label>
-            <Input {...field("date")} type="date" required />
+            <ThaiDateInput value={String(form.date ?? "")} onChange={(iso) => setForm((p) => ({ ...p, date: iso }))} />
           </div>
           <div className="space-y-1">
             <Label>เลขที่ LDT</Label>

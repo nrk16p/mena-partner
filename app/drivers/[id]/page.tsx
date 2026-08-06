@@ -8,6 +8,7 @@ import { ActivityHistory } from "@/components/activity-history"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { ThaiAddressFields } from "@/components/thai-address-fields"
 import { composeThaiAddress } from "@/lib/thai-address"
 import type { Contract, Driver } from "@/types"
@@ -597,7 +598,7 @@ export default function DriverDetailPage() {
                   <Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className={inputCls} placeholder="นามสกุล" />
                 </EditField>
                 <EditField label="วันเกิด" hint={form.birthDate ? `อายุ ${calcAge(form.birthDate)} ปี` : undefined}>
-                  <Input type="date" value={form.birthDate} onChange={(e) => set("birthDate", e.target.value)} className={inputCls} />
+                  <ThaiDateInput value={form.birthDate} onChange={(iso) => set("birthDate", iso)} />
                 </EditField>
                 <EditField label="เลขบัตรประชาชน" hint={`${form.nationalId.length}/13 หลัก`}>
                   <Input
@@ -667,10 +668,10 @@ export default function DriverDetailPage() {
                   <Input value={form.contractCode} onChange={(e) => set("contractCode", e.target.value)} className={`${inputCls} font-mono`} placeholder="MTM145" />
                 </EditField>
                 <EditField label="เริ่มงานวันที่">
-                  <Input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className={inputCls} />
+                  <ThaiDateInput value={form.startDate} onChange={(iso) => set("startDate", iso)} />
                 </EditField>
                 <EditField label="สิ้นสุดวันที่">
-                  <Input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} className={inputCls} />
+                  <ThaiDateInput value={form.endDate} onChange={(iso) => set("endDate", iso)} />
                 </EditField>
                 <EditField label="ธนาคาร">
                   <Input value={form.bankName} onChange={(e) => set("bankName", e.target.value)} className={inputCls} placeholder="กสิกรไทย / กรุงไทย..." />
@@ -712,20 +713,8 @@ export default function DriverDetailPage() {
                         placeholder="พจส."
                         title="ตำแหน่ง เช่น พจส. / พจร."
                       />
-                      <Input
-                        type="date"
-                        value={w.from}
-                        onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, from: e.target.value } : x) } : p)}
-                        className={inputCls}
-                        title="ตั้งแต่วันที่"
-                      />
-                      <Input
-                        type="date"
-                        value={w.to}
-                        onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, to: e.target.value } : x) } : p)}
-                        className={inputCls}
-                        title="ถึงวันที่ (ว่าง = ปัจจุบัน)"
-                      />
+                      <ThaiDateInput value={w.from} onChange={(iso) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, from: iso } : x) } : p)} placeholder="ตั้งแต่วันที่" />
+                      <ThaiDateInput value={w.to} onChange={(iso) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, to: iso } : x) } : p)} placeholder="ถึงวันที่ (ว่าง = ปัจจุบัน)" />
                       <Input
                         value={w.note}
                         onChange={(e) => setForm((p) => p ? { ...p, workHistory: p.workHistory.map((x, idx) => idx === i ? { ...x, note: e.target.value } : x) } : p)}
@@ -817,7 +806,7 @@ export default function DriverDetailPage() {
                   </select>
                 </EditField>
                 <EditField label="วันหมดอายุ">
-                  <Input type="date" value={form.licenseExpiry} onChange={(e) => set("licenseExpiry", e.target.value)} className={inputCls} />
+                  <ThaiDateInput value={form.licenseExpiry} onChange={(iso) => set("licenseExpiry", iso)} />
                 </EditField>
               </div>
             ) : hasLicenseInfo ? (

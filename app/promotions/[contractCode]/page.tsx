@@ -7,6 +7,7 @@ import { ActivityHistory } from "@/components/activity-history"
 import { ArrowLeft, Warehouse } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { Label } from "@/components/ui/label"
 import { PromoDetail, RepairClaim, PmRecord } from "@/types"
 import { formatMoney, formatDate } from "@/lib/utils"
@@ -472,7 +473,7 @@ export default function PromoDetailPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">วันที่ทำ PM</Label>
-              <Input type="date" value={pmDate} onChange={(e) => setPmDate(e.target.value)} />
+              <ThaiDateInput value={pmDate} onChange={(iso) => setPmDate(iso)} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">ยอด (บาท)</Label>

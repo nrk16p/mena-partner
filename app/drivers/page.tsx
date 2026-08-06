@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2, AlertTriangle } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import type { Driver } from "@/types"
@@ -221,7 +222,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
 
           <div>
             <label className="block text-xs font-medium text-zinc-500 mb-1">วันเดือนปีเกิด</label>
-            <Input type="date" value={form.birthDate} onChange={(e) => set("birthDate", e.target.value)} className="h-9 text-sm" />
+            <ThaiDateInput value={form.birthDate} onChange={(iso) => set("birthDate", iso)} className="h-9 text-sm" />
             {form.birthDate && <p className="text-[10px] text-zinc-400 mt-0.5">อายุ {calcAge(form.birthDate)} ปี</p>}
           </div>
 
@@ -232,8 +233,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
               value={form.nationalId}
               onChange={(e) => set("nationalId", e.target.value.replace(/\D/g, "").slice(0, 13))}
               className="h-9 text-sm font-mono tracking-widest"
-              maxLength={13}
-            />
+              maxLength={13} />
             <p className="text-[10px] text-zinc-400 mt-0.5">{form.nationalId.length}/13 หลัก</p>
           </div>
 
@@ -362,7 +362,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-zinc-500 mb-1">วันหมดอายุ</label>
-                <Input type="date" value={form.licenseExpiry} onChange={(e) => set("licenseExpiry", e.target.value)} className="h-9 text-sm" />
+                <ThaiDateInput value={form.licenseExpiry} onChange={(iso) => set("licenseExpiry", iso)} className="h-9 text-sm" />
               </div>
             </div>
           </div>
@@ -370,11 +370,11 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">เริ่มงานวันที่</label>
-              <Input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} className="h-9 text-sm" />
+              <ThaiDateInput value={form.startDate} onChange={(iso) => set("startDate", iso)} />
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">สิ้นสุดวันที่</label>
-              <Input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} className="h-9 text-sm" />
+              <ThaiDateInput value={form.endDate} onChange={(iso) => set("endDate", iso)} />
             </div>
           </div>
 
