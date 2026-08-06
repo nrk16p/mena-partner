@@ -1,10 +1,11 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
-  ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck, BookOpenCheck,
+  ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck, BookOpenCheck, ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
@@ -92,6 +93,27 @@ export function Sidebar() {
   const initial = (session?.user?.email ?? session?.user?.name ?? "?")[0].toUpperCase()
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
 
+  // accordion: จำสถานะพับ/กางใน localStorage + กางหมวดของหน้าปัจจุบันเสมอ
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("sidebar-groups") ?? "{}") as Record<string, boolean>
+      setOpenGroups(saved)
+    } catch { /* ค่าเสีย — ใช้ default กางหมด */ }
+  }, [])
+  useEffect(() => {
+    const active = GROUPS.find((g) => g.title && g.items.some((i) => isActive(i.href)))?.title
+    if (active) setOpenGroups((prev) => (prev[active] === false ? { ...prev, [active]: true } : prev))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [title]: !(prev[title] ?? true) }
+      try { localStorage.setItem("sidebar-groups", JSON.stringify(next)) } catch { /* private mode */ }
+      return next
+    })
+  }
+
   return (
     <aside className="flex flex-col w-52 shrink-0 bg-zinc-900 h-screen border-r border-zinc-800">
       {/* Logo */}
@@ -105,37 +127,67 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Grouped nav (ตาม flow 5 ขั้น) */}
+      {/* Grouped nav — accordion: พับ/กางรายหมวด จำสถานะไว้ และกางหมวดของหน้าปัจจุบันอัตโนมัติ */}
       <nav className="flex-1 py-3 overflow-y-auto">
-        {GROUPS.map((g, gi) => (
-          <div key={gi} className={cn("px-2", gi > 0 && "mt-3")}>
-            {g.title && (
-              <p className="px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
-                {g.title}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {g.items.map((item) => (
-                <NavLink key={item.href} {...item} active={isActive(item.href)} />
-              ))}
+        {GROUPS.map((g, gi) => {
+          if (!g.title) {
+            return (
+              <div key={gi} className="px-2">
+                <div className="space-y-0.5">
+                  {g.items.map((item) => (
+                    <NavLink key={item.href} {...item} active={isActive(item.href)} />
+                  ))}
+                </div>
+              </div>
+            )
+          }
+          const hasActive = g.items.some((item) => isActive(item.href))
+          const open = openGroups[g.title] ?? true
+          return (
+            <div key={gi} className="px-2 mt-3">
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.title!)}
+                className="w-full flex items-center justify-between px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  {g.title}
+                  {!open && hasActive && <span className="w-1 h-1 rounded-full bg-emerald-500" />}
+                </span>
+                <ChevronDown className={cn("w-3 h-3 transition-transform", !open && "-rotate-90")} />
+              </button>
+              {open && (
+                <div className="space-y-0.5">
+                  {g.items.map((item) => (
+                    <NavLink key={item.href} {...item} active={isActive(item.href)} />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {/* Admin section */}
         {isAdmin && (
           <div className="mt-3 px-2">
-            <p className="px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
-              Admin
-            </p>
-            <div className="space-y-0.5">
-              {ADMIN_NAV.map((item) => (
-                <NavLink key={item.href} {...item} active={isActive(item.href)} />
-              ))}
-              {role === "superadmin" && (
-                <NavLink href="/admin/users" label="ผู้ใช้ & สิทธิ์" icon={Users} active={isActive("/admin/users")} />
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => toggleGroup("Admin")}
+              className="w-full flex items-center justify-between px-3 mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              <span>Admin</span>
+              <ChevronDown className={cn("w-3 h-3 transition-transform", !(openGroups["Admin"] ?? true) && "-rotate-90")} />
+            </button>
+            {(openGroups["Admin"] ?? true) && (
+              <div className="space-y-0.5">
+                {ADMIN_NAV.map((item) => (
+                  <NavLink key={item.href} {...item} active={isActive(item.href)} />
+                ))}
+                {role === "superadmin" && (
+                  <NavLink href="/admin/users" label="ผู้ใช้ & สิทธิ์" icon={Users} active={isActive("/admin/users")} />
+                )}
+              </div>
+            )}
           </div>
         )}
       </nav>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
-import { Search, Plus, X, Check, Car, Trash2, ChevronRight, Upload, FileText, ExternalLink, Hash, Wrench, Download } from "lucide-react"
+import { Search, Plus, X, Check, Car, ChevronRight, Upload, FileText, ExternalLink, Hash, Wrench, Download } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
@@ -78,7 +78,6 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
   const isEdit = !!vehicle
   const [form, setForm]       = useState({ ...EMPTY_FORM })
   const [saving,      setSaving]      = useState(false)
-  const [deleting,    setDeleting]    = useState(false)
   const [error,       setError]       = useState("")
   const [uploading,   setUploading]   = useState(false)
 
@@ -147,14 +146,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
     } finally { setSaving(false) }
   }
 
-  async function handleDelete() {
-    if (!vehicle || !confirm(`ลบ ${vehicle.truckNumber || vehicle.licensePlate || "รถคันนี้"} ออกถาวร?`)) return
-    setDeleting(true)
-    try {
-      await fetch(`/api/vehicles/${vehicle._id}`, { method: "DELETE" })
-      onDeleted(); onClose()
-    } finally { setDeleting(false) }
-  }
+
 
   // ปิดด้วยปุ่ม Esc
   useEffect(() => {
@@ -177,13 +169,21 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
           {f.label}
           {empty && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" title="ยังไม่กรอก" />}
         </label>
-        <Input
-          type={f.type ?? "text"}
-          placeholder={f.placeholder}
-          value={String(form[f.key as keyof typeof form] ?? "")}
-          onChange={(e) => set(f.key as keyof typeof EMPTY_FORM, e.target.value)}
-          className={`h-10 text-sm ${empty ? "border-amber-300 dark:border-amber-800/70 bg-amber-50/40 dark:bg-amber-950/10 focus-visible:ring-amber-400" : ""}`}
-        />
+        {f.type === "date" ? (
+          <ThaiDateInput
+            value={String(form[f.key as keyof typeof form] ?? "")}
+            onChange={(iso) => set(f.key as keyof typeof EMPTY_FORM, iso)}
+            className={empty ? "border-amber-300 dark:border-amber-800/70 bg-amber-50/40 dark:bg-amber-950/10" : ""}
+          />
+        ) : (
+          <Input
+            type={f.type ?? "text"}
+            placeholder={f.placeholder}
+            value={String(form[f.key as keyof typeof form] ?? "")}
+            onChange={(e) => set(f.key as keyof typeof EMPTY_FORM, e.target.value)}
+            className={`h-10 text-sm ${empty ? "border-amber-300 dark:border-amber-800/70 bg-amber-50/40 dark:bg-amber-950/10 focus-visible:ring-amber-400" : ""}`}
+          />
+        )}
       </div>
     )
   }
@@ -410,17 +410,8 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
 
         {/* ── sticky footer ── */}
         <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur">
-          {isEdit ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="h-9 px-3 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />{deleting ? "กำลังลบ..." : "ลบรถ"}
-            </Button>
-          ) : <span />}
+          {/* ปุ่มลบรถถอดออกตามคำสั่ง 2026-08-06 — ป้องกันลบข้อมูลโยงสัญญา/เงินเดือน (ลบได้เฉพาะระดับ DB) */}
+          <span />
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={onClose} className="h-9 text-sm text-zinc-500">ยกเลิก</Button>
             <Button
