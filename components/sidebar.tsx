@@ -70,12 +70,12 @@ function NavLink({ href, label, icon: Icon, active, hint }: {
       className={cn(
         "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-sm transition-colors relative",
         active
-          ? "bg-white text-zinc-900 font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-emerald-500"
-          : "text-emerald-950/80 hover:bg-white/50 hover:text-emerald-950"
+          ? "bg-white text-emerald-900 font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-[#AFE1AF]"
+          : "text-emerald-50/85 hover:bg-white/10 hover:text-white"
       )}
       title={hint ? `${label} — ${hint}` : meta.label}
     >
-      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-600" : "text-zinc-500")} />
+      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-700" : "text-emerald-100/70")} />
       <span className="truncate min-w-0 flex-1">{label}</span>
       {status !== "ready" && (
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
@@ -115,15 +115,15 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-56 shrink-0 bg-[#AFE1AF] h-screen border-r border-[#8FCB8F]">
+    <aside className="flex flex-col w-56 shrink-0 bg-[#0B6E4F] h-screen border-r border-[#0A5C42]">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-[#8FCB8F]/70 shrink-0">
+      <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-white/15 shrink-0">
         <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
           M
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-zinc-900 tracking-widest leading-tight">MENA PARTNER</p>
-          <p className="text-xs text-emerald-950/60 leading-tight mt-0.5">รถร่วม Mixer</p>
+          <p className="text-sm font-bold text-white tracking-widest leading-tight">MENA PARTNER</p>
+          <p className="text-xs text-emerald-100/70 leading-tight mt-0.5">รถร่วม Mixer</p>
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => toggleGroup(g.title!)}
-                className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-emerald-950/70 hover:text-emerald-950 transition-colors"
+                className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-emerald-100/80 hover:text-white transition-colors"
               >
                 <span className="flex items-center gap-1.5">
                   {g.title}
@@ -173,7 +173,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={() => toggleGroup("Admin")}
-              className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-emerald-950/70 hover:text-emerald-950 transition-colors"
+              className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-emerald-100/80 hover:text-white transition-colors"
             >
               <span>Admin</span>
               <ChevronDown className={cn("w-4 h-4 transition-transform", !(openGroups["Admin"] ?? false) && "-rotate-90")} />
@@ -194,12 +194,12 @@ export function Sidebar() {
 
       {/* Bottom user chip */}
       {session?.user && (
-        <div className="px-4 py-3 border-t border-[#8FCB8F]/70 shrink-0">
+        <div className="px-4 py-3 border-t border-white/15 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-white/70 flex items-center justify-center text-[10px] font-bold text-emerald-900 shrink-0">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
               {initial}
             </div>
-            <p className="text-xs text-emerald-950/60 truncate min-w-0">
+            <p className="text-xs text-emerald-100/70 truncate min-w-0">
               {session.user.email ?? session.user.name}
             </p>
           </div>
