@@ -305,28 +305,19 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
               </div>
             </div>
 
-            {/* ── สถานะข้อมูลครบ (อัตโนมัติจากช่องที่กรอก) + วันที่คาดจะเสร็จเมื่อยังไม่ครบ ── */}
-            <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                ข้อมูลครบถ้วน
-                {complete
-                  ? <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">🟢 ครบ (อัตโนมัติ)</span>
-                  : <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full">🟡 ขาด {total - filled} ช่อง</span>
-                }
-              </span>
-              {!complete && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-zinc-500 whitespace-nowrap">วันที่คาดจะเสร็จ</label>
-                  <div className="w-48">
-                    <ThaiDateInput
-                      beOnly
-                      value={form.dataExpectedDate ?? ""}
-                      onChange={(iso) => set("dataExpectedDate", iso)}
-                    />
-                  </div>
+            {/* วันที่คาดจะเสร็จ — โชว์เฉพาะตอนข้อมูลยังไม่ครบ (สถานะครบ/ไม่ครบดูที่แถบหัวฟอร์ม) */}
+            {!complete && (
+              <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+                <label className="text-xs text-zinc-500 whitespace-nowrap">วันที่คาดจะเสร็จ</label>
+                <div className="w-48">
+                  <ThaiDateInput
+                    beOnly
+                    value={form.dataExpectedDate ?? ""}
+                    onChange={(iso) => set("dataExpectedDate", iso)}
+                  />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {error && (
