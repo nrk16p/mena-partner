@@ -264,3 +264,32 @@
     font-feature-settings: "tnum";
   }
 }
+/* ══ Gold brand theme (คำสั่ง 2026-08-06) ══
+   gradient หลักของแบรนด์ + override ปุ่มแอ็กชันหลักทุกโทน (emerald/blue/dark) เป็นทอง
+   — สีเชิงความหมาย (แดง=หัก/ติดลบ, พื้นจาง emerald-50/red-50 ในตาราง) คงเดิม */
+:root {
+  --gold-grad: linear-gradient(135deg, #8A6A00 0%, #D4AF37 35%, #F5E6A8 50%, #D4AF37 65%, #8A6A00 100%);
+  --gold-grad-hover: linear-gradient(135deg, #755A00 0%, #BD9A2B 35%, #E8D58F 50%, #BD9A2B 65%, #755A00 100%);
+  --gold-ink: #3F3000;
+}
+.gold-grad { background: var(--gold-grad); }
+
+/* ปุ่ม/ลิงก์แอ็กชันหลักทั้งระบบ → ทอง (จำกัดเฉพาะ element เชิงปุ่ม กัน badge/การ์ดโดนไปด้วย) */
+button.bg-emerald-600, a.bg-emerald-600, label.bg-emerald-600,
+button.bg-blue-600, a.bg-blue-600,
+button.bg-zinc-900, a.bg-zinc-900,
+button.bg-zinc-800, a.bg-zinc-800,
+button.bg-primary, a.bg-primary {
+  background: var(--gold-grad) !important;
+  color: var(--gold-ink) !important;
+  border-color: transparent !important;
+  font-weight: 600;
+}
+button.bg-emerald-600:hover, a.bg-emerald-600:hover, label.bg-emerald-600:hover,
+button.bg-blue-600:hover, a.bg-blue-600:hover,
+button.bg-zinc-900:hover, a.bg-zinc-900:hover,
+button.bg-zinc-800:hover, a.bg-zinc-800:hover,
+button.bg-primary:hover, a.bg-primary:hover {
+  background: var(--gold-grad-hover) !important;
+  color: var(--gold-ink) !important;
+}
