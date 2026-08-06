@@ -71,11 +71,11 @@ function NavLink({ href, label, icon: Icon, active, hint }: {
         "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-sm transition-colors relative",
         active
           ? "bg-white text-emerald-900 font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-[#AFE1AF]"
-          : "text-emerald-50/85 hover:bg-white/10 hover:text-white"
+          : "text-white hover:bg-white/10"
       )}
       title={hint ? `${label} — ${hint}` : meta.label}
     >
-      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-700" : "text-emerald-100/70")} />
+      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-700" : "text-white")} />
       <span className="truncate min-w-0 flex-1">{label}</span>
       {status !== "ready" && (
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
@@ -123,7 +123,7 @@ export function Sidebar() {
         </div>
         <div className="min-w-0">
           <p className="text-sm font-bold text-white tracking-widest leading-tight">MENA PARTNER</p>
-          <p className="text-xs text-emerald-100/70 leading-tight mt-0.5">รถร่วม Mixer</p>
+          <p className="text-xs text-white leading-tight mt-0.5">รถร่วม Mixer</p>
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={() => toggleGroup(g.title!)}
-                className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-emerald-100/80 hover:text-white transition-colors"
+                className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-white hover:text-[#AFE1AF] transition-colors"
               >
                 <span className="flex items-center gap-1.5">
                   {g.title}
@@ -173,7 +173,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={() => toggleGroup("Admin")}
-              className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-emerald-100/80 hover:text-white transition-colors"
+              className="w-full flex items-center justify-between px-3 mb-1 text-sm font-semibold text-white hover:text-[#AFE1AF] transition-colors"
             >
               <span>Admin</span>
               <ChevronDown className={cn("w-4 h-4 transition-transform", !(openGroups["Admin"] ?? false) && "-rotate-90")} />
@@ -199,7 +199,7 @@ export function Sidebar() {
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
               {initial}
             </div>
-            <p className="text-xs text-emerald-100/70 truncate min-w-0">
+            <p className="text-xs text-white truncate min-w-0">
               {session.user.email ?? session.user.name}
             </p>
           </div>
