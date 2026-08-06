@@ -3,6 +3,9 @@
 
 Usage: python3 scripts/docx-templates/prep_sale.py <src.docx> <out.docx>
 """
+# ⚠ หมายเหตุ 2026-08-06: templates/sale.docx ปัจจุบันถูก "ตัดเอกสารแนบท้าย หมายเลข 1 (โปรโมชั่น)"
+# ออกทั้งชุดตามคำสั่งผู้ใช้ (ตัด body elements หลังลายเซ็นพยานจนถึงก่อน sectPr)
+# ถ้า regen จาก specimen ใหม่ด้วยสคริปต์นี้ ต้องตัดส่วนแนบท้ายซ้ำด้วย — PDF ยังมีแนบท้ายตามเดิม
 import sys
 from prep_lib import build_template
 
