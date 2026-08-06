@@ -480,11 +480,11 @@ export default function VehiclesPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (statusFilter) params.set("status", statusFilter)
+      // โหลดเต็มชุดเสมอ — ตัวเลขบนป้ายฟิลเตอร์ต้องนิ่ง ไม่เปลี่ยนตามฟิลเตอร์ (กรองฝั่ง client แทน)
       const res = await fetch(`/api/vehicles?${params}`)
       if (res.ok) setItems(await res.json())
     } finally { setLoading(false) }
-  }, [statusFilter])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
@@ -538,6 +538,8 @@ export default function VehiclesPage() {
   const filtered = useMemo(() => {
     const lq = q.toLowerCase()
     return items.filter((v) => {
+      if (statusFilter === "active"   && v.status !== "active") return false
+      if (statusFilter === "inactive" && v.status === "active") return false
       if (typeFilter && vType(v) !== typeFilter) return false
       if (dataFilter === "complete"   && !isVehicleComplete(v)) return false
       if (dataFilter === "incomplete" && isVehicleComplete(v)) return false
@@ -546,7 +548,7 @@ export default function VehiclesPage() {
         v.chassisNumber, v.engineNumber, v.characteristic]
         .some((f) => (f ?? "").toLowerCase().includes(lq))
     })
-  }, [items, q, typeFilter, dataFilter])
+  }, [items, q, statusFilter, typeFilter, dataFilter])
 
   // ── pagination: สูงสุด 50 คัน/หน้า ──
   const pg = usePagination(filtered, 50, [q, statusFilter, typeFilter, dataFilter])
