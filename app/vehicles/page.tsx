@@ -326,29 +326,28 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             </p>
           )}
 
-          {/* ประเภทหลัก: Mixer / Trailer */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-zinc-500">ประเภทรถ:</span>
-            {([["mixer", "Mixer (โม่ปูน)"], ["trailer", "Trailer (เทรลเลอร์)"]] as [("mixer" | "trailer"), string][]).map(([val, lbl]) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setForm((p) => ({ ...p, truckType: val }))}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                  (form.truckType ?? "mixer") === val
-                    ? val === "trailer"
-                      ? "bg-amber-500 text-white border-transparent"
-                      : "bg-sky-600 text-white border-transparent"
-                    : "bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
-                }`}
-              >
-                {lbl}
-              </button>
-            ))}
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <SectionCard icon={Car} title="ข้อมูลทั่วไป">
+            {/* ประเภทหลัก Mixer / Trailer — ย้ายเข้าหมวดข้อมูลทั่วไป (คำสั่ง 2026-08-06) */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs font-medium text-zinc-500">ประเภทรถ:</span>
+              {([["mixer", "Mixer (โม่ปูน)"], ["trailer", "Trailer (เทรลเลอร์)"]] as [("mixer" | "trailer"), string][]).map(([val, lbl]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, truckType: val }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    (form.truckType ?? "mixer") === val
+                      ? val === "trailer"
+                        ? "bg-amber-500 text-white border-transparent"
+                        : "bg-sky-600 text-white border-transparent"
+                      : "bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                  }`}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               {FORM_FIELDS.filter((f) => f.section === "ข้อมูลทั่วไป").map(field)}
             </div>
