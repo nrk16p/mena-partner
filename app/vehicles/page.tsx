@@ -16,7 +16,8 @@ function formatThaiDateShort(dateStr: string | null | undefined): string {
   if (!dateStr) return "—"
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return "—"
-  return `${d.getDate()} ${["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."][d.getMonth()]} ${String(d.getFullYear()).slice(-2)}/${String(d.getFullYear() + 543).slice(-2)}`
+  // วันจดทะเบียน/วันที่ในหน้ารถ = เอกสารราชการ → แสดง พ.ศ. ล้วน (คำสั่ง 2026-08-06)
+  return `${d.getDate()} ${["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."][d.getMonth()]} ${d.getFullYear() + 543}`
 }
 
 // ─── Form fields config ───────────────────────────────────────────────────────
@@ -171,6 +172,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
         </label>
         {f.type === "date" ? (
           <ThaiDateInput
+            beOnly
             value={String(form[f.key as keyof typeof form] ?? "")}
             onChange={(iso) => set(f.key as keyof typeof EMPTY_FORM, iso)}
             className={empty ? "border-amber-300 dark:border-amber-800/70 bg-amber-50/40 dark:bg-amber-950/10" : ""}
@@ -298,6 +300,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
                   <label className="text-xs text-zinc-500 whitespace-nowrap">วันที่คาดจะเสร็จ</label>
                   <div className="w-48">
                     <ThaiDateInput
+                      beOnly
                       value={form.dataExpectedDate ?? ""}
                       onChange={(iso) => set("dataExpectedDate", iso)}
                     />
