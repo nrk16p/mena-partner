@@ -32,8 +32,10 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const b = await req.json()
-  if (!b.licensePlate || !String(b.customerName ?? "").trim()) {
-    return NextResponse.json({ error: "ต้องเลือกรถและลูกค้า" }, { status: 400 })
+  const isLead = (b.status as QuoteStatus) === "lead"
+  // lead บันทึกได้โดยยังไม่ต้องเลือกรถ — บังคับเฉพาะชื่อลูกค้า (รถบังคับเมื่อไม่ใช่ lead)
+  if (!String(b.customerName ?? "").trim() || (!isLead && !b.licensePlate)) {
+    return NextResponse.json({ error: isLead ? "กรุณาระบุชื่อลูกค้า" : "ต้องเลือกรถและลูกค้า" }, { status: 400 })
   }
 
   const client = await clientPromise
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
     customerId: b.customerId ? String(b.customerId) : undefined,
     customerName: String(b.customerName).trim(),
     customerPhone: (b.customerPhone ?? "").trim(),
-    licensePlate: String(b.licensePlate).trim(),
+    licensePlate: String(b.licensePlate ?? "").trim(),
     vehicleBrand: (b.vehicleBrand ?? "").trim(),
     vehicleModel: (b.vehicleModel ?? "").trim(),
     truckNumber: (b.truckNumber ?? "").trim(),
