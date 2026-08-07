@@ -379,7 +379,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             </div>
           </SectionCard>
 
-          <SectionCard icon={Car} title="รูปรถ (ใช้ในใบเสนอราคา)">
+          <SectionCard icon={Car} title="รูปรถ">
             {form.photoUrl ? (
               <div className="relative inline-block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
