@@ -12,6 +12,8 @@ export const MODULE_STATUS: Record<string, ModuleStatus> = {
   "/price-list":         "ready",
   // สัญญา — พร้อมใช้งานแล้ว
   "/contracts":          "ready",
+  // ระบบขาย — ใบเสนอราคา/CRM (เฟส 1) กำลังทดสอบ
+  "/quotations":         "testing",
   // งานประจำวัน — พร้อมใช้งานแล้ว
   "/vehicle-cost":       "ready",
   "/insurance-tax":      "ready",

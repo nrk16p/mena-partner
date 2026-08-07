@@ -23,6 +23,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 /** กลุ่มความสามารถ (โดเมนของ API) */
 export type PermDomain =
   | "masterdata"      // คนขับ / รถ / ราคาขาย
+  | "sales"           // ใบเสนอราคา / ลูกค้า / CRM
   | "contracts"       // สัญญา + เอกสารแนบ
   | "promotions"      // โปรโมชั่น + ยืนยันตัดงบ/PM
   | "vehiclecost"     // ค่าใช้จ่ายรถ / ใบรับสภาพหนี้ / เบิกคลัง / เที่ยววิ่ง
@@ -33,10 +34,10 @@ export type PermDomain =
   | "manage_users"    // ตั้งบทบาทผู้ใช้
 
 const MATRIX: Record<Role, readonly PermDomain[]> = {
-  superadmin: ["masterdata", "contracts", "promotions", "vehiclecost", "finance", "cancel_contract", "delete", "lock", "manage_users"],
-  admin:      ["masterdata", "contracts", "promotions", "vehiclecost", "finance", "cancel_contract", "delete", "lock"],
-  fleet:      ["masterdata", "contracts", "promotions", "vehiclecost"],
-  finance:    ["finance"],
+  superadmin: ["masterdata", "contracts", "promotions", "vehiclecost", "finance", "sales", "cancel_contract", "delete", "lock", "manage_users"],
+  admin:      ["masterdata", "contracts", "promotions", "vehiclecost", "finance", "sales", "cancel_contract", "delete", "lock"],
+  fleet:      ["masterdata", "contracts", "promotions", "vehiclecost", "sales"],
+  finance:    ["finance", "sales"],
   viewer:     [],
 }
 
@@ -51,6 +52,7 @@ export function domainOfApiPath(pathname: string): PermDomain | null {
   const p = pathname
   if (p.startsWith("/api/drivers") || p.startsWith("/api/vehicles") || p.startsWith("/api/price-list")) return "masterdata"
   if (p.startsWith("/api/contracts")) return "contracts"
+  if (p.startsWith("/api/quotations") || p.startsWith("/api/customers")) return "sales"
   if (p.startsWith("/api/promotions")) return "promotions"
   if (
     p.startsWith("/api/vehicle-cost") ||
