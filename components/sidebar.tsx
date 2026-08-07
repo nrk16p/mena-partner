@@ -70,12 +70,12 @@ function NavLink({ href, label, icon: Icon, active, hint }: {
       className={cn(
         "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-sm transition-colors relative",
         active
-          ? "bg-white text-[#6B5200] font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-[#8A6A00]"
+          ? "bg-white text-[#6B5200] font-semibold shadow-sm before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:rounded-r before:bg-[#8C6B1F]"
           : "text-[#3F3000] hover:bg-white/25"
       )}
       title={hint ? `${label} — ${hint}` : meta.label}
     >
-      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-[#8A6A00]" : "text-[#5A4600]")} />
+      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-[#8C6B1F]" : "text-[#5A4600]")} />
       <span className="truncate min-w-0 flex-1">{label}</span>
       {status !== "ready" && (
         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
@@ -115,10 +115,10 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-56 shrink-0 gold-grad h-screen border-r border-[#8A6A00]">
+    <aside className="flex flex-col w-56 shrink-0 gold-grad h-screen border-r border-[#8C6B1F]">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-[#8A6A00]/40 shrink-0">
-        <div className="w-7 h-7 rounded-lg bg-[#8A6A00] flex items-center justify-center text-white font-bold text-sm shrink-0">
+      <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-[#8C6B1F]/40 shrink-0">
+        <div className="w-7 h-7 rounded-lg bg-[#8C6B1F] flex items-center justify-center text-white font-bold text-sm shrink-0">
           M
         </div>
         <div className="min-w-0">
@@ -194,7 +194,7 @@ export function Sidebar() {
 
       {/* Bottom user chip */}
       {session?.user && (
-        <div className="px-4 py-3 border-t border-[#8A6A00]/40 shrink-0">
+        <div className="px-4 py-3 border-t border-[#8C6B1F]/40 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-full bg-white/50 flex items-center justify-center text-[10px] font-bold text-[#3F3000] shrink-0">
               {initial}

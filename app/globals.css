@@ -268,8 +268,8 @@
    gradient หลักของแบรนด์ + override ปุ่มแอ็กชันหลักทุกโทน (emerald/blue/dark) เป็นทอง
    — สีเชิงความหมาย (แดง=หัก/ติดลบ, พื้นจาง emerald-50/red-50 ในตาราง) คงเดิม */
 :root {
-  --gold-grad: linear-gradient(135deg, #8A6A00 0%, #D4AF37 35%, #F5E6A8 50%, #D4AF37 65%, #8A6A00 100%);
-  --gold-grad-hover: linear-gradient(135deg, #755A00 0%, #BD9A2B 35%, #E8D58F 50%, #BD9A2B 65%, #755A00 100%);
+  --gold-grad: linear-gradient(135deg, #8C6B1F 0%, #C9A227 30%, #E7C86E 50%, #C9A227 70%, #8C6B1F 100%);
+  --gold-grad-hover: linear-gradient(135deg, #78591A 0%, #B08C1F 30%, #D9B85A 50%, #B08C1F 70%, #78591A 100%);
   --gold-ink: #3F3000;
 }
 .gold-grad { background: var(--gold-grad); }
