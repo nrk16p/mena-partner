@@ -2,7 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { FileText, Plus, Search, X, ExternalLink } from "lucide-react"
+import Link from "next/link"
+import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
@@ -38,6 +39,7 @@ function QuotationsInner() {
   const [filter, setFilter] = useState<Status | "">("")
   const [q, setQ] = useState("")
   const [showForm, setShowForm] = useState(false)
+  const [view, setView] = useState<"list" | "kanban">("list")
 
   const load = useCallback(() => {
     setLoading(true)
@@ -71,7 +73,19 @@ function QuotationsInner() {
         </button>
       </div>
 
+      {/* Dashboard ยอดขาย */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Stat label="ดีลทั้งหมด" value={String(rows.length)} />
+        <Stat label="มูลค่า pipeline (ยังไม่ปิด)" value={formatMoney(rows.filter((r) => r.status !== "won" && r.status !== "lost").reduce((s, r) => s + r.totalSalePrice, 0))} />
+        <Stat label="ปิดการขายแล้ว" value={`${counts.won ?? 0} ดีล`} tone="good" />
+        <Stat label="มูลค่าปิดได้" value={formatMoney(rows.filter((r) => r.status === "won").reduce((s, r) => s + r.totalSalePrice, 0))} tone="good" />
+      </div>
+
       <div className="flex items-center gap-2 flex-wrap">
+        <div className="ml-auto flex items-center gap-1 order-last">
+          <button onClick={() => setView("list")} className={`p-1.5 rounded-lg ${view === "list" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:bg-zinc-100"}`} title="ตาราง"><List className="w-4 h-4" /></button>
+          <button onClick={() => setView("kanban")} className={`p-1.5 rounded-lg ${view === "kanban" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:bg-zinc-100"}`} title="กระดานดีล"><LayoutGrid className="w-4 h-4" /></button>
+        </div>
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหา เลขที่/ลูกค้า/ทะเบียน/เซลล์"
@@ -87,6 +101,26 @@ function QuotationsInner() {
         ))}
       </div>
 
+      {view === "kanban" ? (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {STATUS.map((col) => (
+            <div key={col.key} className="bg-zinc-50 rounded-xl p-2 min-h-[120px]">
+              <div className={`text-[11px] font-semibold px-2 py-1 rounded-lg mb-2 ${col.cls}`}>{col.label} ({counts[col.key] ?? 0})</div>
+              <div className="space-y-2">
+                {rows.filter((r) => r.status === col.key).map((r) => (
+                  <Link key={r._id} href={`/quotations/${r._id}`} className="block bg-white border border-zinc-100 rounded-lg p-2 hover:shadow-sm">
+                    <div className="font-mono text-[10px] text-[#8C6B1F] font-semibold">{r.quotationNo}</div>
+                    <div className="text-xs font-medium mt-0.5 truncate">{r.customerName}</div>
+                    <div className="text-[10px] text-zinc-400 truncate">{r.licensePlate} · {r.vehicleBrand}</div>
+                    <div className="text-[11px] tabular-nums text-zinc-600 mt-1">{formatMoney(r.totalSalePrice)}</div>
+                    <div className="text-[9px] text-zinc-300 mt-0.5">{r.salesName}</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="bg-white border border-zinc-100 rounded-xl overflow-x-auto">
         <table className="w-full text-sm whitespace-nowrap">
           <thead><tr className="text-zinc-400 border-b border-zinc-100 bg-zinc-50/60">
@@ -98,7 +132,7 @@ function QuotationsInner() {
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีใบเสนอราคา — กด &quot;สร้างใบเสนอราคา&quot;</td></tr>
               : rows.map((r) => (
                 <tr key={r._id} className="hover:bg-zinc-50">
-                  <td className="px-3 py-2 font-mono text-xs font-semibold text-[#8C6B1F]">{r.quotationNo}</td>
+                  <td className="px-3 py-2 font-mono text-xs font-semibold text-[#8C6B1F]"><Link href={`/quotations/${r._id}`} className="hover:underline">{r.quotationNo}</Link></td>
                   <td className="px-3 py-2">{r.customerName}<span className="text-zinc-400 text-xs">{r.customerPhone ? ` · ${r.customerPhone}` : ""}</span></td>
                   <td className="px-3 py-2 text-xs">{r.licensePlate} <span className="text-zinc-400">{r.vehicleBrand}</span></td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.totalSalePrice)}</td>
@@ -115,6 +149,7 @@ function QuotationsInner() {
           </tbody>
         </table>
       </div>
+      )}
 
       {showForm && (
         <QuoteForm presetPlate={presetPlate} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load() }} />
@@ -128,6 +163,15 @@ export default function QuotationsPage() {
     <Suspense fallback={<div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>}>
       <QuotationsInner />
     </Suspense>
+  )
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" }) {
+  return (
+    <div className="bg-white border border-zinc-100 rounded-xl px-4 py-3">
+      <p className="text-[10px] text-zinc-400">{label}</p>
+      <p className={`text-lg font-bold mt-0.5 tabular-nums ${tone === "good" ? "text-emerald-600" : ""}`}>{value}</p>
+    </div>
   )
 }
 
