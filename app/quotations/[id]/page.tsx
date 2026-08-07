@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight } from "lucide-react"
+import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
@@ -29,6 +29,13 @@ interface Quote {
   timeline?: { at: string; by: string; action: string; note?: string }[]
 }
 
+interface PriceRow {
+  licensePlate: string; status: string
+  vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; photoUrl?: string
+  totalSalePrice: number; downPayment: number; cashDown: number
+  downInstallmentCount: number; financeAmount: number; financeInstallments: number; monthlyPayment: number
+}
+
 export default function DealPage() {
   const { id } = useParams<{ id: string }>()
   const [q, setQ] = useState<Quote | null>(null)
@@ -37,11 +44,42 @@ export default function DealPage() {
   const [depAmt, setDepAmt] = useState("")
   const [noteText, setNoteText] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
+  // ── editor รถ/ราคา/โปรฯ (ใช้ตอน lead เลือกรถ + ทำใบเสนอ / อัพเดทโปรฯ) ──
+  const [editing, setEditing] = useState(false)
+  const [prices, setPrices] = useState<PriceRow[]>([])
+  const [plateQ, setPlateQ] = useState("")
+  const [plateOpen, setPlateOpen] = useState(false)
+  const [ePlate, setEPlate] = useState("")
+  const [eSnap, setESnap] = useState<Record<string, number>>({})
+  const [eCash, setECash] = useState(0)
+  const [eExtras, setEExtras] = useState("")
+  const [ePromoNote, setEPromoNote] = useState("")
 
   const load = useCallback(() => {
     fetch(`/api/quotations/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?._id) { setQ(d); setDepAmt(d.depositAmount ? String(d.depositAmount) : "") } })
   }, [id])
   useEffect(load, [load])
+  useEffect(() => { fetch("/api/price-list").then((r) => r.ok ? r.json() : []).then(setPrices) }, [])
+  // เปิด editor → ตั้งค่าจากดีลปัจจุบัน
+  function openEditor() {
+    if (q) { setEPlate(q.licensePlate ?? ""); setPlateQ(q.licensePlate ?? ""); setEExtras(q.extras ?? "")
+      setESnap({ totalSalePrice: q.totalSalePrice, downPayment: q.downPayment, downInstallmentCount: q.downInstallmentCount,
+        financeAmount: q.financeAmount, financeInstallments: q.financeInstallments, monthlyPayment: q.monthlyPayment })
+      setECash(q.cashDown ?? 0) }
+    setEditing(true)
+  }
+  // เลือกรถใน editor → เติม snapshot + โปรฯ
+  useEffect(() => {
+    if (!editing || !ePlate) return
+    const row = prices.find((p) => p.licensePlate === ePlate)
+    if (row) { setESnap({ totalSalePrice: row.totalSalePrice, downPayment: row.downPayment, downInstallmentCount: row.downInstallmentCount,
+        financeAmount: row.financeAmount, financeInstallments: row.financeInstallments, monthlyPayment: row.monthlyPayment }); setECash(row.cashDown) }
+    fetch(`/api/promotions/master?plate=${encodeURIComponent(ePlate)}`).then((r) => r.ok ? r.json() : null).then((d) => {
+      setEPromoNote(d?.found ? "ดึงจากโปรโมชั่นของรถคันนี้" : "รถคันนี้ยังไม่ตั้งโปรฯ")
+      if (d?.summary) setEExtras(d.summary)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ePlate, editing])
 
   async function patch(body: Record<string, unknown>, ok?: string) {
     setBusy(true); setErr("")
@@ -72,6 +110,24 @@ export default function DealPage() {
   }
   async function removeSlip(url: string) {
     await patch({ depositSlips: allSlips().filter((u) => u !== url), ...(q?.depositSlipUrl === url ? { depositSlipUrl: "" } : {}) })
+  }
+
+  const eSel = prices.find((p) => p.licensePlate === ePlate)
+  const eRemain = Math.max(0, (eSnap.downPayment ?? 0) - eCash)
+  const ePerInst = eSnap.downInstallmentCount ? Math.round(eRemain / eSnap.downInstallmentCount) : 0
+  const ePlateMatches = prices.filter((p) => p.status !== "contract" && p.licensePlate.replace(/\s/g, "").includes(plateQ.replace(/\s/g, ""))).slice(0, 25)
+  async function saveVehicle(alsoQuote: boolean) {
+    if (!ePlate) { setErr("เลือกรถก่อน"); return }
+    await patch({
+      licensePlate: ePlate, vehicleBrand: eSel?.vehicleBrand ?? "", vehicleModel: eSel?.vehicleModel ?? "",
+      truckNumber: eSel?.truckNumber ?? "", vehiclePhotoUrl: eSel?.photoUrl ?? "",
+      totalSalePrice: eSnap.totalSalePrice ?? 0, downPayment: eSnap.downPayment ?? 0, cashDown: eCash,
+      downInstallmentCount: eSnap.downInstallmentCount ?? 0, downInstallmentAmt: ePerInst,
+      financeAmount: eSnap.financeAmount ?? 0, financeInstallments: eSnap.financeInstallments ?? 0, monthlyPayment: eSnap.monthlyPayment ?? 0,
+      extras: eExtras, ...(alsoQuote && q?.status === "lead" ? { status: "quoted" } : {}),
+    })
+    setEditing(false)
+    if (alsoQuote) window.open(`/api/quotations/${id}/pdf`, "_blank")
   }
 
   if (!q) return <div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>
@@ -135,18 +191,75 @@ export default function DealPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-5">
-        {/* รถ + ราคา */}
+        {/* รถ + ราคา (แก้ไข/ออกใบเสนอได้) */}
         <Section title="รถ & ราคา">
-          <div className="text-sm space-y-1">
-            <Row k="รถ" v={`${q.licensePlate} · ${q.vehicleBrand ?? "-"} ${q.vehicleModel ?? ""}`} />
-            <Row k="เบอร์รถ" v={q.truckNumber ?? "-"} />
-            <div className="border-t border-zinc-100 my-2" />
-            <Row k="ราคาขายรวม" v={formatMoney(q.totalSalePrice)} bold />
-            <Row k="เงินดาวน์รวม" v={formatMoney(q.downPayment)} />
-            <Row k="ยอดจัดไฟแนนซ์" v={formatMoney(q.financeAmount)} />
-            <Row k="ค่างวด/เดือน" v={`${formatMoney(q.monthlyPayment)} × ${q.financeInstallments} งวด`} />
-          </div>
-          {q.extras && <p className="text-xs text-zinc-500 mt-3 pt-2 border-t border-zinc-100">🎁 {q.extras}</p>}
+          {!editing ? (
+            <>
+              {q.licensePlate ? (
+                <div className="text-sm space-y-1">
+                  <Row k="รถ" v={`${q.licensePlate} · ${q.vehicleBrand ?? "-"} ${q.vehicleModel ?? ""}`} />
+                  <Row k="เบอร์รถ" v={q.truckNumber ?? "-"} />
+                  <div className="border-t border-zinc-100 my-2" />
+                  <Row k="ราคาขายรวม" v={formatMoney(q.totalSalePrice)} bold />
+                  <Row k="เงินดาวน์รวม" v={formatMoney(q.downPayment)} />
+                  <Row k="ยอดจัดไฟแนนซ์" v={formatMoney(q.financeAmount)} />
+                  <Row k="ค่างวด/เดือน" v={`${formatMoney(q.monthlyPayment)} × ${q.financeInstallments} งวด`} />
+                  {q.extras && <p className="text-xs text-zinc-500 mt-3 pt-2 border-t border-zinc-100">🎁 {q.extras}</p>}
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-400">ยังไม่ได้เลือกรถ (Lead) — เลือกรถเพื่อออกใบเสนอราคา</p>
+              )}
+              <button onClick={openEditor} className="mt-3 flex items-center gap-1.5 text-sm border border-zinc-200 hover:bg-zinc-50 px-3 py-1.5 rounded-lg">
+                <Pencil className="w-3.5 h-3.5" /> {q.licensePlate ? "แก้รถ / ราคา / โปรโมชั่น" : "เลือกรถ + ออกใบเสนอราคา"}
+              </button>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="relative">
+                <label className="block text-xs text-zinc-500 mb-1">เลือกรถ (พิมพ์ทะเบียน)</label>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input value={plateQ} onChange={(e) => { setPlateQ(e.target.value); setPlateOpen(true); setEPlate("") }} onFocus={() => setPlateOpen(true)}
+                    className="w-full h-9 text-sm border border-zinc-200 rounded-lg pl-8 pr-3" placeholder="ค้นหาทะเบียน" />
+                </div>
+                {plateOpen && plateQ && !ePlate && ePlateMatches.length > 0 && (
+                  <div className="absolute z-20 left-0 right-0 border border-zinc-200 bg-white rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                    {ePlateMatches.map((p) => (
+                      <button key={p.licensePlate} onClick={() => { setEPlate(p.licensePlate); setPlateQ(p.licensePlate); setPlateOpen(false) }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 flex justify-between"><span className="font-medium">{p.licensePlate}</span><span className="text-zinc-400 text-xs">{p.vehicleBrand} · {formatMoney(p.totalSalePrice)}</span></button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {eSel && (
+                <div className="text-sm space-y-1">
+                  <Row k="ราคาขายรวม" v={formatMoney(eSnap.totalSalePrice ?? 0)} bold />
+                  <Row k="เงินดาวน์รวม" v={formatMoney(eSnap.downPayment ?? 0)} />
+                  <div className="flex items-center justify-between bg-amber-50/60 rounded-lg px-2 py-1.5">
+                    <span className="text-sm text-zinc-600">ดาวน์ชำระเลย <span className="text-[10px] text-amber-600">(แก้ได้)</span></span>
+                    <input type="number" value={eCash} onChange={(e) => setECash(Number(e.target.value) || 0)} className="w-28 h-8 text-sm border border-amber-300 rounded-lg px-2 text-right tabular-nums bg-white" />
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold text-[#8C6B1F]"><span>→ ดาวน์/งวด (คำนวณ)</span><span>{formatMoney(ePerInst)} × {eSnap.downInstallmentCount ?? 0} งวด</span></div>
+                  <Row k="ค่างวด/เดือน" v={`${formatMoney(eSnap.monthlyPayment ?? 0)} × ${eSnap.financeInstallments ?? 0} งวด`} />
+                  <div>
+                    <label className="block text-xs text-zinc-500 mt-2 mb-1">ของแถม / โปรโมชั่น {ePromoNote && <span className="text-[10px] text-emerald-600">· {ePromoNote}</span>}</label>
+                    <textarea value={eExtras} onChange={(e) => setEExtras(e.target.value)} rows={2} className="w-full text-sm border border-zinc-200 rounded-lg px-2 py-1.5" />
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setEditing(false)} className="text-sm text-zinc-500 px-3 py-1.5">ยกเลิก</button>
+                {q.status === "lead" ? (
+                  <button onClick={() => saveVehicle(true)} disabled={busy || !ePlate} className="flex-1 bg-emerald-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก + ออกใบเสนอราคา</button>
+                ) : (
+                  <>
+                    <button onClick={() => saveVehicle(false)} disabled={busy || !ePlate} className="flex-1 bg-zinc-900 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก</button>
+                    <button onClick={() => saveVehicle(true)} disabled={busy || !ePlate} className="bg-emerald-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก + เปิด PDF</button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </Section>
 
         {/* เงินจอง */}
