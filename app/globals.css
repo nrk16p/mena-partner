@@ -271,8 +271,12 @@
   --gold-grad: linear-gradient(135deg, #8C6B1F 0%, #C9A227 30%, #E7C86E 50%, #C9A227 70%, #8C6B1F 100%);
   --gold-grad-hover: linear-gradient(135deg, #78591A 0%, #B08C1F 30%, #D9B85A 50%, #B08C1F 70%, #78591A 100%);
   --gold-ink: #3F3000;
+  --green-grad: linear-gradient(135deg, #031B14 0%, #0A3328 30%, #165443 60%, #031B14 100%);
+  --gold: #C9A227;
+  --gold-lt: #E7C86E;
 }
 .gold-grad { background: var(--gold-grad); }
+.green-grad { background: var(--green-grad); }
 
 /* ปุ่ม/ลิงก์แอ็กชันหลักทั้งระบบ → ทอง (จำกัดเฉพาะ element เชิงปุ่ม กัน badge/การ์ดโดนไปด้วย) */
 button.bg-emerald-600, a.bg-emerald-600, label.bg-emerald-600,
