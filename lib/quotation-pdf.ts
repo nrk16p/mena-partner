@@ -64,8 +64,9 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
           {
             width: "*",
             stack: [
-              ...(LOGO ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 150, margin: [0, 0, 0, 8] }] : []),
-              { text: seg(COMPANY.name), bold: true, fontSize: 18, color: INK },
+              ...(LOGO
+                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 300, margin: [0, 4, 0, 0] }]
+                : [{ text: seg(COMPANY.name), bold: true, fontSize: 18, color: INK }]),
             ],
           },
           {
