@@ -24,6 +24,7 @@ interface Quote {
 }
 interface PriceRow {
   licensePlate: string; status: string; saleStatus: string | null
+  vehicleBrand?: string; vehicleModel?: string; truckNumber?: string
   totalSalePrice: number; downPayment: number; cashDown: number; remainingInstallment: number
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
@@ -193,7 +194,8 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
         if (cr.ok) { const c = await cr.json(); cid = c._id }
       }
       const body = {
-        licensePlate: plate, vehicleBrand: (sel as unknown as { vehicleBrand?: string })?.vehicleBrand,
+        licensePlate: plate,
+        vehicleBrand: sel?.vehicleBrand ?? "", vehicleModel: sel?.vehicleModel ?? "", truckNumber: sel?.truckNumber ?? "",
         customerId: cid, customerName: cname, customerPhone: cphone,
         ...f, extras, note, validUntil,
       }
@@ -221,6 +223,11 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
                 <option key={p.licensePlate} value={p.licensePlate}>{p.licensePlate} · {formatMoney(p.totalSalePrice)} บ.</option>
               ))}
             </select>
+            {sel && (
+              <p className="text-[11px] text-zinc-500 mt-1">
+                {sel.vehicleBrand || "-"} {sel.vehicleModel || ""} · เบอร์รถ {sel.truckNumber || "-"}
+              </p>
+            )}
           </div>
 
           <div className="border-t pt-4">

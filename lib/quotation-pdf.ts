@@ -46,21 +46,16 @@ export function quotationDocDef(q: Quotation): any {
       margin: [48, 12, 48, 0],
     }),
     content: [
-      // ── หัวเอกสาร: โลโก้ + ชื่อบริษัท | บล็อกเลขที่ใบเสนอ ──
+      // ── หัวเอกสาร: โลโก้ใหญ่บรรทัดบน · ชื่อบริษัทบรรทัดถัดมา | บล็อกเลขที่ใบเสนอ (ขวา) ──
       {
         columns: [
           {
             width: "*",
-            columns: [
-              ...(LOGO ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 46, margin: [0, 0, 10, 0] }] : []),
-              {
-                width: "*",
-                stack: [
-                  { text: seg(COMPANY.name), bold: true, fontSize: 17, color: INK },
-                  { text: seg(`เลขทะเบียนนิติบุคคล ${COMPANY.regNo}`), fontSize: 11, color: "#71717a", margin: [0, 1, 0, 0] },
-                  { text: seg(COMPANY.address), fontSize: 11, color: "#71717a" },
-                ],
-              },
+            stack: [
+              ...(LOGO ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 84, margin: [0, 0, 0, 6] }] : []),
+              { text: seg(COMPANY.name), bold: true, fontSize: 18, color: INK },
+              { text: seg(`เลขทะเบียนนิติบุคคล ${COMPANY.regNo}`), fontSize: 11, color: "#71717a", margin: [0, 2, 0, 0] },
+              { text: seg(COMPANY.address), fontSize: 11, color: "#71717a" },
             ],
           },
           {
