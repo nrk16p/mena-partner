@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { FileText, Plus, Search, X, ExternalLink } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
@@ -30,7 +30,7 @@ interface PriceRow {
 }
 interface Customer { _id: string; name: string; phone?: string }
 
-export default function QuotationsPage() {
+function QuotationsInner() {
   const sp = useSearchParams()
   const [rows, setRows] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,6 +119,14 @@ export default function QuotationsPage() {
         <QuoteForm presetPlate={presetPlate} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load() }} />
       )}
     </div>
+  )
+}
+
+export default function QuotationsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>}>
+      <QuotationsInner />
+    </Suspense>
   )
 }
 
