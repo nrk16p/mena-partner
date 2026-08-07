@@ -2,6 +2,7 @@ import "./globals.css"
 import { Inter, JetBrains_Mono, Noto_Sans_Thai } from "next/font/google"
 import { Providers } from "@/components/providers"
 import { AppShell } from "@/components/app-shell"
+import { Analytics } from "@vercel/analytics/next"
 
 // Octo Code design system (docs/DESIGN.md): Inter for UI, JetBrains Mono for
 // code/IDs; Noto Sans Thai renders Thai text (Inter has no Thai glyphs)
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>
+        <Analytics />
       </body>
     </html>
   )
