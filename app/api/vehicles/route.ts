@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     engineSize?:           string
     status?:               string
     registrationDocUrl?:   string
+    photoUrl?:             string
     dataComplete?:         boolean
     dataExpectedDate?:     string
   }
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
     engineSize:           body.engineSize?.trim()           ?? null,
     status:               body.status                       ?? "active",
     registrationDocUrl:   body.registrationDocUrl?.trim()   ?? null,
+    photoUrl:             body.photoUrl?.trim()             ?? null,
     dataComplete:         body.dataComplete === true,
     dataExpectedDate:     body.dataExpectedDate?.trim()     ?? null,
     createdAt: now,

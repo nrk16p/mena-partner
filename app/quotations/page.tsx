@@ -25,7 +25,7 @@ interface Quote {
 }
 interface PriceRow {
   licensePlate: string; status: string; saleStatus: string | null
-  vehicleBrand?: string; vehicleModel?: string; truckNumber?: string
+  vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; photoUrl?: string
   totalSalePrice: number; downPayment: number; cashDown: number; remainingInstallment: number
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
@@ -38,7 +38,7 @@ function QuotationsInner() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Status | "">("")
   const [q, setQ] = useState("")
-  const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState<"lead" | "quote" | null>(null)
   const [view, setView] = useState<"list" | "kanban">("list")
 
   const load = useCallback(() => {
@@ -52,7 +52,7 @@ function QuotationsInner() {
 
   // deep-link จาก price-list: /quotations?vehicle=<ทะเบียน> → เปิดฟอร์มพร้อมรถ
   const presetPlate = sp.get("vehicle") ?? ""
-  useEffect(() => { if (presetPlate) setShowForm(true) }, [presetPlate])
+  useEffect(() => { if (presetPlate) setFormMode("quote") }, [presetPlate])
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {}
@@ -65,12 +65,17 @@ function QuotationsInner() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">ระบบขาย</p>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="w-6 h-6 text-[#C9A227]" /> ใบเสนอราคา & ดีลขาย</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="w-6 h-6 text-[#C9A227]" /> ระบบขาย</h1>
           <p className="text-xs text-zinc-400 mt-0.5">คนขายเลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีล (ทั้งทีมเห็นทุกดีล)</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
-          <Plus className="w-4 h-4" /> สร้างใบเสนอราคา
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setFormMode("lead")} className="flex items-center gap-2 border border-zinc-300 text-zinc-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50">
+            <Plus className="w-4 h-4" /> ลูกค้าสนใจ (Lead)
+          </button>
+          <button onClick={() => setFormMode("quote")} className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+            <Plus className="w-4 h-4" /> สร้างใบเสนอราคา
+          </button>
+        </div>
       </div>
 
       {/* Dashboard ยอดขาย */}
@@ -151,8 +156,8 @@ function QuotationsInner() {
       </div>
       )}
 
-      {showForm && (
-        <QuoteForm presetPlate={presetPlate} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load() }} />
+      {formMode && (
+        <QuoteForm mode={formMode} presetPlate={presetPlate} onClose={() => setFormMode(null)} onSaved={() => { setFormMode(null); load() }} />
       )}
     </div>
   )
@@ -175,105 +180,131 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "go
   )
 }
 
-function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onClose: () => void; onSaved: () => void }) {
+function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "quote"; presetPlate: string; onClose: () => void; onSaved: () => void }) {
+  const isLead = mode === "lead"
   const [prices, setPrices] = useState<PriceRow[]>([])
   const [plate, setPlate] = useState(presetPlate)
+  const [plateQ, setPlateQ] = useState(presetPlate)
+  const [plateOpen, setPlateOpen] = useState(false)
   const [custQ, setCustQ] = useState("")
   const [custList, setCustList] = useState<Customer[]>([])
   const [custId, setCustId] = useState("")
   const [custName, setCustName] = useState("")
   const [custPhone, setCustPhone] = useState("")
-  const [f, setF] = useState<Record<string, number>>({})
+  const [snap, setSnap] = useState<Record<string, number>>({})
+  const [cashDown, setCashDown] = useState(0)
   const [extras, setExtras] = useState("")
-  const [extrasAuto, setExtrasAuto] = useState(true)   // ยังเป็นข้อความ sync จากโปรฯ (ยังไม่แก้มือ)
+  const [extrasAuto, setExtrasAuto] = useState(true)
   const [promoNote, setPromoNote] = useState("")
   const [note, setNote] = useState("")
   const [validUntil, setValidUntil] = useState("")
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState("")
 
-  useEffect(() => {
-    fetch("/api/price-list").then((r) => r.ok ? r.json() : []).then((d: PriceRow[]) => setPrices(d))
-  }, [])
-  // เลือกรถ → เติมราคา snapshot
+  useEffect(() => { fetch("/api/price-list").then((r) => r.ok ? r.json() : []).then((d: PriceRow[]) => setPrices(d)) }, [])
   useEffect(() => {
     const row = prices.find((p) => p.licensePlate === plate)
-    if (row) setF({
-      totalSalePrice: row.totalSalePrice, downPayment: row.downPayment, cashDown: row.cashDown,
-      downInstallmentCount: row.downInstallmentCount, downInstallmentAmt: row.downInstallmentAmt,
-      financeAmount: row.financeAmount, financeInstallments: row.financeInstallments, monthlyPayment: row.monthlyPayment,
-    })
+    if (row) {
+      setSnap({ totalSalePrice: row.totalSalePrice, downPayment: row.downPayment, cashDown: row.cashDown,
+        downInstallmentCount: row.downInstallmentCount, financeAmount: row.financeAmount,
+        financeInstallments: row.financeInstallments, monthlyPayment: row.monthlyPayment })
+      setCashDown(row.cashDown)
+    }
   }, [plate, prices])
   useEffect(() => {
     const t = setTimeout(() => fetch(`/api/customers?q=${encodeURIComponent(custQ)}`).then((r) => r.ok ? r.json() : []).then(setCustList), 250)
     return () => clearTimeout(t)
   }, [custQ])
-  // sync ของแถม/โปรโมชั่นจากหน้า /promotions ตามทะเบียนที่เลือก
   useEffect(() => {
     if (!plate) { setPromoNote(""); return }
     fetch(`/api/promotions/master?plate=${encodeURIComponent(plate)}`).then((r) => r.ok ? r.json() : null).then((d) => {
-      const sum = d?.summary ?? ""
       setPromoNote(d?.found ? "ดึงจากโปรโมชั่นของรถคันนี้อัตโนมัติ" : "รถคันนี้ยังไม่ตั้งโปรโมชั่นใน /promotions")
-      if (extrasAuto) setExtras(sum)
+      if (extrasAuto) setExtras(d?.summary ?? "")
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plate])
 
   const sel = prices.find((p) => p.licensePlate === plate)
-  const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: Number(v) || 0 }))
-  const FIELDS: [string, string][] = [
-    ["totalSalePrice", "ราคาขายรวม"], ["downPayment", "เงินดาวน์รวม"], ["cashDown", "ดาวน์ชำระเลย"],
-    ["downInstallmentCount", "งวดดาวน์"], ["downInstallmentAmt", "ดาวน์/งวด"],
-    ["financeAmount", "ยอดไฟแนนซ์"], ["financeInstallments", "งวดไฟแนนซ์"], ["monthlyPayment", "ค่างวด/เดือน"],
-  ]
+  // ดาวน์ต่องวด = (ดาวน์รวม − ดาวน์ชำระเลย) / จำนวนงวดดาวน์ (คำนวณอัตโนมัติ)
+  const remainDown = Math.max(0, (snap.downPayment ?? 0) - cashDown)
+  const downPerInstallment = snap.downInstallmentCount ? Math.round(remainDown / snap.downInstallmentCount) : 0
+  const plateMatches = prices.filter((p) => p.status !== "contract" && p.licensePlate.replace(/\s/g, "").includes(plateQ.replace(/\s/g, ""))).slice(0, 25)
+  const fmtNum = (n: number) => (n ?? 0).toLocaleString("th-TH")
 
   async function submit() {
-    if (!plate) { setErr("เลือกรถก่อน"); return }
+    if (!isLead && !plate) { setErr("เลือกรถก่อน"); return }
     if (!custName.trim() && !custId) { setErr("ระบุลูกค้า"); return }
     setSaving(true); setErr("")
     try {
       let cid = custId, cname = custName.trim(), cphone = custPhone.trim()
       if (!cid && cname) {
         const cr = await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: cname, phone: cphone }) })
-        if (cr.ok) { const c = await cr.json(); cid = c._id }
+        if (cr.ok) cid = (await cr.json())._id
       }
       const body = {
+        status: isLead ? "lead" : "quoted",
         licensePlate: plate,
         vehicleBrand: sel?.vehicleBrand ?? "", vehicleModel: sel?.vehicleModel ?? "", truckNumber: sel?.truckNumber ?? "",
+        vehiclePhotoUrl: sel?.photoUrl ?? "",
         customerId: cid, customerName: cname, customerPhone: cphone,
-        ...f, extras, note, validUntil,
+        totalSalePrice: snap.totalSalePrice ?? 0, downPayment: snap.downPayment ?? 0, cashDown,
+        downInstallmentCount: snap.downInstallmentCount ?? 0, downInstallmentAmt: downPerInstallment,
+        financeAmount: snap.financeAmount ?? 0, financeInstallments: snap.financeInstallments ?? 0, monthlyPayment: snap.monthlyPayment ?? 0,
+        extras, note, validUntil,
       }
       const r = await fetch("/api/quotations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const d = await r.json()
       if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
-      window.open(`/api/quotations/${d._id}/pdf`, "_blank")
+      if (!isLead) window.open(`/api/quotations/${d._id}/pdf`, "_blank")
       onSaved()
     } finally { setSaving(false) }
   }
 
+  const ro = (label: string, value: string) => (
+    <div className="flex justify-between text-sm py-1">
+      <span className="text-zinc-500">{label}</span><span className="font-medium tabular-nums">{value}</span>
+    </div>
+  )
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex justify-end" onClick={onClose}>
       <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b sticky top-0 bg-white">
-          <h2 className="font-bold">สร้างใบเสนอราคา</h2>
+        <div className="flex items-center justify-between px-5 py-3 border-b sticky top-0 bg-white z-10">
+          <h2 className="font-bold">{isLead ? "บันทึกลูกค้าสนใจ (Lead)" : "สร้างใบเสนอราคา"}</h2>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-zinc-500 mb-1">เลือกรถพร้อมขาย</label>
-            <select value={plate} onChange={(e) => setPlate(e.target.value)} className="w-full h-10 text-sm border border-zinc-200 rounded-lg px-2 bg-white">
-              <option value="">— เลือกทะเบียน —</option>
-              {prices.filter((p) => p.status !== "contract").map((p) => (
-                <option key={p.licensePlate} value={p.licensePlate}>{p.licensePlate} · {formatMoney(p.totalSalePrice)} บ.</option>
-              ))}
-            </select>
+          {/* เลือกรถ — auto search */}
+          <div className="relative">
+            <label className="block text-xs font-medium text-zinc-500 mb-1">เลือกรถพร้อมขาย {isLead && <span className="text-zinc-300">(ไม่บังคับ)</span>}</label>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input value={plateQ} onChange={(e) => { setPlateQ(e.target.value); setPlateOpen(true); setPlate("") }} onFocus={() => setPlateOpen(true)}
+                placeholder="พิมพ์ทะเบียนเพื่อค้นหา" className="w-full h-10 text-sm border border-zinc-200 rounded-lg pl-8 pr-3" />
+            </div>
+            {plateOpen && plateQ && !plate && plateMatches.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 border border-zinc-200 bg-white rounded-lg mt-1 max-h-52 overflow-y-auto shadow-lg">
+                {plateMatches.map((p) => (
+                  <button key={p.licensePlate} onClick={() => { setPlate(p.licensePlate); setPlateQ(p.licensePlate); setPlateOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 flex justify-between">
+                    <span className="font-medium">{p.licensePlate}</span>
+                    <span className="text-zinc-400 text-xs">{p.vehicleBrand} · {fmtNum(p.totalSalePrice)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {sel && (
-              <p className="text-[11px] text-zinc-500 mt-1">
-                {sel.vehicleBrand || "-"} {sel.vehicleModel || ""} · เบอร์รถ {sel.truckNumber || "-"}
-              </p>
+              <div className="flex items-center gap-3 mt-2">
+                {sel.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={sel.photoUrl} alt="รถ" className="w-16 h-12 object-cover rounded-md border border-zinc-200" />
+                )}
+                <p className="text-[11px] text-zinc-500">{sel.vehicleBrand || "-"} {sel.vehicleModel || ""} · เบอร์รถ {sel.truckNumber || "-"}{!sel.photoUrl && " · (รถคันนี้ยังไม่มีรูป)"}</p>
+              </div>
             )}
           </div>
 
+          {/* ลูกค้า */}
           <div className="border-t pt-4">
             <label className="block text-xs font-medium text-zinc-500 mb-1">ลูกค้า</label>
             <input value={custName} onChange={(e) => { setCustName(e.target.value); setCustQ(e.target.value); setCustId("") }}
@@ -290,21 +321,29 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
             {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
           </div>
 
-          {plate && (
+          {/* ราคา — แก้ได้แค่ดาวน์ชำระเลย ที่เหลือ read-only + คำนวณดาวน์/งวด */}
+          {sel && (
             <div className="border-t pt-4">
-              <label className="block text-xs font-medium text-zinc-500 mb-2">ราคา (แก้ได้ก่อนออกใบเสนอ)</label>
-              <div className="grid grid-cols-2 gap-2">
-                {FIELDS.map(([k, lbl]) => (
-                  <div key={k}>
-                    <label className="block text-[10px] text-zinc-400 mb-0.5">{lbl}</label>
-                    <input type="number" value={f[k] ?? 0} onChange={(e) => set(k, e.target.value)}
-                      className="w-full h-9 text-sm border border-zinc-200 rounded-lg px-2 text-right tabular-nums" />
-                  </div>
-                ))}
+              <label className="block text-xs font-medium text-zinc-500 mb-2">ราคา</label>
+              {ro("ราคาขายรวม", `${fmtNum(snap.totalSalePrice)} บาท`)}
+              {ro("เงินดาวน์รวม", `${fmtNum(snap.downPayment)} บาท`)}
+              <div className="flex items-center justify-between py-1.5 bg-amber-50/60 rounded-lg px-2 my-1">
+                <span className="text-sm text-zinc-600">ดาวน์ชำระเลย <span className="text-[10px] text-amber-600">(แก้ได้)</span></span>
+                <input type="number" value={cashDown} onChange={(e) => setCashDown(Number(e.target.value) || 0)}
+                  className="w-32 h-8 text-sm border border-amber-300 rounded-lg px-2 text-right tabular-nums bg-white" />
               </div>
+              {ro(`ดาวน์คงเหลือ (ผ่อน ${snap.downInstallmentCount || 0} งวด)`, `${fmtNum(remainDown)} บาท`)}
+              <div className="flex justify-between text-sm py-1 font-semibold text-[#8C6B1F]">
+                <span>→ ดาวน์/งวด (คำนวณ)</span><span className="tabular-nums">{fmtNum(downPerInstallment)} บาท</span>
+              </div>
+              <div className="border-t border-zinc-100 my-1" />
+              {ro("ยอดจัดไฟแนนซ์", `${fmtNum(snap.financeAmount)} บาท`)}
+              {ro("ค่างวด/เดือน", `${fmtNum(snap.monthlyPayment)} × ${snap.financeInstallments || 0} งวด`)}
             </div>
           )}
 
+          {/* ของแถม/โปรโมชั่น */}
+          {sel && (
           <div className="border-t pt-4 space-y-2">
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -318,14 +357,20 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
                 className="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2" placeholder="เลือกรถแล้วระบบจะดึงโปรโมชั่นให้อัตโนมัติ (แก้เพิ่มได้)" />
               {promoNote && <p className={`text-[10px] mt-0.5 ${extrasAuto ? "text-emerald-600" : "text-zinc-400"}`}>{extrasAuto ? "✓ " : ""}{promoNote}</p>}
             </div>
+          </div>
+          )}
+
+          <div className="border-t pt-4 space-y-2">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">หมายเหตุ</label>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">{isLead ? "โน้ต / ความสนใจ" : "หมายเหตุ"}</label>
               <input value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-9 text-sm border border-zinc-200 rounded-lg px-3" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">ยืนราคาถึง</label>
-              <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="h-9 text-sm border border-zinc-200 rounded-lg px-2" />
-            </div>
+            {!isLead && (
+              <div>
+                <label className="block text-xs font-medium text-zinc-500 mb-1">ยืนราคาถึง</label>
+                <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="h-9 text-sm border border-zinc-200 rounded-lg px-2" />
+              </div>
+            )}
           </div>
 
           {err && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
@@ -333,7 +378,7 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
         <div className="sticky bottom-0 bg-white border-t px-5 py-3 flex justify-end gap-2">
           <button onClick={onClose} className="text-sm text-zinc-500 px-4 py-2">ยกเลิก</button>
           <button onClick={submit} disabled={saving} className="bg-emerald-600 text-white text-sm font-semibold px-5 py-2 rounded-lg disabled:opacity-50">
-            {saving ? "กำลังสร้าง..." : "สร้าง + เปิด PDF"}
+            {saving ? "กำลังบันทึก..." : isLead ? "บันทึกลูกค้าสนใจ" : "สร้าง + เปิด PDF"}
           </button>
         </div>
       </div>

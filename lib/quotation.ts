@@ -37,13 +37,15 @@ export interface Quotation extends QuotePricing {
   vehicleBrand?: string
   vehicleModel?: string
   truckNumber?: string
+  vehiclePhotoUrl?: string
   // ของแถม/เงื่อนไข
   extras?: string
   note?: string
   validUntil?: string            // YYYY-MM-DD
   // เงินจอง (เฟส 2 เติมสลิป — เก็บ field ไว้ก่อน)
   depositAmount?: number
-  depositSlipUrl?: string
+  depositSlipUrl?: string          // (เดิม — ใบเดียว)
+  depositSlips?: string[]          // สลิปหลายใบ (สูงสุด 10)
   depositPaidAt?: string
   // ขายโดย (ผู้ใช้ login)
   salesEmail: string

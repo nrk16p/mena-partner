@@ -24,7 +24,7 @@ interface Quote {
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
   extras?: string; note?: string; validUntil?: string
-  depositAmount?: number; depositSlipUrl?: string; depositPaidAt?: string
+  depositAmount?: number; depositSlipUrl?: string; depositSlips?: string[]; depositPaidAt?: string
   salesName: string; salesEmail: string; createdAt: string
   timeline?: { at: string; by: string; action: string; note?: string }[]
 }
@@ -53,15 +53,25 @@ export default function DealPage() {
     } finally { setBusy(false) }
   }
 
+  function allSlips(): string[] {
+    const arr = [...(q?.depositSlips ?? [])]
+    if (q?.depositSlipUrl && !arr.includes(q.depositSlipUrl)) arr.unshift(q.depositSlipUrl)
+    return arr
+  }
   async function uploadSlip(file: File) {
+    const cur = allSlips()
+    if (cur.length >= 10) { setErr("แนบสลิปได้สูงสุด 10 ใบ"); return }
     setBusy(true); setErr("")
     try {
       const fd = new FormData(); fd.append("file", file); fd.append("folder", "quotations")
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       if (!res.ok) { setErr("อัปโหลดสลิปไม่สำเร็จ"); return }
       const { url } = await res.json()
-      await patch({ depositSlipUrl: url })
+      await patch({ depositSlips: [...cur, url] })
     } finally { setBusy(false) }
+  }
+  async function removeSlip(url: string) {
+    await patch({ depositSlips: allSlips().filter((u) => u !== url), ...(q?.depositSlipUrl === url ? { depositSlipUrl: "" } : {}) })
   }
 
   if (!q) return <div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>
@@ -107,10 +117,16 @@ export default function DealPage() {
           </button>
         )}
         {q.status === "won" && (
-          <Link href={`/contracts/new?plate=${encodeURIComponent(q.licensePlate)}`}
-            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">
-            สร้างสัญญาจากดีลนี้ →
-          </Link>
+          <>
+            <Link href={`/contracts/new?plate=${encodeURIComponent(q.licensePlate)}`}
+              className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+              สร้างสัญญาจากดีลนี้ →
+            </Link>
+            <Link href="/drivers"
+              className="flex items-center gap-2 border border-blue-300 text-blue-700 hover:bg-blue-50 text-sm font-semibold px-4 py-2 rounded-lg">
+              สร้างข้อมูลคนขับ →
+            </Link>
+          </>
         )}
         {q.status !== "lost" && q.status !== "won" && (
           <button onClick={() => { const n = window.prompt("เหตุผลที่ยกเลิกดีล:"); if (n) patch({ status: "lost", note: n }) }} disabled={busy}
@@ -141,7 +157,7 @@ export default function DealPage() {
               <input type="number" value={depAmt} onChange={(e) => setDepAmt(e.target.value)}
                 className="w-full h-9 text-sm border border-zinc-200 rounded-lg px-3 text-right tabular-nums" />
             </div>
-            <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(q.status === "quoted" ? { status: "booked" } : {}) })}
+            <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(Number(depAmt) > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}) })}
               disabled={busy} className="h-9 bg-emerald-600 text-white text-sm font-semibold px-4 rounded-lg disabled:opacity-50">บันทึก</button>
           </div>
           {q.depositAmount ? (
@@ -149,12 +165,21 @@ export default function DealPage() {
           ) : <p className="text-xs text-zinc-400 mt-2">ยังไม่มีเงินจอง</p>}
 
           <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSlip(f); e.target.value = "" }} />
-          <div className="mt-3 flex items-center gap-3">
-            <button onClick={() => fileRef.current?.click()} disabled={busy}
-              className="flex items-center gap-2 text-sm border border-zinc-200 hover:bg-zinc-50 px-3 py-1.5 rounded-lg">
-              <Upload className="w-3.5 h-3.5" /> แนบสลิป
+          <div className="mt-3">
+            <button onClick={() => fileRef.current?.click()} disabled={busy || allSlips().length >= 10}
+              className="flex items-center gap-2 text-sm border border-zinc-200 hover:bg-zinc-50 px-3 py-1.5 rounded-lg disabled:opacity-50">
+              <Upload className="w-3.5 h-3.5" /> แนบสลิป ({allSlips().length}/10)
             </button>
-            {q.depositSlipUrl && <a href={q.depositSlipUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">ดูสลิปที่แนบ</a>}
+            {allSlips().length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {allSlips().map((u, i) => (
+                  <li key={u} className="flex items-center gap-2 text-xs">
+                    <a href={u} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex-1 truncate">สลิปที่ {i + 1}</a>
+                    <button onClick={() => removeSlip(u)} disabled={busy} className="text-zinc-300 hover:text-red-500">ลบ</button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Section>
       </div>

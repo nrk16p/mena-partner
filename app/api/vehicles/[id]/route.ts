@@ -39,6 +39,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     engineSize?:           string | null
     status?:               string
     registrationDocUrl?:   string | null
+    photoUrl?:             string | null
     dataComplete?:         boolean
     dataExpectedDate?:     string | null
   }
@@ -59,6 +60,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.engineSize           !== undefined) $set.engineSize           = str(body.engineSize)
   if (body.status               !== undefined) $set.status               = body.status
   if (body.registrationDocUrl   !== undefined) $set.registrationDocUrl   = str(body.registrationDocUrl)
+  if (body.photoUrl             !== undefined) $set.photoUrl             = str(body.photoUrl)
   if (body.dataComplete         !== undefined) $set.dataComplete         = body.dataComplete === true
   if (body.dataExpectedDate     !== undefined) $set.dataExpectedDate     = str(body.dataExpectedDate)
 

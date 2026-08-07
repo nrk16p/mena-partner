@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   for (const k of ["depositSlipUrl", "depositPaidAt", "extras", "note", "validUntil", "customerName", "customerPhone"]) {
     if (b[k] !== undefined) $set[k] = b[k]
   }
+  if (b.depositSlips !== undefined && Array.isArray(b.depositSlips)) $set.depositSlips = b.depositSlips.slice(0, 10)
   if (b.depositAmount !== undefined) events.push({ at: now, by: email, action: `บันทึกเงินจอง ${Number(b.depositAmount).toLocaleString()} บาท` })
   if (b.note && b.status === undefined && b.depositAmount === undefined) events.push({ at: now, by: email, action: "บันทึกกิจกรรม", note: b.note })
 

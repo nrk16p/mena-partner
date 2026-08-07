@@ -51,6 +51,7 @@ const EMPTY_FORM: Omit<Vehicle, "_id" | "createdAt" | "updatedAt"> = {
   registrationDate: "", color: "", licensePlate: "", truckNumber: "",
   chassisNumber: "", engineNumber: "", engineSize: "", status: "active",
   registrationDocUrl: "",
+  photoUrl: "",
   dataComplete: false, dataExpectedDate: "",
 }
 
@@ -106,6 +107,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
         engineSize:          vehicle.engineSize          ?? "",
         status:              vehicle.status              ?? "active",
         registrationDocUrl:  vehicle.registrationDocUrl  ?? "",
+        photoUrl:            vehicle.photoUrl            ?? "",
         dataComplete:        vehicle.dataComplete === true,
         dataExpectedDate:    vehicle.dataExpectedDate    ?? "",
       })
@@ -132,6 +134,18 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
     onClose()
   }
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  async function uploadPhoto(file: File) {
+    setUploadingPhoto(true); setError("")
+    try {
+      const fd = new FormData(); fd.append("file", file); fd.append("folder", "vehicles/photos")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!res.ok) throw new Error("อัปโหลดรูปไม่สำเร็จ")
+      const { url } = await res.json()
+      set("photoUrl" as keyof typeof EMPTY_FORM, url)
+    } catch (e) { setError(e instanceof Error ? e.message : "อัปโหลดรูปไม่สำเร็จ") }
+    finally { setUploadingPhoto(false) }
+  }
   async function uploadDoc(file: File) {
     setUploading(true); setError("")
     try {
@@ -363,6 +377,23 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
             <div className="grid grid-cols-2 gap-4">
               {FORM_FIELDS.filter((f) => f.section === "ตัวถัง / เครื่องยนต์").map(field)}
             </div>
+          </SectionCard>
+
+          <SectionCard icon={Car} title="รูปรถ (ใช้ในใบเสนอราคา)">
+            {form.photoUrl ? (
+              <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.photoUrl} alt="รูปรถ" className="w-full max-h-56 object-contain rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50" />
+                <button type="button" onClick={() => set("photoUrl" as keyof typeof EMPTY_FORM, "")}
+                  className="absolute top-2 right-2 bg-white/90 rounded-full p-1 text-zinc-400 hover:text-red-500 shadow"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <label className={`flex items-center gap-3 px-4 py-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploadingPhoto ? "border-blue-300 bg-blue-50/40" : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 hover:bg-emerald-50/30"}`}>
+                {uploadingPhoto ? <><div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" /><span className="text-sm text-blue-600 font-medium">กำลังอัปโหลด...</span></>
+                  : <><Upload className="w-5 h-5 text-zinc-400 shrink-0" /><div><p className="text-sm text-zinc-600 dark:text-zinc-300 font-medium">อัปโหลดรูปรถ</p><p className="text-xs text-zinc-400 mt-0.5">JPG/PNG • โชว์ในใบเสนอราคา</p></div></>}
+                <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = "" }} />
+              </label>
+            )}
           </SectionCard>
 
           <SectionCard icon={FileText} title="เอกสารแนบ">

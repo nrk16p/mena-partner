@@ -23,8 +23,20 @@ function thDate(iso?: string | null): string {
 let LOGO = ""
 try { LOGO = fs.readFileSync(path.join(process.cwd(), "fonts", "mena-logo.jpg")).toString("base64") } catch { /* ไม่มีโลโก้ก็ได้ */ }
 
+async function fetchImg(url?: string): Promise<string> {
+  if (!url) return ""
+  try {
+    const r = await fetch(url); if (!r.ok) return ""
+    const ct = (r.headers.get("content-type") || "").toLowerCase()
+    if (!ct.includes("jpeg") && !ct.includes("jpg") && !ct.includes("png")) return ""
+    const buf = Buffer.from(await r.arrayBuffer())
+    return `data:${ct.includes("png") ? "image/png" : "image/jpeg"};base64,${buf.toString("base64")}`
+  } catch { return "" }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function quotationDocDef(q: Quotation): any {
+export async function quotationDocDef(q: Quotation): Promise<any> {
+  const vehImg = await fetchImg(q.vehiclePhotoUrl)
   const kv = (label: string, value: string) => [
     { text: seg(label), color: "#71717a", fontSize: 13, margin: [0, 1, 0, 1] },
     { text: seg(value || "-"), bold: true, color: INK, fontSize: 14, margin: [0, 1, 0, 1] },
@@ -40,7 +52,7 @@ export function quotationDocDef(q: Quotation): any {
     defaultStyle: { font: "Cordia", fontSize: 14, lineHeight: 1.1 },
     footer: (page: number, total: number) => ({
       columns: [
-        { text: seg(`${COMPANY.name} · ${COMPANY.address}`), color: "#a1a1aa", fontSize: 10 },
+        { text: seg(COMPANY.name), color: "#a1a1aa", fontSize: 10 },
         { text: `${page}/${total}`, alignment: "right", color: "#a1a1aa", fontSize: 10 },
       ],
       margin: [48, 12, 48, 0],
@@ -52,10 +64,8 @@ export function quotationDocDef(q: Quotation): any {
           {
             width: "*",
             stack: [
-              ...(LOGO ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 84, margin: [0, 0, 0, 6] }] : []),
+              ...(LOGO ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 150, margin: [0, 0, 0, 8] }] : []),
               { text: seg(COMPANY.name), bold: true, fontSize: 18, color: INK },
-              { text: seg(`เลขทะเบียนนิติบุคคล ${COMPANY.regNo}`), fontSize: 11, color: "#71717a", margin: [0, 2, 0, 0] },
-              { text: seg(COMPANY.address), fontSize: 11, color: "#71717a" },
             ],
           },
           {
@@ -125,8 +135,9 @@ export function quotationDocDef(q: Quotation): any {
           hLineWidth: () => 0.5, vLineWidth: () => 0.5,
           hLineColor: () => "#E7C86E", vLineColor: () => "#E7C86E",
         },
-        margin: [0, 0, 0, 16],
+        margin: [0, 0, 0, vehImg ? 8 : 16],
       },
+      ...(vehImg ? [{ image: vehImg, fit: [280, 160], alignment: "center" as const, margin: [0, 0, 0, 16] }] : []),
 
       // ── เงื่อนไขราคา (2 คอลัมน์: สรุปเงินก้อน | แผนผ่อน) ──
       {

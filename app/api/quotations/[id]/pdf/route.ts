@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const doc = await client.db(DB).collection(QUOTE_COLL).findOne({ _id: new ObjectId(id) })
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 })
   try {
-    const pdf = await renderPdfmake(quotationDocDef({ ...doc, _id: String(doc._id) } as unknown as Quotation))
+    const pdf = await renderPdfmake(await quotationDocDef({ ...doc, _id: String(doc._id) } as unknown as Quotation))
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",

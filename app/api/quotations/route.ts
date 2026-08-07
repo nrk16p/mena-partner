@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     vehicleBrand: (b.vehicleBrand ?? "").trim(),
     vehicleModel: (b.vehicleModel ?? "").trim(),
     truckNumber: (b.truckNumber ?? "").trim(),
+    vehiclePhotoUrl: (b.vehiclePhotoUrl ?? "").trim(),
     totalSalePrice: n(b.totalSalePrice), downPayment: n(b.downPayment), cashDown: n(b.cashDown),
     downInstallmentCount: n(b.downInstallmentCount), downInstallmentAmt: n(b.downInstallmentAmt),
     financeAmount: n(b.financeAmount), financeInstallments: n(b.financeInstallments), monthlyPayment: n(b.monthlyPayment),

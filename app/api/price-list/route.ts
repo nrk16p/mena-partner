@@ -12,7 +12,7 @@ export async function GET() {
 
   const [docs, vehicles, contracts] = await Promise.all([
     db.collection("master_price_list").find({}).sort({ licensePlate: 1 }).toArray(),
-    db.collection("vehicle_master").find({}, { projection: { licensePlate: 1, status: 1, brand: 1, model: 1, truckNumber: 1 } }).toArray(),
+    db.collection("vehicle_master").find({}, { projection: { licensePlate: 1, status: 1, brand: 1, model: 1, truckNumber: 1, photoUrl: 1 } }).toArray(),
     db.collection("contracts").find({ status: "active" }, { projection: { licensePlate: 1 } }).toArray(),
   ])
 
@@ -33,6 +33,7 @@ export async function GET() {
         vehicleBrand:         (vi?.brand as string) ?? "",
         vehicleModel:         (vi?.model as string) ?? "",
         truckNumber:          (vi?.truckNumber as string) ?? "",
+        photoUrl:             (vi?.photoUrl as string) ?? "",
         // สถานะความพร้อมขาย + ช่วงซ่อม (แก้ได้จากหน้า price-list)
         saleStatus:           d.saleStatus  ?? null,
         repairStart:          d.repairStart ?? null,

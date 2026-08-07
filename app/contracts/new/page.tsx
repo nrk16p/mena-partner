@@ -213,8 +213,20 @@ export default function NewContractPage() {
       .then(setPrices)
     fetch("/api/promotions/master")
       .then((r) => r.ok ? r.json() : [])
-      .then(setPromoList)
+      .then((d) => setPromoList(Array.isArray(d) ? d : []))
   }, [set])
+
+  // prefill ทะเบียนจากดีล/ใบเสนอ: /contracts/new?plate=<ทะเบียน> (ราคา+รถเติมอัตโนมัติ)
+  const platePrefilled = useRef(false)
+  useEffect(() => {
+    if (platePrefilled.current || vehicles.length === 0) return
+    const pplate = new URLSearchParams(window.location.search).get("plate")?.trim()
+    if (!pplate) return
+    platePrefilled.current = true
+    set("licensePlate", pplate)
+    const v = vehicles.find((x) => x.licensePlate === pplate)
+    if (v) setSelectedVehicle(v)
+  }, [vehicles, set])
 
   // Auto-fill price whenever licensePlate changes (vehicle selection OR manual input)
   useEffect(() => {
