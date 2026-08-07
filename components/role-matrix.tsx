@@ -22,9 +22,9 @@ const DOMAIN_ROWS: { domain: PermDomain; label: string; detail: string }[] = [
 ]
 
 // เรียงคอลัมน์: superadmin ท้ายสุด (เป็นบทบาท dev — คนทั่วไปสนใจ 4 ตัวแรก)
-const COL_ORDER: Role[] = ["admin", "fleet", "finance", "viewer", "superadmin"]
+const COL_ORDER: Role[] = ["admin", "fleet", "finance", "salesperson", "viewer", "superadmin"]
 const ROLE_SHORT: Record<Role, string> = {
-  superadmin: "Superadmin", admin: "แอดมิน", fleet: "แผนกรถร่วม", finance: "การเงิน", viewer: "ดูอย่างเดียว",
+  superadmin: "Superadmin", admin: "แอดมิน", fleet: "แผนกรถร่วม", finance: "การเงิน", salesperson: "ฝ่ายขาย", viewer: "ดูอย่างเดียว",
 }
 
 export function RoleMatrix({ compact = false }: { compact?: boolean }) {
@@ -39,7 +39,7 @@ export function RoleMatrix({ compact = false }: { compact?: boolean }) {
         <ShieldCheck className="w-4 h-4 text-emerald-500" /> บทบาท & สิทธิ์การใช้งาน
       </h2>
       <p className="text-[11px] text-zinc-400 mb-3">
-        ทุกบทบาท<b>ดู</b>ข้อมูลได้ทั้งหมด — ตารางนี้คุมเฉพาะการ เพิ่ม/แก้/นำเข้า · คนที่ไม่ถูกตั้งบทบาท = ดูอย่างเดียว
+        ตารางคุมสิทธิ์ เพิ่ม/แก้/นำเข้า · <b>ฝ่ายขาย</b> (ค่าเริ่มต้นของ user ใหม่) เห็นเฉพาะ ราคาขาย (ดู) + ใบเสนอราคา · บทบาทอื่นดูข้อมูลได้ทั้งหมด
         {!compact && <> · Superadmin ตั้งผ่าน env <span className="font-mono">SUPERADMIN_EMAILS</span></>}
         {myRole && <> · บทบาทของคุณตอนนี้: <b className="text-emerald-600">{ROLE_LABELS[myRole as Role] ?? myRole}</b></>}
       </p>

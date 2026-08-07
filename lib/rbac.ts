@@ -9,7 +9,7 @@
  *  - viewer = อ่านอย่างเดียว (default ของคนที่ยังไม่ถูกตั้งบทบาท)
  */
 
-export const ROLES = ["superadmin", "admin", "fleet", "finance", "viewer"] as const
+export const ROLES = ["superadmin", "admin", "fleet", "finance", "salesperson", "viewer"] as const
 export type Role = (typeof ROLES)[number]
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -17,6 +17,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   admin: "แอดมิน",
   fleet: "แผนกรถร่วม",
   finance: "การเงิน",
+  salesperson: "ฝ่ายขาย",
   viewer: "ดูอย่างเดียว",
 }
 
@@ -38,6 +39,7 @@ const MATRIX: Record<Role, readonly PermDomain[]> = {
   admin:      ["masterdata", "contracts", "promotions", "vehiclecost", "finance", "sales", "cancel_contract", "delete", "lock"],
   fleet:      ["masterdata", "contracts", "promotions", "vehiclecost", "sales"],
   finance:    ["finance", "sales"],
+  salesperson: ["sales"],
   viewer:     [],
 }
 
@@ -46,6 +48,13 @@ export function hasPerm(role: string | undefined | null, domain: PermDomain): bo
 }
 
 export const isAdminRole = (role?: string | null) => role === "admin" || role === "superadmin"
+
+/** ฝ่ายขาย: เข้าได้แค่หน้าราคาขาย (ดู) + ใบเสนอราคา/ดีล + หน้าหลัก */
+export const SALESPERSON_PAGES = ["/price-list", "/quotations"]
+export function salespersonPageAllowed(pathname: string): boolean {
+  if (pathname === "/") return true
+  return SALESPERSON_PAGES.some((base) => pathname === base || pathname.startsWith(base + "/") || pathname.startsWith(base + "?"))
+}
 
 /** map path ของ API → โดเมนสิทธิ์ (สำหรับ middleware) — คืน null = default-closed (admin ขึ้นไป) */
 export function domainOfApiPath(pathname: string): PermDomain | null {

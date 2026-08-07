@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
-import { domainOfApiPath, hasPerm, isAdminRole, canUpload } from "@/lib/rbac"
+import { domainOfApiPath, hasPerm, isAdminRole, canUpload, salespersonPageAllowed } from "@/lib/rbac"
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
 
@@ -23,6 +23,12 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  // ── ฝ่ายขาย: จำกัดหน้า (page navigation) ให้เห็นแค่ ราคาขาย + ใบเสนอราคา + หน้าหลัก ──
+  const roleNav = (token.role as string) ?? "viewer"
+  if (roleNav === "salesperson" && !pathname.startsWith("/api/") && !salespersonPageAllowed(pathname)) {
+    return NextResponse.redirect(new URL("/price-list", request.url))
   }
 
   // ── เขียน (non-GET): เช็คสิทธิ์ตาม RBAC matrix (lib/rbac.ts) ──

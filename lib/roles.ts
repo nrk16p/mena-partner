@@ -39,7 +39,7 @@ export function invalidateRoleCache() { cache = null }
 
 export async function resolveRole(email: string | null | undefined): Promise<Role> {
   const e = (email ?? "").trim().toLowerCase()
-  if (!e) return "viewer"
+  if (!e) return "viewer"  // ไม่ login
   if (superadmins().includes(e)) return "superadmin"
   try {
     const { users, empty } = await loadUsers()
@@ -47,9 +47,11 @@ export async function resolveRole(email: string | null | undefined): Promise<Rol
     if (assigned) return assigned
     // grandfather: ยังไม่ configure ระบบบทบาทเลย → คงพฤติกรรมเดิม (ทุกคนในโดเมน = admin)
     if (empty && superadmins().length === 0 && isAdmin(e)) return "admin"
+    // user ใหม่ในโดเมน ที่ยังไม่ถูกตั้งบทบาท = ฝ่ายขาย (คำสั่ง 2026-08-07)
+    if (isAdmin(e)) return "salesperson" as Role
   } catch {
     // DB ล่มตอน resolve — fail-safe เป็นพฤติกรรมเดิม (คนในโดเมน = admin) กันระบบใช้ไม่ได้ทั้งบริษัท
     if (isAdmin(e)) return "admin"
   }
-  return "viewer"
+  return "salesperson"
 }

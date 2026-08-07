@@ -474,13 +474,15 @@ export default function PriceListPage() {
           >
             <Download className="w-3.5 h-3.5" /> Excel
           </button>
-          <button
-            type="button"
-            onClick={() => setPriceForm({ mode: "add" })}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3.5 py-2"
-          >
-            <PlusCircle className="w-3.5 h-3.5" /> เพิ่มราคาขาย
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setPriceForm({ mode: "add" })}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3.5 py-2"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> เพิ่มราคาขาย
+            </button>
+          )}
         </div>
       </div>
 
@@ -806,14 +808,16 @@ export default function PriceListPage() {
                           >
                             <Clock className="w-3 h-3 inline" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setPriceForm({ mode: "edit", row: r })}
-                            title="แก้ไขราคาขาย"
-                            className="ml-1 align-middle text-zinc-300 hover:text-emerald-600 dark:text-zinc-600 dark:hover:text-emerald-400"
-                          >
-                            <Pencil className="w-3 h-3 inline" />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setPriceForm({ mode: "edit", row: r })}
+                              title="แก้ไขราคาขาย"
+                              className="ml-1 align-middle text-zinc-300 hover:text-emerald-600 dark:text-zinc-600 dark:hover:text-emerald-400"
+                            >
+                              <Pencil className="w-3 h-3 inline" />
+                            </button>
+                          )}
                           <Link
                             href={`/quotations?vehicle=${encodeURIComponent(r.licensePlate)}`}
                             title="ทำใบเสนอราคาจากรถคันนี้"

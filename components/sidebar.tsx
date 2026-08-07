@@ -90,6 +90,7 @@ export function Sidebar() {
   const { data: session } = useSession()
   const role = session?.user?.role ?? ""
   const isAdmin = ["admin", "superadmin"].includes(role)
+  const isSales = role === "salesperson"
 
   const initial = (session?.user?.email ?? session?.user?.name ?? "?")[0].toUpperCase()
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
@@ -130,7 +131,12 @@ export function Sidebar() {
 
       {/* Grouped nav — accordion: พับ/กางรายหมวด จำสถานะไว้ และกางหมวดของหน้าปัจจุบันอัตโนมัติ */}
       <nav className="flex-1 py-3 overflow-y-auto">
-        {GROUPS.map((g, gi) => {
+        {GROUPS.map((g0, gi) => {
+          // ฝ่ายขาย: เหลือเฉพาะ ราคาขาย + ใบเสนอราคา
+          const g = isSales
+            ? { ...g0, items: g0.items.filter((it) => it.href === "/price-list" || it.href === "/quotations") }
+            : g0
+          if (isSales && g.title && g.items.length === 0) return null
           if (!g.title) {
             return (
               <div key={gi} className="px-2">
