@@ -140,6 +140,8 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
   const [custPhone, setCustPhone] = useState("")
   const [f, setF] = useState<Record<string, number>>({})
   const [extras, setExtras] = useState("")
+  const [extrasAuto, setExtrasAuto] = useState(true)   // ยังเป็นข้อความ sync จากโปรฯ (ยังไม่แก้มือ)
+  const [promoNote, setPromoNote] = useState("")
   const [note, setNote] = useState("")
   const [validUntil, setValidUntil] = useState("")
   const [saving, setSaving] = useState(false)
@@ -161,6 +163,16 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
     const t = setTimeout(() => fetch(`/api/customers?q=${encodeURIComponent(custQ)}`).then((r) => r.ok ? r.json() : []).then(setCustList), 250)
     return () => clearTimeout(t)
   }, [custQ])
+  // sync ของแถม/โปรโมชั่นจากหน้า /promotions ตามทะเบียนที่เลือก
+  useEffect(() => {
+    if (!plate) { setPromoNote(""); return }
+    fetch(`/api/promotions/master?plate=${encodeURIComponent(plate)}`).then((r) => r.ok ? r.json() : null).then((d) => {
+      const sum = d?.summary ?? ""
+      setPromoNote(d?.found ? "ดึงจากโปรโมชั่นของรถคันนี้อัตโนมัติ" : "รถคันนี้ยังไม่ตั้งโปรโมชั่นใน /promotions")
+      if (extrasAuto) setExtras(sum)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plate])
 
   const sel = prices.find((p) => p.licensePlate === plate)
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: Number(v) || 0 }))
@@ -244,8 +256,16 @@ function QuoteForm({ presetPlate, onClose, onSaved }: { presetPlate: string; onC
 
           <div className="border-t pt-4 space-y-2">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">ของแถม / โปรโมชั่น</label>
-              <textarea value={extras} onChange={(e) => setExtras(e.target.value)} rows={2} className="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2" />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-zinc-500">ของแถม / โปรโมชั่น</label>
+                {plate && !extrasAuto && (
+                  <button type="button" onClick={() => { setExtrasAuto(true); fetch(`/api/promotions/master?plate=${encodeURIComponent(plate)}`).then((r) => r.ok ? r.json() : null).then((d) => setExtras(d?.summary ?? "")) }}
+                    className="text-[10px] text-[#C9A227] hover:underline">↺ ดึงโปรฯ ของรถอีกครั้ง</button>
+                )}
+              </div>
+              <textarea value={extras} onChange={(e) => { setExtras(e.target.value); setExtrasAuto(false) }} rows={3}
+                className="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2" placeholder="เลือกรถแล้วระบบจะดึงโปรโมชั่นให้อัตโนมัติ (แก้เพิ่มได้)" />
+              {promoNote && <p className={`text-[10px] mt-0.5 ${extrasAuto ? "text-emerald-600" : "text-zinc-400"}`}>{extrasAuto ? "✓ " : ""}{promoNote}</p>}
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">หมายเหตุ</label>
