@@ -9,6 +9,7 @@ import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCir
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { usePagination, PaginationBar } from "@/components/pagination"
+import { useSort, SortableTh } from "@/components/use-sort"
 import { formatMoney } from "@/lib/utils"
 import { missingDocFields } from "@/lib/contract-doc"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
@@ -163,7 +164,8 @@ export default function ContractsPage() {
     return true
   })
 
-  const pg = usePagination(visible, 50, [q, statusFilter, docFilter, attachFilter])
+  const sort = useSort(visible, (c, k) => (c as unknown as Record<string, unknown>)[k])
+  const pg = usePagination(sort.sorted, 50, [q, statusFilter, docFilter, attachFilter, sort.sortKey, sort.sortDir])
 
   const counts = {
     active:     items.filter((c) => c.status === "active").length,
@@ -284,10 +286,10 @@ export default function ContractsPage() {
         <table className="w-full text-xs">
           <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-[11px] text-zinc-500 uppercase tracking-wider">
             <tr>
-              <th className="px-2.5 py-2 text-left font-semibold">รหัส / ผู้เช่าซื้อ</th>
-              <th className="px-2.5 py-2 text-left font-semibold">ทะเบียน / ยี่ห้อ-รุ่น</th>
-              <th className="px-2.5 py-2 text-right font-semibold">ค่างวด/เดือน / ประกัน</th>
-              <th className="px-2.5 py-2 text-center font-semibold">สถานะ</th>
+              <SortableTh label="รหัส / ผู้เช่าซื้อ" sortKey="contractCode" sort={sort} />
+              <SortableTh label="ทะเบียน / ยี่ห้อ-รุ่น" sortKey="licensePlate" sort={sort} />
+              <SortableTh label="ค่างวด/เดือน / ประกัน" sortKey="monthlyInstallment" sort={sort} align="right" />
+              <SortableTh label="สถานะ" sortKey="status" sort={sort} align="center" />
               <th className="px-2.5 py-2 text-center font-semibold">ข้อมูลครบ</th>
               <th className="px-2.5 py-2 text-center font-semibold">สถานะเอกสาร</th>
               <th className="px-2.5 py-2 text-left font-semibold">เอกสารแนบ</th>

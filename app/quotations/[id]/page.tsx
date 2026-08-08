@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/utils"
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const FLOW: Status[] = ["lead", "quoted", "booked", "won"]
 const META: Record<Status, { label: string; cls: string }> = {
-  lead: { label: "สนใจ", cls: "bg-zinc-100 text-zinc-600" },
+  lead: { label: "สนใจ", cls: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300" },
   quoted: { label: "เสนอราคาแล้ว", cls: "bg-amber-100 text-amber-700" },
   booked: { label: "วางจอง", cls: "bg-sky-100 text-sky-700" },
   won: { label: "ปิดการขาย", cls: "bg-emerald-100 text-emerald-700" },
@@ -132,20 +132,20 @@ export default function DealPage() {
     if (alsoQuote) window.open(`/api/quotations/${id}/pdf`, "_blank")
   }
 
-  if (!q) return <div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>
+  if (!q) return <div className="p-8 text-sm text-zinc-400 dark:text-zinc-500">กำลังโหลด...</div>
   const stepIdx = FLOW.indexOf(q.status)
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5">
       <Breadcrumb items={[{ label: "ใบเสนอราคา", href: "/quotations" }, { label: "รายละเอียดดีล" }]} />
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/quotations" className="text-zinc-400 hover:text-zinc-600"><ArrowLeft className="w-5 h-5" /></Link>
+        <Link href="/quotations" className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600"><ArrowLeft className="w-5 h-5" /></Link>
         <div className="flex-1">
           <h1 className="text-xl font-bold flex items-center gap-2 flex-wrap">
             <span className="font-mono text-[#8C6B1F]">{q.quotationNo}</span>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${META[q.status].cls}`}>{META[q.status].label}</span>
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">{q.customerName}{q.customerPhone ? ` · ${q.customerPhone}` : ""} · โดย {q.salesName}</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">{q.customerName}{q.customerPhone ? ` · ${q.customerPhone}` : ""} · โดย {q.salesName}</p>
         </div>
         <a href={`/api/quotations/${q._id}/pdf`} target="_blank" rel="noreferrer" className="flex items-center gap-2 gold-grad text-[#031B14] text-sm font-semibold px-4 py-2 rounded-lg">
           <FileText className="w-4 h-4" /> ใบเสนอ PDF
@@ -157,7 +157,7 @@ export default function DealPage() {
         {FLOW.map((st, i) => (
           <div key={st} className="flex items-center gap-1 shrink-0">
             {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />}
-            <span className={`px-2.5 py-1 rounded-full border ${i <= stepIdx && q.status !== "lost" ? META[st].cls + " font-semibold border-transparent" : "bg-white text-zinc-300 border-zinc-100"}`}>
+            <span className={`px-2.5 py-1 rounded-full border ${i <= stepIdx && q.status !== "lost" ? META[st].cls + " font-semibold border-transparent" : "bg-white dark:bg-zinc-900 text-zinc-300 border-zinc-100 dark:border-zinc-800"}`}>
               {i < stepIdx ? "✓ " : ""}{META[st].label}
             </span>
           </div>
@@ -202,34 +202,34 @@ export default function DealPage() {
                 <div className="text-sm space-y-1">
                   <Row k="รถ" v={`${q.licensePlate} · ${q.vehicleBrand ?? "-"} ${q.vehicleModel ?? ""}`} />
                   <Row k="เบอร์รถ" v={q.truckNumber ?? "-"} />
-                  <div className="border-t border-zinc-100 my-2" />
+                  <div className="border-t border-zinc-100 dark:border-zinc-800 my-2" />
                   <Row k="ราคาขายรวม" v={formatMoney(q.totalSalePrice)} bold />
                   <Row k="เงินดาวน์รวม" v={formatMoney(q.downPayment)} />
                   <Row k="ยอดจัดไฟแนนซ์" v={formatMoney(q.financeAmount)} />
                   <Row k="ค่างวด/เดือน" v={`${formatMoney(q.monthlyPayment)} × ${q.financeInstallments} งวด`} />
-                  {q.extras && <p className="text-xs text-zinc-500 mt-3 pt-2 border-t border-zinc-100">🎁 {q.extras}</p>}
+                  {q.extras && <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">🎁 {q.extras}</p>}
                 </div>
               ) : (
-                <p className="text-sm text-zinc-400">ยังไม่ได้เลือกรถ (Lead) — เลือกรถเพื่อออกใบเสนอราคา</p>
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">ยังไม่ได้เลือกรถ (Lead) — เลือกรถเพื่อออกใบเสนอราคา</p>
               )}
-              <button onClick={openEditor} className="mt-3 flex items-center gap-1.5 text-sm border border-zinc-200 hover:bg-zinc-50 px-3 py-1.5 rounded-lg">
+              <button onClick={openEditor} className="mt-3 flex items-center gap-1.5 text-sm border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 px-3 py-1.5 rounded-lg">
                 <Pencil className="w-3.5 h-3.5" /> {q.licensePlate ? "แก้รถ / ราคา / โปรโมชั่น" : "เลือกรถ + ออกใบเสนอราคา"}
               </button>
             </>
           ) : (
             <div className="space-y-3">
               <div className="relative">
-                <label className="block text-xs text-zinc-500 mb-1">เลือกรถ (พิมพ์ทะเบียน)</label>
+                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">เลือกรถ (พิมพ์ทะเบียน)</label>
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
                   <input value={plateQ} onChange={(e) => { setPlateQ(e.target.value); setPlateOpen(true); setEPlate("") }} onFocus={() => setPlateOpen(true)}
-                    className="w-full h-9 text-sm border border-zinc-200 rounded-lg pl-8 pr-3" placeholder="ค้นหาทะเบียน" />
+                    className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg pl-8 pr-3" placeholder="ค้นหาทะเบียน" />
                 </div>
                 {plateOpen && plateQ && !ePlate && ePlateMatches.length > 0 && (
-                  <div className="absolute z-20 left-0 right-0 border border-zinc-200 bg-white rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                  <div className="absolute z-20 left-0 right-0 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
                     {ePlateMatches.map((p) => (
                       <button key={p.licensePlate} onClick={() => { setEPlate(p.licensePlate); setPlateQ(p.licensePlate); setPlateOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 flex justify-between"><span className="font-medium">{p.licensePlate}</span><span className="text-zinc-400 text-xs">{p.vehicleBrand} · {formatMoney(p.totalSalePrice)}</span></button>
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50 flex justify-between"><span className="font-medium">{p.licensePlate}</span><span className="text-zinc-400 dark:text-zinc-500 text-xs">{p.vehicleBrand} · {formatMoney(p.totalSalePrice)}</span></button>
                     ))}
                   </div>
                 )}
@@ -239,24 +239,24 @@ export default function DealPage() {
                   <Row k="ราคาขายรวม" v={formatMoney(eSnap.totalSalePrice ?? 0)} bold />
                   <Row k="เงินดาวน์รวม" v={formatMoney(eSnap.downPayment ?? 0)} />
                   <div className="flex items-center justify-between bg-amber-50/60 rounded-lg px-2 py-1.5">
-                    <span className="text-sm text-zinc-600">ดาวน์ชำระเลย <span className="text-[10px] text-amber-600">(แก้ได้)</span></span>
-                    <input type="number" value={eCash} onChange={(e) => setECash(Number(e.target.value) || 0)} className="w-28 h-8 text-sm border border-amber-300 rounded-lg px-2 text-right tabular-nums bg-white" />
+                    <span className="text-sm text-zinc-600 dark:text-zinc-300">ดาวน์ชำระเลย <span className="text-[10px] text-amber-600">(แก้ได้)</span></span>
+                    <input type="number" value={eCash} onChange={(e) => setECash(Number(e.target.value) || 0)} className="w-28 h-8 text-sm border border-amber-300 rounded-lg px-2 text-right tabular-nums bg-white dark:bg-zinc-900" />
                   </div>
                   <div className="flex justify-between text-sm font-semibold text-[#8C6B1F]"><span>→ ดาวน์/งวด (คำนวณ)</span><span>{formatMoney(ePerInst)} × {eSnap.downInstallmentCount ?? 0} งวด</span></div>
                   <Row k="ค่างวด/เดือน" v={`${formatMoney(eSnap.monthlyPayment ?? 0)} × ${eSnap.financeInstallments ?? 0} งวด`} />
                   <div>
-                    <label className="block text-xs text-zinc-500 mt-2 mb-1">ของแถม / โปรโมชั่น {ePromoNote && <span className="text-[10px] text-emerald-600">· {ePromoNote}</span>}</label>
-                    <textarea value={eExtras} onChange={(e) => setEExtras(e.target.value)} rows={2} className="w-full text-sm border border-zinc-200 rounded-lg px-2 py-1.5" />
+                    <label className="block text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-1">ของแถม / โปรโมชั่น {ePromoNote && <span className="text-[10px] text-emerald-600">· {ePromoNote}</span>}</label>
+                    <textarea value={eExtras} onChange={(e) => setEExtras(e.target.value)} rows={2} className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5" />
                   </div>
                 </div>
               )}
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setEditing(false)} className="text-sm text-zinc-500 px-3 py-1.5">ยกเลิก</button>
+                <button onClick={() => setEditing(false)} className="text-sm text-zinc-500 dark:text-zinc-400 px-3 py-1.5">ยกเลิก</button>
                 {q.status === "lead" ? (
                   <button onClick={() => saveVehicle(true)} disabled={busy || !ePlate} className="flex-1 bg-emerald-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก + ออกใบเสนอราคา</button>
                 ) : (
                   <>
-                    <button onClick={() => saveVehicle(false)} disabled={busy || !ePlate} className="flex-1 bg-zinc-900 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก</button>
+                    <button onClick={() => saveVehicle(false)} disabled={busy || !ePlate} className="flex-1 bg-zinc-900 dark:bg-zinc-100 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก</button>
                     <button onClick={() => saveVehicle(true)} disabled={busy || !ePlate} className="bg-emerald-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">บันทึก + เปิด PDF</button>
                   </>
                 )}
@@ -269,21 +269,21 @@ export default function DealPage() {
         <Section title="เงินจอง & หลักฐาน">
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="block text-xs text-zinc-500 mb-1">ยอดเงินจอง (บาท)</label>
+              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ยอดเงินจอง (บาท)</label>
               <input type="number" value={depAmt} onChange={(e) => setDepAmt(e.target.value)}
-                className="w-full h-9 text-sm border border-zinc-200 rounded-lg px-3 text-right tabular-nums" />
+                className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 text-right tabular-nums" />
             </div>
             <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(Number(depAmt) > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}) })}
               disabled={busy} className="h-9 bg-emerald-600 text-white text-sm font-semibold px-4 rounded-lg disabled:opacity-50">บันทึก</button>
           </div>
           {q.depositAmount ? (
             <p className="text-xs text-emerald-700 mt-2">✓ วางจอง {formatMoney(q.depositAmount)} บาท{q.depositPaidAt ? ` เมื่อ ${q.depositPaidAt}` : ""}</p>
-          ) : <p className="text-xs text-zinc-400 mt-2">ยังไม่มีเงินจอง</p>}
+          ) : <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">ยังไม่มีเงินจอง</p>}
 
           <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSlip(f); e.target.value = "" }} />
           <div className="mt-3">
             <button onClick={() => fileRef.current?.click()} disabled={busy || allSlips().length >= 10}
-              className="flex items-center gap-2 text-sm border border-zinc-200 hover:bg-zinc-50 px-3 py-1.5 rounded-lg disabled:opacity-50">
+              className="flex items-center gap-2 text-sm border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 px-3 py-1.5 rounded-lg disabled:opacity-50">
               <Upload className="w-3.5 h-3.5" /> แนบสลิป ({allSlips().length}/10)
             </button>
             {allSlips().length > 0 && (
@@ -304,15 +304,15 @@ export default function DealPage() {
       <Section title="กิจกรรม / บันทึกการติดตาม">
         <div className="flex gap-2 mb-3">
           <input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="บันทึกการโทร/นัด/ต่อรอง..."
-            className="flex-1 h-9 text-sm border border-zinc-200 rounded-lg px-3" onKeyDown={(e) => { if (e.key === "Enter" && noteText.trim()) patch({ note: noteText.trim() }, "note") }} />
+            className="flex-1 h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3" onKeyDown={(e) => { if (e.key === "Enter" && noteText.trim()) patch({ note: noteText.trim() }, "note") }} />
           <button onClick={() => noteText.trim() && patch({ note: noteText.trim() }, "note")} disabled={busy || !noteText.trim()}
-            className="h-9 bg-zinc-900 text-white text-sm px-4 rounded-lg disabled:opacity-50">เพิ่ม</button>
+            className="h-9 bg-zinc-900 dark:bg-zinc-100 text-white text-sm px-4 rounded-lg disabled:opacity-50">เพิ่ม</button>
         </div>
         <ul className="space-y-2">
           {[...(q.timeline ?? [])].reverse().map((t, i) => (
             <li key={i} className="text-xs flex gap-2">
               <span className="text-zinc-300 shrink-0 w-28">{new Date(t.at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</span>
-              <span className="text-zinc-600">{t.action}{t.note ? ` — ${t.note}` : ""} <span className="text-zinc-300">· {t.by}</span></span>
+              <span className="text-zinc-600 dark:text-zinc-300">{t.action}{t.note ? ` — ${t.note}` : ""} <span className="text-zinc-300">· {t.by}</span></span>
             </li>
           ))}
           {(q.timeline ?? []).length === 0 && <li className="text-xs text-zinc-300">ยังไม่มีกิจกรรม</li>}
@@ -324,8 +324,8 @@ export default function DealPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-zinc-100 rounded-xl p-4">
-      <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">{title}</h2>
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4">
+      <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-3">{title}</h2>
       {children}
     </div>
   )
@@ -333,8 +333,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
   return (
     <div className="flex justify-between">
-      <span className="text-zinc-500">{k}</span>
-      <span className={bold ? "font-bold text-[#8C6B1F]" : "text-zinc-700"}>{v}</span>
+      <span className="text-zinc-500 dark:text-zinc-400">{k}</span>
+      <span className={bold ? "font-bold text-[#8C6B1F]" : "text-zinc-700 dark:text-zinc-200"}>{v}</span>
     </div>
   )
 }

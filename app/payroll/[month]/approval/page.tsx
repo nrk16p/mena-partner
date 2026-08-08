@@ -5,7 +5,7 @@ import { confirm, prompt } from "@/components/ui/confirm"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { ArrowLeft, CheckCircle2, ChevronRight, FileDown, ShieldCheck, Undo2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2, FileDown, ShieldCheck, Undo2 } from "lucide-react"
 import { formatMoney, formatMonth } from "@/lib/utils"
 
 type Phase = "draft" | "checked" | "submitted" | "approved" | "locked"
@@ -103,16 +103,28 @@ export default function ApprovalPage() {
         </span>
       </div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-1 text-[11px] overflow-x-auto pb-1">
-        {FLOW.map((p, i) => (
-          <div key={p} className="flex items-center gap-1 shrink-0">
-            {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />}
-            <span className={`px-2.5 py-1 rounded-full border ${i <= stepIdx ? PHASE_META[p].color + " font-semibold" : "bg-white text-zinc-300 border-zinc-100"}`}>
-              {i < stepIdx ? "✓ " : ""}{PHASE_META[p].label}
-            </span>
-          </div>
-        ))}
+      {/* Stepper — ขั้นตอนปิดงวด (draft → ตรวจ → ส่งอนุมัติ → อนุมัติ → ปิดงวด) */}
+      <div className="flex items-stretch overflow-x-auto pb-1">
+        {FLOW.map((p, i) => {
+          const done = i < stepIdx, current = i === stepIdx
+          return (
+            <div key={p} className="flex items-center shrink-0">
+              {i > 0 && <div className={`h-0.5 w-6 sm:w-12 ${i <= stepIdx ? "bg-emerald-400" : "bg-zinc-200 dark:bg-zinc-700"}`} aria-hidden="true" />}
+              <div className="flex flex-col items-center gap-1 px-1">
+                <div className={`w-7 h-7 rounded-full grid place-items-center text-xs font-bold border-2 ${
+                  done ? "bg-emerald-500 border-emerald-500 text-white"
+                  : current ? "bg-[#C9A227] border-[#C9A227] text-white"
+                  : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500"}`}>
+                  {done ? "✓" : i + 1}
+                </div>
+                <div className="text-center leading-tight">
+                  <div className={`text-[11px] font-semibold ${current ? "text-[#8C6B1F] dark:text-[#E7C86E]" : done ? "text-emerald-600" : "text-zinc-400 dark:text-zinc-500"}`}>{PHASE_META[p].label}</div>
+                  <div className="text-[9px] text-zinc-400 dark:text-zinc-500">{PHASE_META[p].who}</div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Cards */}

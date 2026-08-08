@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const STATUS: { key: Status; label: string; cls: string }[] = [
-  { key: "lead",   label: "สนใจ",         cls: "bg-zinc-100 text-zinc-600" },
+  { key: "lead",   label: "สนใจ",         cls: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300" },
   { key: "quoted", label: "เสนอราคาแล้ว", cls: "bg-amber-100 text-amber-700" },
   { key: "booked", label: "วางจอง",       cls: "bg-sky-100 text-sky-700" },
   { key: "won",    label: "ปิดการขาย",     cls: "bg-emerald-100 text-emerald-700" },
@@ -65,15 +65,15 @@ function QuotationsInner() {
     <div className="max-w-6xl mx-auto py-6 px-4 space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">ระบบขาย</p>
+          <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">ระบบขาย</p>
           <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="w-6 h-6 text-[#C9A227]" /> ระบบขาย</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">คนขายเลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีล (ทั้งทีมเห็นทุกดีล)</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">คนขายเลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีล (ทั้งทีมเห็นทุกดีล)</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/quotations/dashboard" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50">
+          <Link href="/quotations/dashboard" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
             <TrendingUp className="w-4 h-4 text-[#C9A227]" /> แดชบอร์ด
           </Link>
-          <button onClick={() => setFormMode("lead")} className="flex items-center gap-2 border border-zinc-300 text-zinc-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50">
+          <button onClick={() => setFormMode("lead")} className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
             <Plus className="w-4 h-4" /> ลูกค้าสนใจ (Lead)
           </button>
           <button onClick={() => setFormMode("quote")} className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
@@ -92,19 +92,19 @@ function QuotationsInner() {
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="ml-auto flex items-center gap-1 order-last">
-          <button onClick={() => setView("list")} className={`p-1.5 rounded-lg ${view === "list" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:bg-zinc-100"}`} title="ตาราง"><List className="w-4 h-4" /></button>
-          <button onClick={() => setView("kanban")} className={`p-1.5 rounded-lg ${view === "kanban" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:bg-zinc-100"}`} title="กระดานดีล"><LayoutGrid className="w-4 h-4" /></button>
+          <button onClick={() => setView("list")} className={`p-1.5 rounded-lg ${view === "list" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="ตาราง"><List className="w-4 h-4" /></button>
+          <button onClick={() => setView("kanban")} className={`p-1.5 rounded-lg ${view === "kanban" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="กระดานดีล"><LayoutGrid className="w-4 h-4" /></button>
         </div>
         <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหา เลขที่/ลูกค้า/ทะเบียน/เซลล์"
-            className="h-8 w-64 text-sm pl-8 pr-3 rounded-full border border-zinc-200 bg-white" />
+            className="h-8 w-64 text-sm pl-8 pr-3 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900" />
         </div>
         <span className="w-px h-5 bg-zinc-200 mx-1" />
-        <button onClick={() => setFilter("")} className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === "" ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500"}`}>ทั้งหมด ({rows.length})</button>
+        <button onClick={() => setFilter("")} className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === "" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>ทั้งหมด ({rows.length})</button>
         {STATUS.map((s) => (
           <button key={s.key} onClick={() => setFilter(filter === s.key ? "" : s.key)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === s.key ? "bg-zinc-900 text-white" : s.cls}`}>
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === s.key ? "bg-zinc-900 dark:bg-zinc-100 text-white" : s.cls}`}>
             {s.label} ({counts[s.key] ?? 0})
           </button>
         ))}
@@ -113,15 +113,15 @@ function QuotationsInner() {
       {view === "kanban" ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {STATUS.map((col) => (
-            <div key={col.key} className="bg-zinc-50 rounded-xl p-2 min-h-[120px]">
+            <div key={col.key} className="bg-zinc-50 dark:bg-zinc-900/40 rounded-xl p-2 min-h-[120px]">
               <div className={`text-[11px] font-semibold px-2 py-1 rounded-lg mb-2 ${col.cls}`}>{col.label} ({counts[col.key] ?? 0})</div>
               <div className="space-y-2">
                 {rows.filter((r) => r.status === col.key).map((r) => (
-                  <Link key={r._id} href={`/quotations/${r._id}`} className="block bg-white border border-zinc-100 rounded-lg p-2 hover:shadow-sm">
+                  <Link key={r._id} href={`/quotations/${r._id}`} className="block bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-2 hover:shadow-sm">
                     <div className="font-mono text-[10px] text-[#8C6B1F] font-semibold">{r.quotationNo}</div>
                     <div className="text-xs font-medium mt-0.5 truncate">{r.customerName}</div>
-                    <div className="text-[10px] text-zinc-400 truncate">{r.licensePlate} · {r.vehicleBrand}</div>
-                    <div className="text-[11px] tabular-nums text-zinc-600 mt-1">{formatMoney(r.totalSalePrice)}</div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{r.licensePlate} · {r.vehicleBrand}</div>
+                    <div className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300 mt-1">{formatMoney(r.totalSalePrice)}</div>
                     <div className="text-[9px] text-zinc-300 mt-0.5">{r.salesName}</div>
                   </Link>
                 ))}
@@ -130,24 +130,24 @@ function QuotationsInner() {
           ))}
         </div>
       ) : (
-      <div className="bg-white border border-zinc-100 rounded-xl overflow-x-auto">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-x-auto">
         <table className="w-full text-sm whitespace-nowrap">
-          <thead><tr className="text-zinc-400 border-b border-zinc-100 bg-zinc-50/60">
+          <thead><tr className="text-zinc-400 dark:text-zinc-500 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60">
             {["เลขที่", "ลูกค้า", "รถ", "ราคาขาย", "ค่างวด/ด.", "สถานะ", "เซลล์", ""].map((h) => (
               <th key={h} className="text-left px-3 py-2 font-medium">{h}</th>))}
           </tr></thead>
-          <tbody className="divide-y divide-zinc-50">
+          <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
             {loading ? Array.from({ length: 6 }).map((_, i) => (<tr key={`sk${i}`}>{Array.from({ length: 8 }).map((_, c) => (<td key={c} className="px-3 py-2"><Skeleton className="h-4" /></td>))}</tr>))
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีใบเสนอราคา — กด &quot;สร้างใบเสนอราคา&quot;</td></tr>
               : rows.map((r) => (
-                <tr key={r._id} className="hover:bg-zinc-50">
+                <tr key={r._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                   <td className="px-3 py-2 font-mono text-xs font-semibold text-[#8C6B1F]"><Link href={`/quotations/${r._id}`} className="hover:underline">{r.quotationNo}</Link></td>
-                  <td className="px-3 py-2">{r.customerName}<span className="text-zinc-400 text-xs">{r.customerPhone ? ` · ${r.customerPhone}` : ""}</span></td>
-                  <td className="px-3 py-2 text-xs">{r.licensePlate} <span className="text-zinc-400">{r.vehicleBrand}</span></td>
+                  <td className="px-3 py-2">{r.customerName}<span className="text-zinc-400 dark:text-zinc-500 text-xs">{r.customerPhone ? ` · ${r.customerPhone}` : ""}</span></td>
+                  <td className="px-3 py-2 text-xs">{r.licensePlate} <span className="text-zinc-400 dark:text-zinc-500">{r.vehicleBrand}</span></td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.totalSalePrice)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-zinc-500">{formatMoney(r.monthlyPayment)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-zinc-500 dark:text-zinc-400">{formatMoney(r.monthlyPayment)}</td>
                   <td className="px-3 py-2"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${stMeta(r.status).cls}`}>{stMeta(r.status).label}</span></td>
-                  <td className="px-3 py-2 text-xs text-zinc-500">{r.salesName}</td>
+                  <td className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">{r.salesName}</td>
                   <td className="px-3 py-2">
                     <a href={`/api/quotations/${r._id}/pdf`} target="_blank" rel="noreferrer" className="text-[#C9A227] hover:underline text-xs inline-flex items-center gap-1">
                       <ExternalLink className="w-3 h-3" /> PDF
@@ -169,7 +169,7 @@ function QuotationsInner() {
 
 export default function QuotationsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-zinc-400 dark:text-zinc-500">กำลังโหลด...</div>}>
       <QuotationsInner />
     </Suspense>
   )
@@ -177,8 +177,8 @@ export default function QuotationsPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" }) {
   return (
-    <div className="bg-white border border-zinc-100 rounded-xl px-4 py-3">
-      <p className="text-[10px] text-zinc-400">{label}</p>
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3">
+      <p className="text-[10px] text-zinc-400 dark:text-zinc-500">{label}</p>
       <p className={`text-lg font-bold mt-0.5 tabular-nums ${tone === "good" ? "text-emerald-600" : ""}`}>{value}</p>
     </div>
   )
@@ -266,33 +266,33 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
 
   const ro = (label: string, value: string) => (
     <div className="flex justify-between text-sm py-1">
-      <span className="text-zinc-500">{label}</span><span className="font-medium tabular-nums">{value}</span>
+      <span className="text-zinc-500 dark:text-zinc-400">{label}</span><span className="font-medium tabular-nums">{value}</span>
     </div>
   )
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex justify-end" onClick={onClose}>
-      <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b sticky top-0 bg-white z-10">
+      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 h-full overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b sticky top-0 bg-white dark:bg-zinc-900 z-10">
           <h2 className="font-bold">{isLead ? "บันทึกลูกค้าสนใจ (Lead)" : "สร้างใบเสนอราคา"}</h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-700"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5 space-y-4">
           {/* เลือกรถ — auto search */}
           <div className="relative">
-            <label className="block text-xs font-medium text-zinc-500 mb-1">เลือกรถพร้อมขาย {isLead && <span className="text-zinc-300">(ไม่บังคับ)</span>}</label>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">เลือกรถพร้อมขาย {isLead && <span className="text-zinc-300">(ไม่บังคับ)</span>}</label>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
               <input value={plateQ} onChange={(e) => { setPlateQ(e.target.value); setPlateOpen(true); setPlate("") }} onFocus={() => setPlateOpen(true)}
-                placeholder="พิมพ์ทะเบียนเพื่อค้นหา" className="w-full h-10 text-sm border border-zinc-200 rounded-lg pl-8 pr-3" />
+                placeholder="พิมพ์ทะเบียนเพื่อค้นหา" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg pl-8 pr-3" />
             </div>
             {plateOpen && plateQ && !plate && plateMatches.length > 0 && (
-              <div className="absolute z-20 left-0 right-0 border border-zinc-200 bg-white rounded-lg mt-1 max-h-52 overflow-y-auto shadow-lg">
+              <div className="absolute z-20 left-0 right-0 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg mt-1 max-h-52 overflow-y-auto shadow-lg">
                 {plateMatches.map((p) => (
                   <button key={p.licensePlate} onClick={() => { setPlate(p.licensePlate); setPlateQ(p.licensePlate); setPlateOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 flex justify-between">
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50 flex justify-between">
                     <span className="font-medium">{p.licensePlate}</span>
-                    <span className="text-zinc-400 text-xs">{p.vehicleBrand} · {fmtNum(p.totalSalePrice)}</span>
+                    <span className="text-zinc-400 dark:text-zinc-500 text-xs">{p.vehicleBrand} · {fmtNum(p.totalSalePrice)}</span>
                   </button>
                 ))}
               </div>
@@ -301,46 +301,46 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
               <div className="flex items-center gap-3 mt-2">
                 {sel.photoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sel.photoUrl} alt="รถ" className="w-16 h-12 object-cover rounded-md border border-zinc-200" />
+                  <img src={sel.photoUrl} alt="รถ" className="w-16 h-12 object-cover rounded-md border border-zinc-200 dark:border-zinc-700" />
                 )}
-                <p className="text-[11px] text-zinc-500">{sel.vehicleBrand || "-"} {sel.vehicleModel || ""} · เบอร์รถ {sel.truckNumber || "-"}{!sel.photoUrl && " · (รถคันนี้ยังไม่มีรูป)"}</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{sel.vehicleBrand || "-"} {sel.vehicleModel || ""} · เบอร์รถ {sel.truckNumber || "-"}{!sel.photoUrl && " · (รถคันนี้ยังไม่มีรูป)"}</p>
               </div>
             )}
           </div>
 
           {/* ลูกค้า */}
           <div className="border-t pt-4">
-            <label className="block text-xs font-medium text-zinc-500 mb-1">ลูกค้า</label>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">ลูกค้า</label>
             <input value={custName} onChange={(e) => { setCustName(e.target.value); setCustQ(e.target.value); setCustId("") }}
-              placeholder="พิมพ์ชื่อลูกค้า (ใหม่/ค้นหาเดิม)" className="w-full h-10 text-sm border border-zinc-200 rounded-lg px-3" />
+              placeholder="พิมพ์ชื่อลูกค้า (ใหม่/ค้นหาเดิม)" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3" />
             {custQ && custList.length > 0 && !custId && (
-              <div className="border border-zinc-100 rounded-lg mt-1 max-h-32 overflow-y-auto">
+              <div className="border border-zinc-100 dark:border-zinc-800 rounded-lg mt-1 max-h-32 overflow-y-auto">
                 {custList.map((c) => (
                   <button key={c._id} onClick={() => { setCustId(c._id); setCustName(c.name); setCustPhone(c.phone ?? ""); setCustQ("") }}
-                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50">{c.name}<span className="text-zinc-400 text-xs">{c.phone ? ` · ${c.phone}` : ""}</span></button>
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50">{c.name}<span className="text-zinc-400 dark:text-zinc-500 text-xs">{c.phone ? ` · ${c.phone}` : ""}</span></button>
                 ))}
               </div>
             )}
-            <input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="เบอร์โทร" className="w-full h-10 text-sm border border-zinc-200 rounded-lg px-3 mt-2" />
+            <input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="เบอร์โทร" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 mt-2" />
             {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
           </div>
 
           {/* ราคา — แก้ได้แค่ดาวน์ชำระเลย ที่เหลือ read-only + คำนวณดาวน์/งวด */}
           {sel && (
             <div className="border-t pt-4">
-              <label className="block text-xs font-medium text-zinc-500 mb-2">ราคา</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">ราคา</label>
               {ro("ราคาขายรวม", `${fmtNum(snap.totalSalePrice)} บาท`)}
               {ro("เงินดาวน์รวม", `${fmtNum(snap.downPayment)} บาท`)}
               <div className="flex items-center justify-between py-1.5 bg-amber-50/60 rounded-lg px-2 my-1">
-                <span className="text-sm text-zinc-600">ดาวน์ชำระเลย <span className="text-[10px] text-amber-600">(แก้ได้)</span></span>
+                <span className="text-sm text-zinc-600 dark:text-zinc-300">ดาวน์ชำระเลย <span className="text-[10px] text-amber-600">(แก้ได้)</span></span>
                 <input type="number" value={cashDown} onChange={(e) => setCashDown(Number(e.target.value) || 0)}
-                  className="w-32 h-8 text-sm border border-amber-300 rounded-lg px-2 text-right tabular-nums bg-white" />
+                  className="w-32 h-8 text-sm border border-amber-300 rounded-lg px-2 text-right tabular-nums bg-white dark:bg-zinc-900" />
               </div>
               {ro(`ดาวน์คงเหลือ (ผ่อน ${snap.downInstallmentCount || 0} งวด)`, `${fmtNum(remainDown)} บาท`)}
               <div className="flex justify-between text-sm py-1 font-semibold text-[#8C6B1F]">
                 <span>→ ดาวน์/งวด (คำนวณ)</span><span className="tabular-nums">{fmtNum(downPerInstallment)} บาท</span>
               </div>
-              <div className="border-t border-zinc-100 my-1" />
+              <div className="border-t border-zinc-100 dark:border-zinc-800 my-1" />
               {ro("ยอดจัดไฟแนนซ์", `${fmtNum(snap.financeAmount)} บาท`)}
               {ro("ค่างวด/เดือน", `${fmtNum(snap.monthlyPayment)} × ${snap.financeInstallments || 0} งวด`)}
             </div>
@@ -351,36 +351,36 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
           <div className="border-t pt-4 space-y-2">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-zinc-500">ของแถม / โปรโมชั่น</label>
+                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">ของแถม / โปรโมชั่น</label>
                 {plate && !extrasAuto && (
                   <button type="button" onClick={() => { setExtrasAuto(true); fetch(`/api/promotions/master?plate=${encodeURIComponent(plate)}`).then((r) => r.ok ? r.json() : null).then((d) => setExtras(d?.summary ?? "")) }}
                     className="text-[10px] text-[#C9A227] hover:underline">↺ ดึงโปรฯ ของรถอีกครั้ง</button>
                 )}
               </div>
               <textarea value={extras} onChange={(e) => { setExtras(e.target.value); setExtrasAuto(false) }} rows={3}
-                className="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2" placeholder="เลือกรถแล้วระบบจะดึงโปรโมชั่นให้อัตโนมัติ (แก้เพิ่มได้)" />
-              {promoNote && <p className={`text-[10px] mt-0.5 ${extrasAuto ? "text-emerald-600" : "text-zinc-400"}`}>{extrasAuto ? "✓ " : ""}{promoNote}</p>}
+                className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2" placeholder="เลือกรถแล้วระบบจะดึงโปรโมชั่นให้อัตโนมัติ (แก้เพิ่มได้)" />
+              {promoNote && <p className={`text-[10px] mt-0.5 ${extrasAuto ? "text-emerald-600" : "text-zinc-400 dark:text-zinc-500"}`}>{extrasAuto ? "✓ " : ""}{promoNote}</p>}
             </div>
           </div>
           )}
 
           <div className="border-t pt-4 space-y-2">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">{isLead ? "โน้ต / ความสนใจ" : "หมายเหตุ"}</label>
-              <input value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-9 text-sm border border-zinc-200 rounded-lg px-3" />
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">{isLead ? "โน้ต / ความสนใจ" : "หมายเหตุ"}</label>
+              <input value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3" />
             </div>
             {!isLead && (
               <div>
-                <label className="block text-xs font-medium text-zinc-500 mb-1">ยืนราคาถึง</label>
-                <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="h-9 text-sm border border-zinc-200 rounded-lg px-2" />
+                <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">ยืนราคาถึง</label>
+                <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2" />
               </div>
             )}
           </div>
 
           {err && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
         </div>
-        <div className="sticky bottom-0 bg-white border-t px-5 py-3 flex justify-end gap-2">
-          <button onClick={onClose} className="text-sm text-zinc-500 px-4 py-2">ยกเลิก</button>
+        <div className="sticky bottom-0 bg-white dark:bg-zinc-900 border-t px-5 py-3 flex justify-end gap-2">
+          <button onClick={onClose} className="text-sm text-zinc-500 dark:text-zinc-400 px-4 py-2">ยกเลิก</button>
           <button onClick={submit} disabled={saving} className="bg-emerald-600 text-white text-sm font-semibold px-5 py-2 rounded-lg disabled:opacity-50">
             {saving ? "กำลังบันทึก..." : isLead ? "บันทึกลูกค้าสนใจ" : "สร้าง + เปิด PDF"}
           </button>

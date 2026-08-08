@@ -6,6 +6,7 @@ import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText,
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
+import { useSort } from "@/components/use-sort"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Driver } from "@/types"
@@ -581,7 +582,12 @@ export default function DriversPage() {
     )
   }, [items, q, onlyMissing, isContractMissing])
 
-  const pg = usePagination(filtered, 50, [q, statusFilter, onlyMissing])
+  const sort = useSort(filtered, (d, k) => {
+    const r = d as unknown as Record<string, unknown>
+    if (k === "name") return (r.driverName as string) || [r.firstName, r.lastName].filter(Boolean).join(" ")
+    return r[k]
+  })
+  const pg = usePagination(sort.sorted, 50, [q, statusFilter, onlyMissing, sort.sortKey, sort.sortDir])
 
   const activeCount   = items.filter((d) => d.status === "active").length
   const inactiveCount = items.filter((d) => d.status !== "active").length
@@ -673,8 +679,12 @@ export default function DriversPage() {
             <thead>
               <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
                 {COLS.map((col) => (
-                  <th key={col.key} className={`px-3 py-2.5 text-left font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap ${col.w}`}>
-                    {col.label}
+                  <th key={col.key} onClick={() => sort.toggle(col.key)}
+                    aria-sort={sort.sortKey === col.key ? (sort.sortDir === "asc" ? "ascending" : "descending") : "none"}
+                    className={`px-3 py-2.5 text-left font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap cursor-pointer select-none ${col.w}`}>
+                    <span className="inline-flex items-center gap-1">{col.label}
+                      <span className={`text-[9px] ${sort.sortKey === col.key ? "text-[#C9A227]" : "text-zinc-300 dark:text-zinc-600"}`}>{sort.sortKey === col.key ? (sort.sortDir === "asc" ? "▲" : "▼") : "↕"}</span>
+                    </span>
                   </th>
                 ))}
                 <th className="px-3 py-2.5 w-8" />
