@@ -41,10 +41,28 @@ async function fetchImg(url?: string): Promise<string> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function quotationDocDef(q: Quotation): Promise<any> {
   const vehImg = await fetchImg(q.vehiclePhotoUrl)
-  const kv = (label: string, value: string) => [
-    { text: seg(label), color: "#71717a", fontSize: 13, margin: [0, 1, 0, 1] },
-    { text: seg(value || "-"), bold: true, color: INK, fontSize: 14, margin: [0, 1, 0, 1] },
-  ]
+  // พาเนลคู่สัญญา (ลูกค้า / ผู้เสนอราคา) — สไตล์ Bill-To/Prepared-By มาตรฐานสากล
+  const party = (thLabel: string, enLabel: string, bigName: string, rows: [string, string][]) => ({
+    width: "*",
+    table: { widths: ["*"], body: [[
+      {
+        fillColor: "#FAF7EF",
+        margin: [12, 8, 12, 8],
+        stack: [
+          { columns: [
+            { text: seg(thLabel), color: GOLD_DK, bold: true, fontSize: 11 },
+            { text: enLabel, color: GOLD, fontSize: 9, characterSpacing: 1.5, alignment: "right", margin: [0, 2, 0, 0] },
+          ] },
+          { text: seg(bigName || "-"), bold: true, fontSize: 15, color: INK, margin: [0, 5, 0, 4] },
+          ...rows.map(([k, v]) => ({ columns: [
+            { text: seg(k), color: "#a1a1aa", fontSize: 11, width: 46 },
+            { text: seg(v || "-"), color: "#3f3f46", fontSize: 12, width: "*" },
+          ], margin: [0, 1, 0, 1] })),
+        ],
+      },
+    ]] },
+    layout: "noBorders",
+  })
   const priceRow = (label: string, value: string, opts: { big?: boolean; gold?: boolean } = {}) => [
     { text: seg(label), fontSize: opts.big ? 15 : 13, bold: opts.big, color: opts.big ? INK : "#52525b", margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
     { text: value, alignment: "right", fontSize: opts.big ? 17 : 14, bold: opts.big || opts.gold, color: opts.gold ? GOLD_DK : INK, margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
@@ -136,33 +154,15 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
       // แถบทองคั่น
       { canvas: [{ type: "rect", x: 0, y: 0, w: CONTENT_W, h: 3.2, color: GOLD }], margin: [0, 8, 0, 8] },
 
-      // ── ลูกค้า | พนักงานขาย (ห่อ unbreakable กันตกคนละหน้า) ──
+      // ── คู่สัญญา: ลูกค้า (Customer) | ผู้เสนอราคา (Sales Rep) — พาเนลสไตล์ใบเสนอมาตรฐานสากล ──
       {
         unbreakable: true,
         columns: [
-          {
-            width: "*",
-            stack: [
-              { text: "เรียน / ลูกค้า", bold: true, fontSize: 12, color: GOLD_DK, margin: [0, 0, 0, 3] },
-              { table: { widths: [54, "*"], body: [
-                kv("ชื่อ", q.customerName),
-                kv("โทร", q.customerPhone ?? "-"),
-              ] }, layout: "noBorders" },
-            ],
-          },
-          { width: 20, text: "" },
-          {
-            width: "*",
-            stack: [
-              { text: "พนักงานขาย", bold: true, fontSize: 12, color: GOLD_DK, margin: [0, 0, 0, 3] },
-              { table: { widths: [54, "*"], body: [
-                kv("ผู้เสนอ", q.salesName),
-                kv("อีเมล", q.salesEmail),
-              ] }, layout: "noBorders" },
-            ],
-          },
+          party("ลูกค้า", "CUSTOMER", q.customerName, [["โทร", q.customerPhone ?? "-"]]),
+          { width: 16, text: "" },
+          party("ผู้เสนอราคา", "SALES REP", q.salesName, [["อีเมล", q.salesEmail]]),
         ],
-        margin: [0, 0, 0, 14],
+        margin: [0, 0, 0, 10],
       },
 
       // ── รถที่เสนอ (หัวข้อ + ตาราง + รูป ห่อ unbreakable ไม่ให้ตาราง/รูปถูกตัดข้ามหน้า) ──
@@ -287,7 +287,7 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
       // ── ลายเซ็น (อยู่ใน flow ท้ายเอกสาร, unbreakable — hero box ช่วยดันเนื้อหาเต็มหน้า ลายเซ็นจึงอยู่ล่าง) ──
       {
         unbreakable: true,
-        margin: [0, 16, 0, 0],
+        margin: [0, 8, 0, 0],
         columns: [
           { width: "*", stack: [
             { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 12, margin: [0, 0, 0, 2] },
