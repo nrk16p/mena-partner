@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { hasPerm } from "@/lib/rbac"
 import clientPromise from "@/lib/mongo"
 import { calculatePayrollEntry } from "@/lib/payroll-engine"
 
@@ -17,7 +18,7 @@ const DB = process.env.MONGO_DB ?? "mena_partner"
  */
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user?.role !== "admin") {
+  if (!session || !hasPerm(session.user?.role, "finance")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

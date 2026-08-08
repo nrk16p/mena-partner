@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { hasPerm } from "@/lib/rbac"
 import { Search, X, ChevronDown, Tag, Upload, Trash2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -328,7 +329,7 @@ export default function NewContractPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (session?.user?.role !== "admin") return
+    if (!hasPerm(session?.user?.role, "contracts")) return
     // Enter บนขั้นตอนก่อนสุดท้าย = ถัดไป (กันบันทึกโดยไม่ตั้งใจ)
     if (step < WIZARD_STEPS.length - 1) { setStep(step + 1); return }
     if (!form.contractCode.trim()) { setError("กรุณากรอกรหัสสัญญา"); setStep(0); return }

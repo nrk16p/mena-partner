@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { hasPerm } from "@/lib/rbac"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
@@ -39,7 +40,7 @@ export default function EditTripPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (session?.user?.role !== "admin") {
+  if (!hasPerm(session?.user?.role, "vehiclecost")) {
     return <div className="p-8 text-center text-muted-foreground">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</div>
   }
 

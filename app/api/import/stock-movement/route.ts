@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { hasPerm } from "@/lib/rbac"
 import * as XLSX from "xlsx"
 import clientPromise from "@/lib/mongo"
 
@@ -73,7 +74,7 @@ function parseRow(row: unknown[]) {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user?.role !== "admin") {
+  if (!session || !hasPerm(session.user?.role, "vehiclecost")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

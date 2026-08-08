@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { hasPerm } from "@/lib/rbac"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
@@ -24,7 +25,7 @@ export default function NewTripPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
 
-  if (session?.user?.role !== "admin") {
+  if (!hasPerm(session?.user?.role, "vehiclecost")) {
     return <div className="p-8 text-center text-muted-foreground">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</div>
   }
 
@@ -40,7 +41,7 @@ export default function NewTripPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (session?.user?.role !== "admin") return
+    if (!hasPerm(session?.user?.role, "vehiclecost")) return
     setSaving(true)
     setError("")
     try {

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { hasPerm } from "@/lib/rbac"
 import { Upload, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -113,7 +114,7 @@ export default function TripImportPage() {
   const [result, setResult]     = useState<{ inserted: number; skipped: number } | null>(null)
   const [parseError, setParseError] = useState("")
 
-  if (session?.user?.role !== "admin") {
+  if (!hasPerm(session?.user?.role, "vehiclecost")) {
     return <div className="p-8 text-center text-muted-foreground">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</div>
   }
 

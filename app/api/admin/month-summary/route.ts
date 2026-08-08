@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { isAdminRole } from "@/lib/rbac"
 import clientPromise from "@/lib/mongo"
 import { nextMonth } from "@/lib/utils"
 
@@ -13,7 +14,7 @@ const DB = process.env.MONGO_DB ?? "mena_partner"
  */
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user?.role !== "admin") {
+  if (!session || !isAdminRole(session.user?.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
