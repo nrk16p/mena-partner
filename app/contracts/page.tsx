@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCircle2, X } from "lucide-react"
@@ -294,7 +295,9 @@ export default function ContractsPage() {
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">กำลังโหลด...</td></tr>
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`sk${i}`}>{Array.from({ length: 7 }).map((_, c) => (<td key={c} className="px-4 py-3"><Skeleton className="h-4" /></td>))}</tr>
+              ))
             ) : items.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">ไม่พบข้อมูล</td></tr>
             ) : pg.paged.map((c) => {

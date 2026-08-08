@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const STATUS: { key: Status; label: string; cls: string }[] = [
@@ -136,7 +137,7 @@ function QuotationsInner() {
               <th key={h} className="text-left px-3 py-2 font-medium">{h}</th>))}
           </tr></thead>
           <tbody className="divide-y divide-zinc-50">
-            {loading ? <tr><td colSpan={8} className="text-center py-8 text-zinc-400 text-xs">กำลังโหลด...</td></tr>
+            {loading ? Array.from({ length: 6 }).map((_, i) => (<tr key={`sk${i}`}>{Array.from({ length: 8 }).map((_, c) => (<td key={c} className="px-3 py-2"><Skeleton className="h-4" /></td>))}</tr>))
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีใบเสนอราคา — กด &quot;สร้างใบเสนอราคา&quot;</td></tr>
               : rows.map((r) => (
                 <tr key={r._id} className="hover:bg-zinc-50">
