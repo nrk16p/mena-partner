@@ -5,6 +5,7 @@ import {
   CheckCircle2, Upload, Banknote, BadgeCheck, HandCoins, FileDown,
 } from "lucide-react"
 import { ModuleStatusBoard } from "@/components/module-status-board"
+import { AlertsWidget } from "@/components/alerts-widget"
 import { RoleMatrix } from "@/components/role-matrix"
 
 /**
@@ -190,6 +191,9 @@ export default function HomePage() {
           <BookOpen className="w-3.5 h-3.5" /> คู่มือฉบับเต็ม: docs/PLATFORM-ROADMAP.md
         </span>
       </div>
+
+      {/* ต้องดูด่วน — แจ้งเตือนรวม (เงินติดลบ/ประกันหมด/ค้างงวด/วงเงินซ่อม) */}
+      <AlertsWidget />
 
       {/* ── flow pipeline ── */}
       <section>

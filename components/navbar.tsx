@@ -26,6 +26,7 @@ export function Navbar() {
         onClick={() => window.dispatchEvent(new CustomEvent("open-command-palette"))}
         className="mr-auto flex items-center gap-2 h-7 px-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs"
         title="ค้นหาเมนู (⌘K)"
+        aria-label="ค้นหาเมนู"
       >
         <Search className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">ค้นหาเมนู</span>
@@ -42,6 +43,7 @@ export function Navbar() {
         onClick={toggleTheme}
         className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
         title={isDark ? "สลับโหมดสว่าง" : "สลับโหมดมืด"}
+        aria-label={isDark ? "สลับโหมดสว่าง" : "สลับโหมดมืด"}
       >
         {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
       </Button>
@@ -51,6 +53,7 @@ export function Navbar() {
         onClick={() => signOut({ callbackUrl: "/login" })}
         className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
         title="ออกจากระบบ"
+        aria-label="ออกจากระบบ"
       >
         <LogOut className="w-3.5 h-3.5" />
       </Button>

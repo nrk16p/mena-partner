@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { Driver } from "@/types"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -681,11 +682,9 @@ export default function DriversPage() {
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/60">
               {loading ? (
-                <tr>
-                  <td colSpan={COLS.length + 1} className="px-4 py-10 text-center text-zinc-400 animate-pulse">
-                    กำลังโหลดข้อมูล...
-                  </td>
-                </tr>
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={`sk${i}`}>{Array.from({ length: COLS.length + 1 }).map((_, c) => (<td key={c} className="px-4 py-3"><Skeleton className="h-4" /></td>))}</tr>
+                ))
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={COLS.length + 1} className="px-4 py-10 text-center">
