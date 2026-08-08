@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List } from "lucide-react"
+import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
@@ -69,6 +69,9 @@ function QuotationsInner() {
           <p className="text-xs text-zinc-400 mt-0.5">คนขายเลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีล (ทั้งทีมเห็นทุกดีล)</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/quotations/dashboard" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50">
+            <TrendingUp className="w-4 h-4 text-[#C9A227]" /> แดชบอร์ด
+          </Link>
           <button onClick={() => setFormMode("lead")} className="flex items-center gap-2 border border-zinc-300 text-zinc-700 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50">
             <Plus className="w-4 h-4" /> ลูกค้าสนใจ (Lead)
           </button>
