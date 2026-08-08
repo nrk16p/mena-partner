@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState, useMemo } from "react"
+import { toast } from "sonner"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download, ExternalLink , FileText } from "lucide-react"
@@ -97,7 +98,7 @@ function SaleStatusEditor({ row, onSaved, onClose }: {
           repairEnd:    isRepair ? end : null,
         }),
       })
-      if (!res.ok) { alert("บันทึกไม่สำเร็จ"); return }
+      if (!res.ok) { toast.error("บันทึกไม่สำเร็จ"); return }
       onSaved({
         saleStatus:  (status || null) as SaleStatus | null,
         repairStart: isRepair ? start : null,

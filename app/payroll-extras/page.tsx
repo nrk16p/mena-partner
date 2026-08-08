@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
+import { confirm, prompt } from "@/components/ui/confirm"
 import { SlidersHorizontal, Plus, Trash2, ClipboardPaste, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -36,9 +37,9 @@ export default function PayrollExtrasPage() {
   async function copyFromPrev() {
     const [y, m] = month.split("-").map(Number)
     const from = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, "0")}`
-    const label = window.prompt(
-      `คัดลอกรายการจากเดือน ${from} → ${month}\nระบุชื่อรายการ (เว้นว่าง = ทุกรายการของเดือนก่อน · ข้ามคนที่มีรายการเดิมแล้ว)`,
-      "รับสภาพหนี้ จราจร")
+    const label = await prompt({
+      title: `คัดลอกรายการจากเดือน ${from} → ${month}\nระบุชื่อรายการ (เว้นว่าง = ทุกรายการของเดือนก่อน · ข้ามคนที่มีรายการเดิมแล้ว)`,
+      defaultValue: "รับสภาพหนี้ จราจร" })
     if (label === null) return
     const r = await fetch("/api/payroll-extras", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -94,7 +95,7 @@ export default function PayrollExtrasPage() {
   }
 
   async function del(id: string) {
-    if (!confirm("ลบรายการนี้?")) return
+    if (!await confirm("ลบรายการนี้?")) return
     await fetch("/api/payroll-extras", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
     await load()
   }

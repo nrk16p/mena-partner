@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { toast } from "sonner"
+import { confirm } from "@/components/ui/confirm"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Search, Printer, ChevronRight, Zap, Trash2, Download } from "lucide-react"
@@ -77,29 +79,29 @@ export default function PayrollPage() {
   async function handleBatchCreate() {
     if (!month) return
     const pending = drivers.filter((d) => !entryCodeSet.has(d.contractCode ?? "")).length
-    if (!confirm(`สร้างเงินเดือนอัตโนมัติให้ ${pending} คนที่ยังไม่บันทึก?\n\nระบบจะดึงค่าขนส่งจากรายเที่ยว, คำนวณค่าดำเนินการ 8%, และเติมค่างวด+ประกันจากสัญญาอัตโนมัติ`)) return
+    if (!await confirm(`สร้างเงินเดือนอัตโนมัติให้ ${pending} คนที่ยังไม่บันทึก?\n\nระบบจะดึงค่าขนส่งจากรายเที่ยว, คำนวณค่าดำเนินการ 8%, และเติมค่างวด+ประกันจากสัญญาอัตโนมัติ`)) return
     setLoading(true)
     try {
       const r = await fetch(`/api/payroll/batch-create?month=${month}`, { method: "POST" })
       const d = await r.json()
       if (r.ok) {
-        alert(`สร้างสำเร็จ ${d.created} รายการ${d.errors > 0 ? ` (${d.errors} ผิดพลาด)` : ""}`)
+        toast.success(`สร้างสำเร็จ ${d.created} รายการ${d.errors > 0 ? ` (${d.errors} ผิดพลาด)` : ""}`)
         await loadEntries(month)
       } else {
-        alert(d.error ?? "เกิดข้อผิดพลาด")
+        toast.error(d.error ?? "เกิดข้อผิดพลาด")
       }
     } finally { setLoading(false) }
   }
 
   async function handleBatchDelete() {
     if (!month) return
-    if (!confirm(`ลบข้อมูลเงินเดือนทั้งหมดของเดือน ${formatMonth(month)} (${recorded} รายการ)?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) return
+    if (!await confirm(`ลบข้อมูลเงินเดือนทั้งหมดของเดือน ${formatMonth(month)} (${recorded} รายการ)?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) return
     setLoading(true)
     try {
       const r = await fetch(`/api/payroll?month=${month}`, { method: "DELETE" })
       const d = await r.json()
       if (r.ok) {
-        alert(`ลบแล้ว ${d.deleted} รายการ`)
+        toast.success(`ลบแล้ว ${d.deleted} รายการ`)
         await loadEntries(month)
       }
     } finally { setLoading(false) }

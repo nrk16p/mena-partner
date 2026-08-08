@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { confirm } from "@/components/ui/confirm"
 import {
   HandCoins, Search, Download, Settings2, PlusCircle, X,
   PauseCircle, PlayCircle, Ban, Trash2, SkipForward, Pencil,
@@ -560,7 +561,7 @@ function ManageDrawer({ entry, onClose, onChanged }: {
   }
 
   async function removePayment(month: string) {
-    if (!confirm(`ยกเลิกการจ่ายเดือน ${month}? (คืนยอด)`)) return
+    if (!await confirm(`ยกเลิกการจ่ายเดือน ${month}? (คืนยอด)`)) return
     const ok = await run(() => api(`/api/ledger/${entry._id}/pay`, { method: "DELETE", body: JSON.stringify({ month }) }))
     if (ok) await loadPayments()
   }
@@ -649,7 +650,7 @@ function ManageDrawer({ entry, onClose, onChanged }: {
   }
 
   async function removeEntry() {
-    if (!confirm(`ลบรายการ ${entry.debtCode}? (ลบไม่ได้ถ้ามีการชำระแล้ว)`)) return
+    if (!await confirm(`ลบรายการ ${entry.debtCode}? (ลบไม่ได้ถ้ามีการชำระแล้ว)`)) return
     const ok = await run(() => api(`/api/ledger/${entry._id}`, { method: "DELETE" }))
     if (ok) onClose()
   }
@@ -770,7 +771,7 @@ function ManageDrawer({ entry, onClose, onChanged }: {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => { if (confirm(`ยกเลิกรายการ ${entry.debtCode}?`)) setStatus("cancelled") }}
+                  onClick={async () => { if (await confirm(`ยกเลิกรายการ ${entry.debtCode}?`)) setStatus("cancelled") }}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
                 >
                   <Ban className="w-3.5 h-3.5" /> ยกเลิก

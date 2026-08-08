@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -140,7 +141,7 @@ export default function ContractDetailPage() {
       const { url } = await up.json()
       setForm((p) => p ? { ...p, [field]: url } : p)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+      toast.error(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
     } finally { setGuarUp(null) }
   }
 
@@ -1158,7 +1159,7 @@ function ContractAttachments({ contractId }: { contractId: string }) {
       const { url } = await up.json()
       await patch(field, url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
+      toast.error(e instanceof Error ? e.message : "เกิดข้อผิดพลาด")
     } finally { setBusy(null) }
   }
 
@@ -1166,7 +1167,7 @@ function ContractAttachments({ contractId }: { contractId: string }) {
     setConfirmField(null)
     setBusy(field)
     try { await patch(field, "") }
-    catch (e) { alert(e instanceof Error ? e.message : "เกิดข้อผิดพลาด") }
+    catch (e) { toast.error(e instanceof Error ? e.message : "เกิดข้อผิดพลาด") }
     finally { setBusy(null) }
   }
 

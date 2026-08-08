@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { confirm } from "@/components/ui/confirm"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { PlusCircle, Search, Upload, Trash2, Download } from "lucide-react"
@@ -63,16 +65,16 @@ export default function TripsPage() {
   }, [month, q, plant])
 
   async function handleDelete(id: string) {
-    if (!confirm("ลบเที่ยวนี้?")) return
+    if (!await confirm("ลบเที่ยวนี้?")) return
     try {
       const r = await fetch(`/api/trips/${id}`, { method: "DELETE" })
       if (r.ok) {
         setItems((p) => p.filter((t) => t._id !== id))
       } else {
-        alert("ลบไม่สำเร็จ กรุณาลองใหม่")
+        toast.error("ลบไม่สำเร็จ กรุณาลองใหม่")
       }
     } catch {
-      alert("เกิดข้อผิดพลาด กรุณาลองใหม่")
+      toast.error("เกิดข้อผิดพลาด กรุณาลองใหม่")
     }
   }
 
@@ -98,7 +100,7 @@ export default function TripsPage() {
 
   async function handleBulkDelete() {
     const label = q ? `${items.length} เที่ยวของ ${q} เดือน ${month}` : `${items.length} เที่ยวเดือน ${month}`
-    if (!confirm(`ลบ${label}ทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้`)) return
+    if (!await confirm(`ลบ${label}ทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้`)) return
     try {
       const params = new URLSearchParams({ month })
       if (q) params.set("contractCode", q)
@@ -106,12 +108,12 @@ export default function TripsPage() {
       if (r.ok) {
         const d = await r.json()
         setItems([])
-        alert(`ลบแล้ว ${d.deleted} รายการ`)
+        toast.success(`ลบแล้ว ${d.deleted} รายการ`)
       } else {
-        alert("ลบไม่สำเร็จ กรุณาลองใหม่")
+        toast.error("ลบไม่สำเร็จ กรุณาลองใหม่")
       }
     } catch {
-      alert("เกิดข้อผิดพลาด กรุณาลองใหม่")
+      toast.error("เกิดข้อผิดพลาด กรุณาลองใหม่")
     }
   }
 

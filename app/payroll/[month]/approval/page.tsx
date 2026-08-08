@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { confirm, prompt } from "@/components/ui/confirm"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -59,13 +60,13 @@ export default function ApprovalPage() {
     if (!s) return
     let note = ""
     if (action === "reject") {
-      note = window.prompt("เหตุผลที่ตีกลับ (บังคับ):")?.trim() ?? ""
+      note = (await prompt("เหตุผลที่ตีกลับ (บังคับ):"))?.trim() ?? ""
       if (!note) return
     } else {
       const msg = s.phase === "submitted"
         ? `ยืนยันอนุมัติจ่ายเงินเดือนงวด ${formatMonth(month)}\nโอนสุทธิรวม ${formatMoney(s.totals.paidNet)} บาท (${s.totals.drivers} คน · หัก WHT ${formatMoney(s.totals.wht)})?`
         : `ยืนยัน: ${NEXT_LABEL[s.phase]}?`
-      if (!window.confirm(msg)) return
+      if (!await confirm(msg)) return
     }
     setBusy(true); setError("")
     const res = await fetch("/api/month-status", {

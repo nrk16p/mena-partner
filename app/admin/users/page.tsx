@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { confirm } from "@/components/ui/confirm"
 import { useSession } from "next-auth/react"
 import { ShieldCheck, Trash2, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -37,7 +38,7 @@ export default function AdminUsersPage() {
   }
 
   async function remove(em: string) {
-    if (!confirm(`ลบสิทธิ์ของ ${em}? (จะกลับเป็น "ดูอย่างเดียว")`)) return
+    if (!await confirm(`ลบสิทธิ์ของ ${em}? (จะกลับเป็น "ดูอย่างเดียว")`)) return
     await fetch("/api/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: em }) })
     await load()
   }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { PlusCircle, Search, AlertTriangle, Download, FileText, Upload, CheckCircle2, X } from "lucide-react"
@@ -77,7 +78,7 @@ export default function ContractsPage() {
       if (!put.ok) throw new Error("บันทึกไฟล์แนบไม่สำเร็จ")
       setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: url } : x)))
     } catch (err) {
-      alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
     } finally {
       setUploading(null)
     }
@@ -97,7 +98,7 @@ export default function ContractsPage() {
       if (!res.ok) throw new Error("ลบไฟล์แนบไม่สำเร็จ")
       setItems((prev) => prev.map((x) => (x._id === c._id ? { ...x, [field]: "" } : x)))
     } catch (err) {
-      alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
     } finally {
       setUploading(null)
     }

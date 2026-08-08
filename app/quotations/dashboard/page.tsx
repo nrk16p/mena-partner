@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, TrendingUp, Trophy, Clock, Filter } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
+import { Skeleton, TableSkeleton, StatsSkeleton } from "@/components/ui/skeleton"
 
 const ST: Record<string, { label: string; color: string }> = {
   lead: { label: "สนใจ", color: "#a1a1aa" },
@@ -31,7 +32,17 @@ export default function DashboardPage() {
     fetch("/api/quotations/dashboard").then((r) => (r.ok ? r.json() : null)).then((j) => { setD(j); setLoading(false) })
   }, [])
 
-  if (loading) return <div className="p-8 text-sm text-zinc-400">กำลังโหลด...</div>
+  if (loading) return (
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+      <Skeleton className="h-8 w-52" />
+      <StatsSkeleton count={5} />
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5"><TableSkeleton rows={5} cols={4} /></div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5"><TableSkeleton rows={4} cols={2} /></div>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5"><TableSkeleton rows={4} cols={2} /></div>
+      </div>
+    </div>
+  )
   if (!d) return <div className="p-8 text-sm text-red-500">โหลดข้อมูลไม่สำเร็จ</div>
 
   const funnelMax = Math.max(1, ...d.funnel.map((f) => f.count))

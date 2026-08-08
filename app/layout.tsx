@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono, Noto_Sans_Thai } from "next/font/google"
 import { Providers } from "@/components/providers"
 import { AppShell } from "@/components/app-shell"
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "sonner"
+import { ConfirmHost } from "@/components/ui/confirm"
 
 // Octo Code design system (docs/DESIGN.md): Inter for UI, JetBrains Mono for
 // code/IDs; Noto Sans Thai renders Thai text (Inter has no Thai glyphs)
@@ -38,6 +40,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>
+        <ConfirmHost />
+        <Toaster richColors position="top-center" toastOptions={{ style: { fontFamily: "var(--font-noto-thai)" } }} />
         <Analytics />
       </body>
     </html>

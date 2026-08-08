@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -121,7 +122,7 @@ export default function AdminMonthPage() {
       const data = await r.json()
       setSummaries((prev) => { const n = { ...prev }; delete n[month]; return n })
       await loadSummary(month)
-      alert(`คำนวณเสร็จ: ${data.updated} ราย อัปเดต, ${data.skipped} ข้าม, ${data.errors} ผิดพลาด`)
+      toast.success(`คำนวณเสร็จ: ${data.updated} ราย อัปเดต, ${data.skipped} ข้าม, ${data.errors} ผิดพลาด`)
     } finally {
       setCalculating(null)
     }

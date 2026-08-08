@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Printer, Copy, Trash2 } from "lucide-react"
@@ -163,7 +164,7 @@ export default function PayrollEntryPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(`ลบข้อมูลเงินเดือน ${contractCode} เดือน ${month}?`)) return
+    if (!await confirm(`ลบข้อมูลเงินเดือน ${contractCode} เดือน ${month}?`)) return
     const res = await fetch(`/api/payroll/${month}/${contractCode}`, { method: "DELETE" })
     if (res.ok) router.push("/payroll")
     else setError("ลบไม่สำเร็จ")

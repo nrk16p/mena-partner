@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check, X, Phone, Landmark, AlertTriangle, CheckCircle2, Truck, IdCard } from "lucide-react"
@@ -338,7 +339,7 @@ export default function DriverDetailPage() {
   async function handleDelete() {
     if (!driver) return
     const fullName = `${driver.firstName} ${driver.lastName}`
-    if (!confirm(`ลบข้อมูล "${fullName}" ออกถาวร?`)) return
+    if (!await confirm(`ลบข้อมูล "${fullName}" ออกถาวร?`)) return
     setDeleting(true)
     try {
       await fetch(`/api/drivers/${id}`, { method: "DELETE" })
@@ -983,7 +984,7 @@ function Tax50Card({ driver, isAdmin, onSaved }: { driver: Driver; isAdmin: bool
             <span className="font-medium w-20">{thMonth(x.month)}</span>
             <a href={x.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate flex-1">เปิดไฟล์</a>
             {isAdmin && (
-              <button disabled={busy} onClick={() => { if (window.confirm(`ลบไฟล์ 50 ทวิ ${thMonth(x.month)}?`)) save(items.filter((y) => y.month !== x.month)) }}
+              <button disabled={busy} onClick={async () => { if (await confirm(`ลบไฟล์ 50 ทวิ ${thMonth(x.month)}?`)) save(items.filter((y) => y.month !== x.month)) }}
                 className="text-zinc-300 hover:text-red-500">ลบ</button>
             )}
           </div>

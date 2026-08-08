@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ActivityHistory } from "@/components/activity-history"
@@ -43,14 +44,14 @@ export default function PromoDetailPage() {
   useEffect(() => { load() }, [contractCode])
 
   const handleRepairDelete = async (id: string) => {
-    if (!confirm("ลบรายการนี้?")) return
+    if (!await confirm("ลบรายการนี้?")) return
     const r = await fetch(`/api/promotions/repair/${id}`, { method: "DELETE" })
     if (r.ok) await load()
   }
 
   // กติกา: ทีมต้องระบุ (ยืนยัน) ก่อน งบโปรฯ ถึงถูกตัด — ยืนยันแล้วถาวร ยกเลิกไม่ได้
   const handleConfirmRepair = async (id: string) => {
-    if (!confirm("เปลี่ยนเป็น actual — ตัดงบโปรโมชั่นสำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
+    if (!await confirm("เปลี่ยนเป็น actual — ตัดงบโปรโมชั่นสำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
     const r = await fetch(`/api/promotions/repair/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -73,13 +74,13 @@ export default function PromoDetailPage() {
   }
 
   const handlePmDelete = async (id: string) => {
-    if (!confirm("ลบรายการนี้?")) return
+    if (!await confirm("ลบรายการนี้?")) return
     const r = await fetch(`/api/promotions/pm/${id}`, { method: "DELETE" })
     if (r.ok) await load()
   }
 
   const handleConfirmPm = async (id: string) => {
-    if (!confirm("ยืนยันตัดเพดาน PM สำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
+    if (!await confirm("ยืนยันตัดเพดาน PM สำหรับรายการนี้?\n\n⚠ ตัดงบแล้วถาวร — ยกเลิกไม่ได้")) return
     const r = await fetch(`/api/promotions/pm/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

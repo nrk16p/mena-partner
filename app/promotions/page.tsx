@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { confirm } from "@/components/ui/confirm"
 import Link from "next/link"
 import {
   ChevronRight, ChevronDown, Gift, Wrench, Settings2,
@@ -435,7 +436,7 @@ function EntryCard({ entry, onToggle, onDelete }: EntryCardProps) {
   }
 
   async function handleDelete() {
-    if (!confirm(`ลบโปรโมชั่น "${entry.label}" ออกถาวร?`)) return
+    if (!await confirm(`ลบโปรโมชั่น "${entry.label}" ออกถาวร?`)) return
     setBusy(true); await onDelete(entry.id); setBusy(false)
   }
 

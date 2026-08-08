@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useEffect, useState, useCallback } from "react"
+import { toast } from "sonner"
+import { confirm } from "@/components/ui/confirm"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import {
@@ -393,7 +395,7 @@ function CostTab({ isAdmin, contracts }: { isAdmin: boolean; contracts: Contract
   useEffect(() => { load() }, [load])
 
   async function handleDelete(id: string) {
-    if (!confirm("ลบรายการนี้ออกถาวร?")) return
+    if (!await confirm("ลบรายการนี้ออกถาวร?")) return
     await fetch(`/api/vehicle-cost/${id}`, { method: "DELETE" })
     load()
   }
@@ -1395,7 +1397,7 @@ function MergedCard({ doc, movements, promo, onBulkChange }: {
       await onBulkChange(updates)
       setDraft({})
     } catch {
-      alert("บันทึกไม่สำเร็จ กรุณาลองใหม่")
+      toast.error("บันทึกไม่สำเร็จ กรุณาลองใหม่")
     } finally {
       setSaving(false)
     }
@@ -2067,13 +2069,13 @@ function SummarizeTab() {
 
   async function confirmSummary() {
     if (!data) return
-    if (!window.confirm(`ยืนยันสรุปค่าซ่อมงวด ${month} เข้าเงินเดือน?\n${data.totals.contracts} คัน · เก็บ พขร. ${fmt(data.totals.charged)} + ดำเนินการ 8% ${fmt(data.totals.managementFee)} = ${fmt(data.totals.total)} บาท`)) return
+    if (!await confirm(`ยืนยันสรุปค่าซ่อมงวด ${month} เข้าเงินเดือน?\n${data.totals.contracts} คัน · เก็บ พขร. ${fmt(data.totals.charged)} + ดำเนินการ 8% ${fmt(data.totals.managementFee)} = ${fmt(data.totals.total)} บาท`)) return
     setBusy(true); setErr("")
     try {
       const r = await fetch("/api/repair-monthly/summarize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ month, action: "confirm" }) })
       const d = await r.json()
       if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
-      alert(`บันทึกแล้ว ${d.upserted} คัน — payroll งวด ${month} จะใช้เลขชุดนี้`)
+      toast.success(`บันทึกแล้ว ${d.upserted} คัน — payroll งวด ${month} จะใช้เลขชุดนี้`)
       await preview()
     } finally { setBusy(false) }
   }

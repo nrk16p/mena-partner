@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { prompt } from "@/components/ui/confirm"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil } from "lucide-react"
@@ -185,7 +186,7 @@ export default function DealPage() {
           </>
         )}
         {q.status !== "lost" && q.status !== "won" && (
-          <button onClick={() => { const n = window.prompt("เหตุผลที่ยกเลิกดีล:"); if (n) patch({ status: "lost", note: n }) }} disabled={busy}
+          <button onClick={async () => { const n = await prompt("เหตุผลที่ยกเลิกดีล:"); if (n) patch({ status: "lost", note: n }) }} disabled={busy}
             className="text-sm text-red-500 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg">ยกเลิกดีล</button>
         )}
       </div>

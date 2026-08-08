@@ -7,6 +7,8 @@
  */
 
 import { useCallback, useEffect, useState, useRef } from "react"
+import { toast } from "sonner"
+import { confirm } from "@/components/ui/confirm"
 import { Fuel, RefreshCw, Download, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -45,17 +47,17 @@ export default function TripFuelPage() {
       fd.append("file", f); fd.append("month", month); fd.append("action", "preview")
       const r = await fetch("/api/import/trip-fuel", { method: "POST", body: fd })
       const d = await r.json()
-      if (!r.ok) { alert(d.error ?? "อ่านไฟล์ไม่สำเร็จ"); return }
+      if (!r.ok) { toast.error(d.error ?? "อ่านไฟล์ไม่สำเร็จ"); return }
       const t = d.totals
       const msg = `ชีต: ${d.sheetName}\nพจส. ${t.drivers} คน · ${t.tripCount.toLocaleString()} เที่ยว\nค่าเที่ยวรวม ${t.tripFee.toLocaleString()} บาท\nหักน้ำมัน ${t.fuelDeduct.toLocaleString()} บาท (เกินเรต ${t.overMoney.toLocaleString()} / คืน ${t.underMoney.toLocaleString()})` +
         (d.unmatched.length ? `\n\n⚠ จับคู่สัญญาไม่ได้ ${d.unmatched.length} คน: ${d.unmatched.slice(0, 8).join(", ")}${d.unmatched.length > 8 ? "…" : ""}` : "") +
         `\n\nยืนยันแทนที่ข้อมูลเดือน ${month} ทั้งชุด?`
-      if (!window.confirm(msg)) return
+      if (!await confirm(msg)) return
       const fd2 = new FormData()
       fd2.append("file", f); fd2.append("month", month); fd2.append("action", "confirm")
       const r2 = await fetch("/api/import/trip-fuel", { method: "POST", body: fd2 })
       const d2 = await r2.json()
-      if (!r2.ok) { alert(d2.error ?? "นำเข้าไม่สำเร็จ"); return }
+      if (!r2.ok) { toast.error(d2.error ?? "นำเข้าไม่สำเร็จ"); return }
       await load()
     } finally { setSyncing(false) }
   }
