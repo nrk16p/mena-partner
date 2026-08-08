@@ -50,12 +50,27 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
     { text: value, alignment: "right", fontSize: opts.big ? 17 : 14, bold: opts.big || opts.gold, color: opts.gold ? GOLD_DK : INK, margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
   ]
 
+  // สถานะ (แถบ/ป้าย) + ลายน้ำ ฉบับร่าง/ยกเลิก
+  const STATUS_LABEL: Record<string, string> = { lead: "ฉบับร่าง", quoted: "ใบเสนอราคา", booked: "วางจอง", won: "ปิดการขาย", lost: "ยกเลิก" }
+  const STATUS_COLOR: Record<string, string> = { lead: "#71717a", quoted: GOLD_DK, booked: "#0369a1", won: "#15803d", lost: "#b91c1c" }
+  const stColor = STATUS_COLOR[q.status] ?? "#71717a"
+  const stLabel = STATUS_LABEL[q.status] ?? q.status
+  // ยืนราคา: ใช้ค่าที่ตั้งไว้ ถ้าไม่มี default +30 วันจากวันออกเอกสาร
+  const addDays = (iso: string, n: number) => { const d = new Date(iso.slice(0, 10) + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString() }
+  const effValid = q.validUntil || addDays(q.createdAt || new Date().toISOString(), 30)
+
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
     pageMargins: [48, 44, 48, 56],
     info: { title: `ใบเสนอราคา ${q.quotationNo}` },
     defaultStyle: { font: "Cordia", fontSize: 14, lineHeight: 1.1 },
+    // ── ลายน้ำสถานะ: ฉบับร่าง (lead) / ยกเลิก (lost) — ฉบับจริง (quoted+) ไม่มีลายน้ำ ──
+    ...(q.status === "lead"
+      ? { watermark: { text: seg("ฉบับร่าง"), color: GOLD, opacity: 0.06, bold: true } }
+      : q.status === "lost"
+      ? { watermark: { text: seg("ยกเลิก"), color: "#b91c1c", opacity: 0.08, bold: true } }
+      : {}),
 
     // ── Header ต่อเนื่องทุกหน้า: หน้า 1 ใช้หัวเต็ม (โลโก้) ใน content, หน้า 2+ ใช้แถบสรุปย่อ ──
     header: (page: number) => {
@@ -97,7 +112,7 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
             width: "*",
             stack: [
               ...(LOGO
-                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 300, margin: [0, 4, 0, 0] }]
+                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 240, margin: [0, 6, 0, 0] }]
                 : [{ text: seg(COMPANY.name), bold: true, fontSize: 18, color: INK }]),
             ],
           },
@@ -108,13 +123,18 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
               { text: "QUOTATION", fontSize: 11, color: GOLD, alignment: "right", characterSpacing: 2 },
               { text: seg(`เลขที่ ${q.quotationNo}`), fontSize: 13, bold: true, color: INK, alignment: "right", margin: [0, 4, 0, 0] },
               { text: seg(`วันที่ ${thDate(q.createdAt)}`), fontSize: 12, color: "#52525b", alignment: "right" },
-              ...(q.validUntil ? [{ text: seg(`ยืนราคาถึง ${thDate(q.validUntil)}`), fontSize: 12, color: "#b45309", alignment: "right" }] : []),
+              // สถานะ (ป้ายสี)
+              { text: [{ text: "● ", color: stColor }, { text: seg(stLabel), color: stColor, bold: true }], fontSize: 11, alignment: "right", margin: [0, 3, 0, 0] },
+              // ยืนราคา (กล่องเด่น — แสดงเสมอ, default +30 วัน)
+              { table: { widths: ["*"], body: [[
+                { text: seg(`ยืนราคาถึง ${thDate(effValid)}`), color: "#9a3412", fillColor: "#FEF3C7", bold: true, fontSize: 11, alignment: "center", margin: [4, 3, 4, 3] },
+              ]] }, layout: "noBorders", margin: [0, 5, 0, 0] },
             ],
           },
         ],
       },
       // แถบทองคั่น
-      { canvas: [{ type: "rect", x: 0, y: 0, w: CONTENT_W, h: 3.2, color: GOLD }], margin: [0, 12, 0, 14] },
+      { canvas: [{ type: "rect", x: 0, y: 0, w: CONTENT_W, h: 3.2, color: GOLD }], margin: [0, 8, 0, 8] },
 
       // ── ลูกค้า | พนักงานขาย (ห่อ unbreakable กันตกคนละหน้า) ──
       {
@@ -176,7 +196,7 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
           },
           ...(vehImg ? [{ image: vehImg, fit: [280, 160], alignment: "center" as const }] : []),
         ],
-        margin: [0, 0, 0, 16],
+        margin: [0, 0, 0, 10],
       },
 
       // ── สรุปราคา + แผนไฟแนนซ์ (ห่อ unbreakable — Grand Total ไม่ถูกตัดข้ามหน้า) ──
@@ -212,7 +232,32 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
             ],
           },
         ],
-        margin: [0, 0, 0, 14],
+        margin: [0, 0, 0, 10],
+      },
+
+      // ── Hero: ค่างวด/เดือน (จุดที่ลูกค้าสนใจสุด) ──
+      {
+        table: { widths: ["*"], body: [[
+          {
+            fillColor: "#FBF3D9",
+            margin: [14, 9, 14, 9],
+            stack: [{
+              columns: [
+                { width: "*", stack: [
+                  { text: seg("ผ่อนสบาย เพียงเดือนละ"), color: GOLD_DK, fontSize: 12 },
+                  { text: `${fm(q.monthlyPayment)} บาท`, color: GOLD_DK, bold: true, fontSize: 30, margin: [0, 2, 0, 0] },
+                ] },
+                { width: "auto", stack: [
+                  { text: seg(`ดาวน์ ${fm(q.downPayment)} บาท`), alignment: "right", fontSize: 12, color: INK, margin: [0, 6, 0, 0] },
+                  ...(q.financeInstallments ? [{ text: seg(`จัดไฟแนนซ์ ${q.financeInstallments} งวด`), alignment: "right", fontSize: 12, color: "#52525b" }] : []),
+                  { text: seg(`ราคารวม ${fm(q.totalSalePrice)} บาท`), alignment: "right", fontSize: 12, color: "#52525b" },
+                ] },
+              ],
+            }],
+          },
+        ]] },
+        layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => GOLD, vLineColor: () => GOLD },
+        margin: [0, 0, 0, 10],
       },
 
       ...(q.extras ? [
@@ -224,26 +269,36 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
         { text: seg(q.note), fontSize: 13, color: "#52525b", margin: [0, 0, 0, 8] },
       ] : []),
 
-      // ── เงื่อนไข + ลายเซ็น (ห่อ unbreakable — ลายเซ็นไม่ถูกตัดข้ามหน้า) ──
+      // ── เงื่อนไข (เป็นข้อ) — อยู่ใน flow, unbreakable ──
       {
         unbreakable: true,
         stack: [
           { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: RULE }], margin: [0, 6, 0, 8] },
-          { text: seg("เงื่อนไข: ใบเสนอราคานี้เป็นการเสนอเบื้องต้น ราคายังไม่รวมภาษีและค่าธรรมเนียมโอน (ถ้ามี) · การจองรถถือว่าสมบูรณ์เมื่อวางเงินจองและบริษัทออกหลักฐานรับเงิน · เงื่อนไขการผ่อนขึ้นกับการอนุมัติของไฟแนนซ์"), fontSize: 11, color: "#71717a", margin: [0, 0, 0, 22] },
-          {
-            columns: [
-              { width: "*", stack: [
-                { text: "ลงชื่อ .............................................", alignment: "center", margin: [0, 10, 0, 2] },
-                { text: seg(`( ${q.salesName} )`), alignment: "center", fontSize: 12 },
-                { text: "พนักงานขาย", alignment: "center", color: "#71717a", fontSize: 12 },
-              ] },
-              { width: "*", stack: [
-                { text: "ลงชื่อ .............................................", alignment: "center", margin: [0, 10, 0, 2] },
-                { text: seg(`( ${q.customerName} )`), alignment: "center", fontSize: 12 },
-                { text: "ลูกค้า / ผู้ซื้อ", alignment: "center", color: "#71717a", fontSize: 12 },
-              ] },
-            ],
-          },
+          { text: "เงื่อนไข", bold: true, fontSize: 12, color: GOLD_DK, margin: [0, 0, 0, 4] },
+          { ol: [
+            seg("ราคานี้เป็นการเสนอเบื้องต้น ยังไม่รวมภาษีมูลค่าเพิ่มและค่าธรรมเนียมโอน (ถ้ามี)"),
+            seg("การจองรถถือว่าสมบูรณ์เมื่อวางเงินจองและบริษัทออกหลักฐานรับเงินแล้ว"),
+            seg("เงื่อนไขและอัตราการผ่อนขึ้นอยู่กับการอนุมัติของบริษัทไฟแนนซ์"),
+            seg(`ใบเสนอราคานี้ยืนราคาถึงวันที่ ${thDate(effValid)}`),
+          ], fontSize: 11, color: "#52525b" },
+        ],
+      },
+
+      // ── ลายเซ็น (อยู่ใน flow ท้ายเอกสาร, unbreakable — hero box ช่วยดันเนื้อหาเต็มหน้า ลายเซ็นจึงอยู่ล่าง) ──
+      {
+        unbreakable: true,
+        margin: [0, 16, 0, 0],
+        columns: [
+          { width: "*", stack: [
+            { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 12, margin: [0, 0, 0, 2] },
+            { text: seg(`( ${q.salesName} )`), alignment: "center", fontSize: 12 },
+            { text: "พนักงานขาย", alignment: "center", color: "#71717a", fontSize: 12 },
+          ] },
+          { width: "*", stack: [
+            { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 12, margin: [0, 0, 0, 2] },
+            { text: seg(`( ${q.customerName} )`), alignment: "center", fontSize: 12 },
+            { text: "ลูกค้า / ผู้ซื้อ", alignment: "center", color: "#71717a", fontSize: 12 },
+          ] },
         ],
       },
     ],
