@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const db = client.db(DB)
   const now = new Date().toISOString()
   const email = session.user?.email ?? "unknown"
-  const salesName = session.user?.name ?? email.split("@")[0]
+  const salesName = (typeof b.salesName === "string" && b.salesName.trim()) || session.user?.name || email.split("@")[0]
   const quotationNo = await nextQuotationNo(db)
 
   const doc = {

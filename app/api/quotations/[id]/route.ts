@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (b[k] !== undefined) $set[k] = Number(b[k]) || 0
   }
   for (const k of ["depositSlipUrl", "depositPaidAt", "extras", "note", "validUntil", "customerName", "customerPhone",
-                   "licensePlate", "vehicleBrand", "vehicleModel", "truckNumber", "vehiclePhotoUrl"]) {
+                   "licensePlate", "vehicleBrand", "vehicleModel", "truckNumber", "vehiclePhotoUrl", "salesName"]) {
     if (b[k] !== undefined) $set[k] = b[k]
   }
   if (b.depositSlips !== undefined && Array.isArray(b.depositSlips)) $set.depositSlips = b.depositSlips.slice(0, 10)

@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
@@ -196,6 +197,9 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
   const [custId, setCustId] = useState("")
   const [custName, setCustName] = useState("")
   const [custPhone, setCustPhone] = useState("")
+  const [salesName, setSalesName] = useState("")
+  const { data: session } = useSession()
+  useEffect(() => { if (session?.user?.name) setSalesName((s) => s || session.user!.name!) }, [session])
   const [snap, setSnap] = useState<Record<string, number>>({})
   const [cashDown, setCashDown] = useState(0)
   const [extras, setExtras] = useState("")
@@ -253,6 +257,7 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
         vehiclePhotoUrl: sel?.photoUrl ?? "",
         vehiclePhotos: sel?.photos ?? undefined,
         customerId: cid, customerName: cname, customerPhone: cphone,
+        salesName: salesName.trim(),
         totalSalePrice: snap.totalSalePrice ?? 0, downPayment: snap.downPayment ?? 0, cashDown,
         downInstallmentCount: snap.downInstallmentCount ?? 0, downInstallmentAmt: downPerInstallment,
         financeAmount: snap.financeAmount ?? 0, financeInstallments: snap.financeInstallments ?? 0, monthlyPayment: snap.monthlyPayment ?? 0,
@@ -324,6 +329,8 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
               </div>
             )}
             <input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="เบอร์โทร" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 mt-2" />
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 mt-3">พนักงานขาย (เซล)</label>
+            <input value={salesName} onChange={(e) => setSalesName(e.target.value)} placeholder="ชื่อเซล (เว้นว่าง = ใช้ชื่อผู้ล็อกอิน)" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3" />
             {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
           </div>
 
