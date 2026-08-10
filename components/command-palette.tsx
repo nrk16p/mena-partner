@@ -9,6 +9,7 @@ import { isAdminRole, salespersonPageAllowed } from "@/lib/rbac"
 type Item = { href: string; label: string; group: string; admin?: boolean; superadmin?: boolean }
 const ITEMS: Item[] = [
   { href: "/", label: "หน้าหลัก · คู่มือ", group: "ทั่วไป" },
+  { href: "/alerts", label: "ต้องดูด่วน / แจ้งเตือน", group: "ทั่วไป" },
   { href: "/drivers", label: "คนขับ", group: "สัญญา" },
   { href: "/vehicles", label: "รถ", group: "สัญญา" },
   { href: "/price-list", label: "ราคาขาย", group: "สัญญา" },
