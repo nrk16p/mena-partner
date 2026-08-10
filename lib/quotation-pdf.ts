@@ -27,20 +27,8 @@ function thDate(iso?: string | null): string {
 let LOGO = ""
 try { LOGO = fs.readFileSync(path.join(process.cwd(), "fonts", "mena-logo.jpg")).toString("base64") } catch { /* ไม่มีโลโก้ก็ได้ */ }
 
-async function fetchImg(url?: string): Promise<string> {
-  if (!url) return ""
-  try {
-    const r = await fetch(url); if (!r.ok) return ""
-    const ct = (r.headers.get("content-type") || "").toLowerCase()
-    if (!ct.includes("jpeg") && !ct.includes("jpg") && !ct.includes("png")) return ""
-    const buf = Buffer.from(await r.arrayBuffer())
-    return `data:${ct.includes("png") ? "image/png" : "image/jpeg"};base64,${buf.toString("base64")}`
-  } catch { return "" }
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function quotationDocDef(q: Quotation): Promise<any> {
-  const vehImg = await fetchImg(q.vehiclePhotoUrl)
+export function quotationDocDef(q: Quotation): any {
   // พาเนลคู่สัญญา (ลูกค้า / ผู้เสนอราคา) — สไตล์ Bill-To/Prepared-By มาตรฐานสากล
   const party = (thLabel: string, enLabel: string, bigName: string, rows: [string, string][]) => ({
     width: "*",
@@ -192,9 +180,8 @@ export async function quotationDocDef(q: Quotation): Promise<any> {
               hLineWidth: () => 0.5, vLineWidth: () => 0.5,
               hLineColor: () => RULE, vLineColor: () => RULE,
             },
-            margin: [0, 0, 0, vehImg ? 8 : 0],
+            margin: [0, 0, 0, 0],
           },
-          ...(vehImg ? [{ image: vehImg, fit: [280, 160], alignment: "center" as const }] : []),
         ],
         margin: [0, 0, 0, 10],
       },

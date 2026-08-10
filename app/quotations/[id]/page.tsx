@@ -21,7 +21,7 @@ const META: Record<Status, { label: string; cls: string }> = {
 interface Quote {
   _id: string; quotationNo: string; status: Status
   customerName: string; customerPhone?: string
-  licensePlate: string; vehicleBrand?: string; vehicleModel?: string; truckNumber?: string
+  licensePlate: string; vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; vehiclePhotoUrl?: string
   totalSalePrice: number; downPayment: number; cashDown: number
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
@@ -202,6 +202,10 @@ export default function DealPage() {
                 <div className="text-sm space-y-1">
                   <Row k="รถ" v={`${q.licensePlate} · ${q.vehicleBrand ?? "-"} ${q.vehicleModel ?? ""}`} />
                   <Row k="เบอร์รถ" v={q.truckNumber ?? "-"} />
+                  {q.vehiclePhotoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={q.vehiclePhotoUrl} alt="รูปรถ" className="w-full max-h-52 object-contain rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 my-2" />
+                  )}
                   <div className="border-t border-zinc-100 dark:border-zinc-800 my-2" />
                   <Row k="ราคาขายรวม" v={formatMoney(q.totalSalePrice)} bold />
                   <Row k="เงินดาวน์รวม" v={formatMoney(q.downPayment)} />
