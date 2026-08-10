@@ -35,6 +35,7 @@ interface Quote {
 interface PriceRow {
   licensePlate: string; status: string
   vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; photoUrl?: string
+  photos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
   totalSalePrice: number; downPayment: number; cashDown: number
   downInstallmentCount: number; financeAmount: number; financeInstallments: number; monthlyPayment: number
 }
@@ -154,7 +155,7 @@ export default function DealPage() {
     if (!ePlate) { setErr("เลือกรถก่อน"); return }
     await patch({
       licensePlate: ePlate, vehicleBrand: eSel?.vehicleBrand ?? "", vehicleModel: eSel?.vehicleModel ?? "",
-      truckNumber: eSel?.truckNumber ?? "", vehiclePhotoUrl: eSel?.photoUrl ?? "",
+      truckNumber: eSel?.truckNumber ?? "", vehiclePhotoUrl: eSel?.photoUrl ?? "", vehiclePhotos: eSel?.photos ?? undefined,
       totalSalePrice: eSnap.totalSalePrice ?? 0, downPayment: eSnap.downPayment ?? 0, cashDown: eCash,
       downInstallmentCount: eSnap.downInstallmentCount ?? 0, downInstallmentAmt: ePerInst,
       financeAmount: eSnap.financeAmount ?? 0, financeInstallments: eSnap.financeInstallments ?? 0, monthlyPayment: eSnap.monthlyPayment ?? 0,

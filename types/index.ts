@@ -18,7 +18,8 @@ export interface Vehicle {
   engineSize?:     string  // ขนาดกำลังเครื่องยนต์
   status?:              string  // active / inactive
   registrationDocUrl?:  string  // URL สำเนาทะเบียนรถ
-  photoUrl?:            string  // URL รูปรถ (sync ไปใบเสนอราคา)
+  photoUrl?:            string  // URL รูปรถ (= รูปมุม "หน้า", sync ไปใบเสนอราคา)
+  photos?:             { front?: string; back?: string; left?: string; right?: string; cabin?: string }  // รูปรถ 5 มุม
   dataComplete?:     boolean // ติ๊กยืนยันว่าเก็บข้อมูลรถครบถ้วนแล้ว (manual)
   dataExpectedDate?: string  // YYYY-MM-DD วันที่คาดว่าจะเก็บข้อมูลครบ (ถ้ายังไม่ครบ)
   createdAt?: string

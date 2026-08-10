@@ -52,8 +52,13 @@ const EMPTY_FORM: Omit<Vehicle, "_id" | "createdAt" | "updatedAt"> = {
   chassisNumber: "", engineNumber: "", engineSize: "", status: "active",
   registrationDocUrl: "",
   photoUrl: "",
+  photos: { front: "", back: "", left: "", right: "", cabin: "" },
   dataComplete: false, dataExpectedDate: "",
 }
+
+const V_PHOTO_SLOTS: { key: string; label: string }[] = [
+  { key: "front", label: "หน้า" }, { key: "back", label: "หลัง" }, { key: "left", label: "ซ้าย" }, { key: "right", label: "ขวา" }, { key: "cabin", label: "ห้องผู้โดยสาร" },
+]
 
 // ─── Slide panel ─────────────────────────────────────────────────────────────
 
@@ -108,6 +113,7 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
         status:              vehicle.status              ?? "active",
         registrationDocUrl:  vehicle.registrationDocUrl  ?? "",
         photoUrl:            vehicle.photoUrl            ?? "",
+        photos:              { front: vehicle.photos?.front ?? vehicle.photoUrl ?? "", back: vehicle.photos?.back ?? "", left: vehicle.photos?.left ?? "", right: vehicle.photos?.right ?? "", cabin: vehicle.photos?.cabin ?? "" },
         dataComplete:        vehicle.dataComplete === true,
         dataExpectedDate:    vehicle.dataExpectedDate    ?? "",
       })
@@ -134,18 +140,19 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
     onClose()
   }
 
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  async function uploadPhoto(file: File) {
-    setUploadingPhoto(true); setError("")
+  const [uploadingSlot, setUploadingSlot] = useState("")
+  async function uploadPhoto(slot: string, file: File) {
+    setUploadingSlot(slot); setError("")
     try {
       const fd = new FormData(); fd.append("file", file); fd.append("folder", "vehicles/photos")
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       if (!res.ok) throw new Error("อัปโหลดรูปไม่สำเร็จ")
       const { url } = await res.json()
-      set("photoUrl" as keyof typeof EMPTY_FORM, url)
+      setForm((f) => ({ ...f, photos: { ...f.photos, [slot]: url } }))
     } catch (e) { setError(e instanceof Error ? e.message : "อัปโหลดรูปไม่สำเร็จ") }
-    finally { setUploadingPhoto(false) }
+    finally { setUploadingSlot("") }
   }
+  const removePhoto = (slot: string) => setForm((f) => ({ ...f, photos: { ...f.photos, [slot]: "" } }))
   async function uploadDoc(file: File) {
     setUploading(true); setError("")
     try {
@@ -380,20 +387,30 @@ function SlidePanel({ vehicle, onClose, onSaved, onDeleted }: SlidePanelProps) {
           </SectionCard>
 
           <SectionCard icon={Car} title="รูปรถ">
-            {form.photoUrl ? (
-              <div className="relative inline-block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.photoUrl} alt="รูปรถ" className="w-full max-h-56 object-contain rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50" />
-                <button type="button" onClick={() => set("photoUrl" as keyof typeof EMPTY_FORM, "")}
-                  className="absolute top-2 right-2 bg-white/90 rounded-full p-1 text-zinc-400 hover:text-red-500 shadow"><X className="w-4 h-4" /></button>
-              </div>
-            ) : (
-              <label className={`flex items-center gap-3 px-4 py-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${uploadingPhoto ? "border-blue-300 bg-blue-50/40" : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 hover:bg-emerald-50/30"}`}>
-                {uploadingPhoto ? <><div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" /><span className="text-sm text-blue-600 font-medium">กำลังอัปโหลด...</span></>
-                  : <><Upload className="w-5 h-5 text-zinc-400 shrink-0" /><div><p className="text-sm text-zinc-600 dark:text-zinc-300 font-medium">อัปโหลดรูปรถ</p><p className="text-xs text-zinc-400 mt-0.5">JPG/PNG • โชว์ในใบเสนอราคา</p></div></>}
-                <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = "" }} />
-              </label>
-            )}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {V_PHOTO_SLOTS.map((s) => {
+                const url = ((form.photos as Record<string, string> | undefined)?.[s.key]) ?? ""
+                return (
+                  <div key={s.key} className="text-center">
+                    {url ? (
+                      <div className="relative group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={s.label} className="w-full h-16 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700" />
+                        <button type="button" onClick={() => removePhoto(s.key)} aria-label={`ลบรูป${s.label}`}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"><X className="w-3 h-3" /></button>
+                      </div>
+                    ) : (
+                      <label className={`w-full h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors ${uploadingSlot === s.key ? "border-blue-300 bg-blue-50/40" : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-400"}`}>
+                        {uploadingSlot === s.key ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Upload className="w-4 h-4 text-zinc-400" />}
+                        <input type="file" accept="image/*" className="hidden" disabled={!!uploadingSlot} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(s.key, f); e.target.value = "" }} />
+                      </label>
+                    )}
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">{s.label}</div>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-xs text-zinc-400 mt-2">รูปมุม &quot;หน้า&quot; จะ sync ไปใบเสนอราคาตอนสร้างดีล</p>
           </SectionCard>
 
           <SectionCard icon={FileText} title="เอกสารแนบ">

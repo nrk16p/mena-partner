@@ -27,6 +27,7 @@ interface Quote {
 interface PriceRow {
   licensePlate: string; status: string; saleStatus: string | null
   vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; photoUrl?: string
+  photos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
   totalSalePrice: number; downPayment: number; cashDown: number; remainingInstallment: number
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
@@ -250,6 +251,7 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
         licensePlate: plate,
         vehicleBrand: sel?.vehicleBrand ?? "", vehicleModel: sel?.vehicleModel ?? "", truckNumber: sel?.truckNumber ?? "",
         vehiclePhotoUrl: sel?.photoUrl ?? "",
+        vehiclePhotos: sel?.photos ?? undefined,
         customerId: cid, customerName: cname, customerPhone: cphone,
         totalSalePrice: snap.totalSalePrice ?? 0, downPayment: snap.downPayment ?? 0, cashDown,
         downInstallmentCount: snap.downInstallmentCount ?? 0, downInstallmentAmt: downPerInstallment,

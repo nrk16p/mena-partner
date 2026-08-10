@@ -56,6 +56,9 @@ export async function POST(req: NextRequest) {
     vehicleModel: (b.vehicleModel ?? "").trim(),
     truckNumber: (b.truckNumber ?? "").trim(),
     vehiclePhotoUrl: (b.vehiclePhotoUrl ?? "").trim(),
+    vehiclePhotos: b.vehiclePhotos && typeof b.vehiclePhotos === "object"
+      ? Object.fromEntries(["front", "back", "left", "right", "cabin"].map((k) => [k, typeof b.vehiclePhotos[k] === "string" ? b.vehiclePhotos[k] : ""]))
+      : undefined,
     totalSalePrice: n(b.totalSalePrice), downPayment: n(b.downPayment), cashDown: n(b.cashDown),
     downInstallmentCount: n(b.downInstallmentCount), downInstallmentAmt: n(b.downInstallmentAmt),
     financeAmount: n(b.financeAmount), financeInstallments: n(b.financeInstallments), monthlyPayment: n(b.monthlyPayment),

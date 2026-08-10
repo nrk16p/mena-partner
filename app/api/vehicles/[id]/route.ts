@@ -40,6 +40,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     status?:               string
     registrationDocUrl?:   string | null
     photoUrl?:             string | null
+    photos?:               { front?: string; back?: string; left?: string; right?: string; cabin?: string }
     dataComplete?:         boolean
     dataExpectedDate?:     string | null
   }
@@ -61,6 +62,11 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (body.status               !== undefined) $set.status               = body.status
   if (body.registrationDocUrl   !== undefined) $set.registrationDocUrl   = str(body.registrationDocUrl)
   if (body.photoUrl             !== undefined) $set.photoUrl             = str(body.photoUrl)
+  if (body.photos               !== undefined) {
+    const P = body.photos ?? {}
+    $set.photos   = { front: (P.front ?? "").trim(), back: (P.back ?? "").trim(), left: (P.left ?? "").trim(), right: (P.right ?? "").trim(), cabin: (P.cabin ?? "").trim() }
+    $set.photoUrl = (P.front ?? "").trim()   // photoUrl = รูปมุมหน้า (legacy/price-list)
+  }
   if (body.dataComplete         !== undefined) $set.dataComplete         = body.dataComplete === true
   if (body.dataExpectedDate     !== undefined) $set.dataExpectedDate     = str(body.dataExpectedDate)
 
