@@ -38,6 +38,7 @@ export interface Quotation extends QuotePricing {
   vehicleModel?: string
   truckNumber?: string
   vehiclePhotoUrl?: string
+  vehiclePhotos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
   // ของแถม/เงื่อนไข
   extras?: string
   note?: string

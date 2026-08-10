@@ -22,6 +22,7 @@ interface Quote {
   _id: string; quotationNo: string; status: Status
   customerName: string; customerPhone?: string
   licensePlate: string; vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; vehiclePhotoUrl?: string
+  vehiclePhotos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
   totalSalePrice: number; downPayment: number; cashDown: number
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
@@ -38,6 +39,14 @@ interface PriceRow {
   downInstallmentCount: number; financeAmount: number; financeInstallments: number; monthlyPayment: number
 }
 
+const PHOTO_SLOTS: { key: string; label: string }[] = [
+  { key: "front", label: "หน้า" },
+  { key: "back", label: "หลัง" },
+  { key: "left", label: "ซ้าย" },
+  { key: "right", label: "ขวา" },
+  { key: "cabin", label: "ห้องผู้โดยสาร" },
+]
+
 export default function DealPage() {
   const { id } = useParams<{ id: string }>()
   const [q, setQ] = useState<Quote | null>(null)
@@ -46,6 +55,8 @@ export default function DealPage() {
   const [depAmt, setDepAmt] = useState("")
   const [noteText, setNoteText] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
+  const [photoSlot, setPhotoSlot] = useState<string>("")
   // ── editor รถ/ราคา/โปรฯ (ใช้ตอน lead เลือกรถ + ทำใบเสนอ / อัพเดทโปรฯ) ──
   const [editing, setEditing] = useState(false)
   const [prices, setPrices] = useState<PriceRow[]>([])
@@ -112,6 +123,27 @@ export default function DealPage() {
   }
   async function removeSlip(url: string) {
     await patch({ depositSlips: allSlips().filter((u) => u !== url), ...(q?.depositSlipUrl === url ? { depositSlipUrl: "" } : {}) })
+  }
+
+  // รูปรถ 5 มุม (หน้า/หลัง/ซ้าย/ขวา/ห้องผู้โดยสาร) — legacy vehiclePhotoUrl แสดงเป็นมุม "หน้า"
+  function photoOf(slot: string): string {
+    const p = q?.vehiclePhotos as Record<string, string> | undefined
+    return (p?.[slot]) || (slot === "front" ? (q?.vehiclePhotoUrl ?? "") : "")
+  }
+  function pickPhoto(slot: string) { setPhotoSlot(slot); photoRef.current?.click() }
+  async function uploadPhoto(file: File) {
+    if (!photoSlot) return
+    setBusy(true); setErr("")
+    try {
+      const fd = new FormData(); fd.append("file", file); fd.append("folder", "quotations")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!res.ok) { setErr("อัปโหลดรูปไม่สำเร็จ"); return }
+      const { url } = await res.json()
+      await patch({ vehiclePhotos: { ...(q?.vehiclePhotos ?? {}), [photoSlot]: url } })
+    } finally { setBusy(false); setPhotoSlot("") }
+  }
+  async function removePhoto(slot: string) {
+    await patch({ vehiclePhotos: { ...(q?.vehiclePhotos ?? {}), [slot]: "" }, ...(slot === "front" && q?.vehiclePhotoUrl ? { vehiclePhotoUrl: "" } : {}) })
   }
 
   const eSel = prices.find((p) => p.licensePlate === ePlate)
@@ -202,10 +234,32 @@ export default function DealPage() {
                 <div className="text-sm space-y-1">
                   <Row k="รถ" v={`${q.licensePlate} · ${q.vehicleBrand ?? "-"} ${q.vehicleModel ?? ""}`} />
                   <Row k="เบอร์รถ" v={q.truckNumber ?? "-"} />
-                  {q.vehiclePhotoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={q.vehiclePhotoUrl} alt="รูปรถ" className="w-full max-h-52 object-contain rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 my-2" />
-                  )}
+                  <div className="my-2">
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1.5">รูปรถ (5 มุม)</div>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {PHOTO_SLOTS.map((s) => {
+                        const url = photoOf(s.key)
+                        return (
+                          <div key={s.key} className="text-center">
+                            {url ? (
+                              <div className="relative group">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={s.label} className="w-full h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700" /></a>
+                                <button onClick={() => removePhoto(s.key)} disabled={busy} aria-label={`ลบรูป${s.label}`} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100">×</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => pickPhoto(s.key)} disabled={busy} aria-label={`อัปโหลดรูป${s.label}`}
+                                className="w-full h-14 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 flex items-center justify-center text-zinc-300 dark:text-zinc-500 hover:border-[#C9A227] hover:text-[#C9A227]">
+                                <Upload className="w-4 h-4" />
+                              </button>
+                            )}
+                            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">{s.label}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = "" }} />
+                  </div>
                   <div className="border-t border-zinc-100 dark:border-zinc-800 my-2" />
                   <Row k="ราคาขายรวม" v={formatMoney(q.totalSalePrice)} bold />
                   <Row k="เงินดาวน์รวม" v={formatMoney(q.downPayment)} />

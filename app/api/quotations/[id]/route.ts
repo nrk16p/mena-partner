@@ -45,6 +45,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (b[k] !== undefined) $set[k] = b[k]
   }
   if (b.depositSlips !== undefined && Array.isArray(b.depositSlips)) $set.depositSlips = b.depositSlips.slice(0, 10)
+  if (b.vehiclePhotos !== undefined && typeof b.vehiclePhotos === "object" && b.vehiclePhotos) {
+    const P = b.vehiclePhotos as Record<string, unknown>
+    $set.vehiclePhotos = Object.fromEntries(["front", "back", "left", "right", "cabin"].map((k) => [k, typeof P[k] === "string" ? P[k] : ""]))
+  }
   if (b.depositAmount !== undefined) events.push({ at: now, by: email, action: `บันทึกเงินจอง ${Number(b.depositAmount).toLocaleString()} บาท` })
   if (b.note && b.status === undefined && b.depositAmount === undefined) events.push({ at: now, by: email, action: "บันทึกกิจกรรม", note: b.note })
 
