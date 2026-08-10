@@ -137,7 +137,7 @@ export default function DealPage() {
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5">
-      <Breadcrumb items={[{ label: "ใบเสนอราคา", href: "/quotations" }, { label: "รายละเอียดดีล" }]} />
+      <Breadcrumb items={[{ label: "ระบบขาย", href: "/quotations" }, { label: "รายละเอียดดีล" }]} />
       <div className="flex items-center gap-3 flex-wrap">
         <Link href="/quotations" className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600"><ArrowLeft className="w-5 h-5" /></Link>
         <div className="flex-1">

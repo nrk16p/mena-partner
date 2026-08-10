@@ -13,7 +13,7 @@ const ITEMS: Item[] = [
   { href: "/vehicles", label: "รถ", group: "สัญญา" },
   { href: "/price-list", label: "ราคาขาย", group: "สัญญา" },
   { href: "/contracts", label: "สัญญา", group: "สัญญา" },
-  { href: "/quotations", label: "ใบเสนอราคา / ดีล", group: "ขาย" },
+  { href: "/quotations", label: "ระบบขาย (ใบเสนอ/ดีล)", group: "ขาย" },
   { href: "/quotations/dashboard", label: "แดชบอร์ดงานขาย", group: "ขาย" },
   { href: "/promotions", label: "โปรโมชั่น", group: "โปรโมชั่น" },
   { href: "/reports/promotions", label: "รายงานสรุปยอดโปรโมชั่น", group: "โปรโมชั่น" },

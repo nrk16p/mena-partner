@@ -24,7 +24,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
       { href: "/vehicles", label: "รถ", icon: Truck, hint: "ยี่ห้อ รุ่น เลขตัวถัง เลขเครื่อง" },
       { href: "/price-list", label: "ราคาขาย", icon: Tag, hint: "เพิ่ม/แก้ไขได้ในหน้า" },
       { href: "/contracts", label: "สัญญา", icon: FileText },
-      { href: "/quotations", label: "ใบเสนอราคา", icon: Receipt },
+      { href: "/quotations", label: "ระบบขาย", icon: Receipt },
     ],
   },
   {
