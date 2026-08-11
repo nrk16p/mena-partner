@@ -24,16 +24,23 @@ const FONT_FILES = {
   bolditalics: "CordiaUPC-BoldItalic.ttf",
 }
 
+const SARABUN_FILES = {
+  normal: "Sarabun-Regular.ttf",
+  bold: "Sarabun-Bold.ttf",
+  italics: "Sarabun-Italic.ttf",
+  bolditalics: "Sarabun-BoldItalic.ttf",
+}
+
 let printer: any = null
 
 function getPrinter() {
   if (printer) return printer
   const vfs = (pdfmake as any).virtualfs
   const dir = path.join(process.cwd(), "fonts")
-  for (const f of Object.values(FONT_FILES)) {
+  for (const f of [...Object.values(FONT_FILES), ...Object.values(SARABUN_FILES)]) {
     vfs.writeFileSync(f, fs.readFileSync(path.join(dir, f)))
   }
-  const fonts = { Cordia: { ...FONT_FILES } }
+  const fonts = { Cordia: { ...FONT_FILES }, Sarabun: { ...SARABUN_FILES } }
   printer = new Printer(fonts, vfs, new URLResolver(vfs), () => true)
   return printer
 }

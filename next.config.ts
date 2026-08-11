@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/contracts/[id]/docx": ["./templates/**"],
     "/api/contracts/[id]/pdf": ["./fonts/**"],
+    "/api/quotations/[id]/pdf": ["./fonts/**"],
   },
   // รูปอัปโหลด (สำเนาเอกสาร) เสิร์ฟผ่าน next/image ได้เร็วขึ้น
   images: {
