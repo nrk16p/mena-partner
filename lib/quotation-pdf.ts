@@ -38,13 +38,13 @@ export function quotationDocDef(q: Quotation): any {
         margin: [12, 8, 12, 8],
         stack: [
           { columns: [
-            { text: seg(thLabel), color: GOLD_DK, bold: true, fontSize: 11 },
-            { text: enLabel, color: GOLD, fontSize: 9, characterSpacing: 1.5, alignment: "right", margin: [0, 2, 0, 0] },
+            { text: seg(thLabel), color: GOLD_DK, bold: true, fontSize: 10 },
+            { text: enLabel, color: GOLD, fontSize: 8, characterSpacing: 1.5, alignment: "right", margin: [0, 2, 0, 0] },
           ] },
-          { text: seg(bigName || "-"), bold: true, fontSize: 15, color: INK, margin: [0, 5, 0, 4] },
+          { text: seg(bigName || "-"), bold: true, fontSize: 12, color: INK, margin: [0, 5, 0, 4] },
           ...rows.map(([k, v]) => ({ columns: [
-            { text: seg(k), color: "#a1a1aa", fontSize: 11, width: 46 },
-            { text: seg(v || "-"), color: "#3f3f46", fontSize: 12, width: "*" },
+            { text: seg(k), color: "#a1a1aa", fontSize: 9, width: 40 },
+            { text: seg(v || "-"), color: "#3f3f46", fontSize: 10, width: "*" },
           ], margin: [0, 1, 0, 1] })),
         ],
       },
@@ -52,8 +52,8 @@ export function quotationDocDef(q: Quotation): any {
     layout: "noBorders",
   })
   const priceRow = (label: string, value: string, opts: { big?: boolean; gold?: boolean } = {}) => [
-    { text: seg(label), fontSize: opts.big ? 15 : 13, bold: opts.big, color: opts.big ? INK : "#52525b", margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
-    { text: value, alignment: "right", fontSize: opts.big ? 17 : 14, bold: opts.big || opts.gold, color: opts.gold ? GOLD_DK : INK, margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
+    { text: seg(label), fontSize: opts.big ? 11 : 10, bold: opts.big, color: opts.big ? INK : "#52525b", margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
+    { text: value, alignment: "right", fontSize: opts.big ? 13 : 10, bold: true, color: opts.gold ? GOLD_DK : INK, margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
   ]
 
   // สถานะ (แถบ/ป้าย) + ลายน้ำ ฉบับร่าง/ยกเลิก
@@ -68,9 +68,9 @@ export function quotationDocDef(q: Quotation): any {
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
-    pageMargins: [48, 44, 48, 56],
+    pageMargins: [48, 40, 48, 48],
     info: { title: `ใบเสนอราคา ${q.quotationNo}` },
-    defaultStyle: { font: "Sarabun", fontSize: 14, lineHeight: 1.1 },
+    defaultStyle: { font: "Sarabun", fontSize: 10, lineHeight: 1.15 },
     // ── ลายน้ำสถานะ: ฉบับร่าง (lead) / ยกเลิก (lost) — ฉบับจริง (quoted+) ไม่มีลายน้ำ ──
     ...(q.status === "lead"
       ? { watermark: { text: seg("ฉบับร่าง"), color: GOLD, opacity: 0.06, bold: true } }
@@ -86,8 +86,8 @@ export function quotationDocDef(q: Quotation): any {
         stack: [
           {
             columns: [
-              { text: seg(COMPANY.name), fontSize: 10, bold: true, color: GOLD_DK },
-              { text: seg(`ใบเสนอราคา ${q.quotationNo}`), alignment: "right", fontSize: 10, color: "#a1a1aa" },
+              { text: seg(COMPANY.name), fontSize: 9, bold: true, color: GOLD_DK },
+              { text: seg(`ใบเสนอราคา ${q.quotationNo}`), alignment: "right", fontSize: 9, color: "#a1a1aa" },
             ],
           },
           { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: RULE }], margin: [0, 3, 0, 0] },
@@ -98,8 +98,8 @@ export function quotationDocDef(q: Quotation): any {
     // ── Footer ต่อเนื่องทุกหน้า ──
     footer: (page: number, total: number) => ({
       columns: [
-        { text: seg(COMPANY.name), color: "#a1a1aa", fontSize: 10 },
-        { text: `${page}/${total}`, alignment: "right", color: "#a1a1aa", fontSize: 10 },
+        { text: seg(COMPANY.name), color: "#a1a1aa", fontSize: 9 },
+        { text: `${page}/${total}`, alignment: "right", color: "#a1a1aa", fontSize: 9 },
       ],
       margin: [48, 12, 48, 0],
     }),
@@ -118,29 +118,31 @@ export function quotationDocDef(q: Quotation): any {
             width: "*",
             stack: [
               ...(LOGO
-                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 240, margin: [0, 6, 0, 0] }]
-                : [{ text: seg(COMPANY.name), bold: true, fontSize: 18, color: INK }]),
+                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 200, margin: [0, 6, 0, 0] }]
+                : [{ text: seg(COMPANY.name), bold: true, fontSize: 16, color: INK }]),
             ],
           },
           {
             width: 168,
             stack: [
               { text: "ใบเสนอราคา", bold: true, fontSize: 20, color: GOLD_DK, alignment: "right" },
-              { text: "QUOTATION", fontSize: 11, color: GOLD, alignment: "right", characterSpacing: 2 },
-              { text: seg(`เลขที่ ${q.quotationNo}`), fontSize: 13, bold: true, color: INK, alignment: "right", margin: [0, 4, 0, 0] },
-              { text: seg(`วันที่ ${thDate(q.createdAt)}`), fontSize: 12, color: "#52525b", alignment: "right" },
-              // สถานะ (ป้ายสี)
-              { text: [{ text: "• ", color: stColor }, { text: seg(stLabel), color: stColor, bold: true }], fontSize: 11, alignment: "right", margin: [0, 3, 0, 0] },
+              { text: "QUOTATION", fontSize: 9, color: GOLD, alignment: "right", characterSpacing: 2 },
+              { text: seg(`เลขที่ ${q.quotationNo}`), fontSize: 11, bold: true, color: INK, alignment: "right", margin: [0, 4, 0, 0] },
+              { text: seg(`วันที่ ${thDate(q.createdAt)}`), fontSize: 10, color: "#52525b", alignment: "right" },
+              // สถานะ (ป้ายสี) — ซ่อนตอน quoted เพราะซ้ำกับชื่อเอกสาร "ใบเสนอราคา"
+              ...(q.status === "quoted" ? [] : [
+                { text: [{ text: "• ", color: stColor }, { text: seg(stLabel), color: stColor, bold: true }], fontSize: 10, alignment: "right", margin: [0, 3, 0, 0] },
+              ]),
               // ยืนราคา (กล่องเด่น — แสดงเสมอ, default +30 วัน)
               { table: { widths: ["*"], body: [[
-                { text: seg(`ยืนราคาถึง ${thDate(effValid)}`), color: "#9a3412", fillColor: "#FEF3C7", bold: true, fontSize: 11, alignment: "center", margin: [4, 3, 4, 3] },
+                { text: seg(`ยืนราคาถึง ${thDate(effValid)}`), color: "#9a3412", fillColor: "#FEF3C7", bold: true, fontSize: 10, alignment: "center", margin: [4, 3, 4, 3] },
               ]] }, layout: "noBorders", margin: [0, 5, 0, 0] },
             ],
           },
         ],
       },
       // แถบทองคั่น
-      { canvas: [{ type: "rect", x: 0, y: 0, w: CONTENT_W, h: 3.2, color: GOLD }], margin: [0, 8, 0, 8] },
+      { canvas: [{ type: "rect", x: 0, y: 0, w: CONTENT_W, h: 3.2, color: GOLD }], margin: [0, 6, 0, 6] },
 
       // ── คู่สัญญา: ลูกค้า (Customer) | ผู้เสนอราคา (Sales Rep) — พาเนลสไตล์ใบเสนอมาตรฐานสากล ──
       {
@@ -150,14 +152,14 @@ export function quotationDocDef(q: Quotation): any {
           { width: 16, text: "" },
           party("ผู้เสนอราคา", "SALES REP", q.salesName, [["อีเมล", q.salesEmail]]),
         ],
-        margin: [0, 0, 0, 10],
+        margin: [0, 0, 0, 8],
       },
 
       // ── รถที่เสนอ (หัวข้อ + ตาราง + รูป ห่อ unbreakable ไม่ให้ตาราง/รูปถูกตัดข้ามหน้า) ──
       {
         unbreakable: true,
         stack: [
-          { text: "รายการรถที่เสนอขาย", headlineLevel: 1, bold: true, fontSize: 13, color: INK, margin: [0, 0, 0, 4] },
+          { text: "รายการรถที่เสนอขาย", headlineLevel: 1, bold: true, fontSize: 11, color: INK, margin: [0, 0, 0, 4] },
           {
             table: {
               widths: ["*", "*", "*", "*"],
@@ -183,7 +185,7 @@ export function quotationDocDef(q: Quotation): any {
             margin: [0, 0, 0, 0],
           },
         ],
-        margin: [0, 0, 0, 10],
+        margin: [0, 0, 0, 8],
       },
 
       // ── สรุปราคา + แผนไฟแนนซ์ (ห่อ unbreakable — Grand Total ไม่ถูกตัดข้ามหน้า) ──
@@ -195,7 +197,7 @@ export function quotationDocDef(q: Quotation): any {
               {
                 width: "*",
                 stack: [
-                  { text: "สรุปราคา", headlineLevel: 1, bold: true, fontSize: 13, color: GOLD_DK, margin: [0, 0, 0, 4] },
+                  { text: "สรุปราคา", headlineLevel: 1, bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 0, 0, 4] },
                   { table: { widths: ["*", "auto"], body: [
                     priceRow("ราคาขายรวม", `${fm2(q.totalSalePrice)} บาท`, { big: true, gold: true }),
                     priceRow("เงินดาวน์รวม", `${fm2(q.downPayment)} บาท`),
@@ -208,7 +210,7 @@ export function quotationDocDef(q: Quotation): any {
               {
                 width: "*",
                 stack: [
-                  { text: "แผนไฟแนนซ์", bold: true, fontSize: 13, color: GOLD_DK, margin: [0, 0, 0, 4] },
+                  { text: "แผนไฟแนนซ์", bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 0, 0, 4] },
                   { table: { widths: ["*", "auto"], body: [
                     priceRow("ยอดจัดไฟแนนซ์", `${fm2(q.financeAmount)} บาท`),
                     priceRow("จำนวนงวด", q.financeInstallments ? `${q.financeInstallments} งวด` : "-"),
@@ -219,7 +221,7 @@ export function quotationDocDef(q: Quotation): any {
             ],
           },
         ],
-        margin: [0, 0, 0, 10],
+        margin: [0, 0, 0, 8],
       },
 
       // ── Hero: ค่างวด/เดือน (จุดที่ลูกค้าสนใจสุด) ──
@@ -232,43 +234,43 @@ export function quotationDocDef(q: Quotation): any {
             stack: [{
               columns: [
                 { width: "*", stack: [
-                  { text: seg("ผ่อนสบาย เพียงเดือนละ"), color: GOLD_DK, fontSize: 12 },
-                  { text: `${fm(q.monthlyPayment)} บาท`, color: GOLD_DK, bold: true, fontSize: 30, margin: [0, 2, 0, 0] },
+                  { text: seg("ผ่อนสบาย เพียงเดือนละ"), color: GOLD_DK, fontSize: 10 },
+                  { text: `${fm(q.monthlyPayment)} บาท`, color: GOLD_DK, bold: true, fontSize: 24, margin: [0, 2, 0, 0] },
                 ] },
                 { width: "auto", stack: [
-                  { text: seg(`ดาวน์ ${fm(q.downPayment)} บาท`), alignment: "right", fontSize: 12, color: INK, margin: [0, 6, 0, 0] },
-                  ...(q.financeInstallments ? [{ text: seg(`จัดไฟแนนซ์ ${q.financeInstallments} งวด`), alignment: "right", fontSize: 12, color: "#52525b" }] : []),
-                  { text: seg(`ราคารวม ${fm(q.totalSalePrice)} บาท`), alignment: "right", fontSize: 12, color: "#52525b" },
+                  { text: seg(`ดาวน์ ${fm(q.downPayment)} บาท`), alignment: "right", fontSize: 10, bold: true, color: INK, margin: [0, 6, 0, 0] },
+                  ...(q.financeInstallments ? [{ text: seg(`จัดไฟแนนซ์ ${q.financeInstallments} งวด`), alignment: "right", fontSize: 10, color: "#52525b" }] : []),
+                  { text: seg(`ราคารวม ${fm(q.totalSalePrice)} บาท`), alignment: "right", fontSize: 10, color: "#52525b" },
                 ] },
               ],
             }],
           },
         ]] },
         layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => GOLD, vLineColor: () => GOLD },
-        margin: [0, 0, 0, 10],
+        margin: [0, 0, 0, 8],
       },
 
       ...(q.extras ? [
-        { text: "ของแถม / โปรโมชั่น", headlineLevel: 1, bold: true, fontSize: 12, color: GOLD_DK, margin: [0, 4, 0, 2] },
-        { text: seg(q.extras), fontSize: 13, color: INK, margin: [0, 0, 0, 8] },
+        { text: "ของแถม / โปรโมชั่น", headlineLevel: 1, bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 4, 0, 2] },
+        { text: seg(q.extras), fontSize: 10, color: INK, margin: [0, 0, 0, 8] },
       ] : []),
       ...(q.note ? [
-        { text: "หมายเหตุ", headlineLevel: 1, bold: true, fontSize: 12, color: GOLD_DK, margin: [0, 2, 0, 2] },
-        { text: seg(q.note), fontSize: 13, color: "#52525b", margin: [0, 0, 0, 8] },
+        { text: "หมายเหตุ", headlineLevel: 1, bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 2, 0, 2] },
+        { text: seg(q.note), fontSize: 10, color: "#52525b", margin: [0, 0, 0, 8] },
       ] : []),
 
       // ── เงื่อนไข (เป็นข้อ) — อยู่ใน flow, unbreakable ──
       {
         unbreakable: true,
         stack: [
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: RULE }], margin: [0, 6, 0, 8] },
-          { text: "เงื่อนไข", bold: true, fontSize: 12, color: GOLD_DK, margin: [0, 0, 0, 4] },
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: RULE }], margin: [0, 4, 0, 6] },
+          { text: "เงื่อนไข", bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 0, 0, 4] },
           { ol: [
             seg("ราคานี้เป็นการเสนอเบื้องต้น ยังไม่รวมภาษีมูลค่าเพิ่มและค่าธรรมเนียมโอน (ถ้ามี)"),
             seg("การจองรถถือว่าสมบูรณ์เมื่อวางเงินจองและบริษัทออกหลักฐานรับเงินแล้ว"),
             seg("เงื่อนไขและอัตราการผ่อนขึ้นอยู่กับการอนุมัติของบริษัทไฟแนนซ์"),
             seg(`ใบเสนอราคานี้ยืนราคาถึงวันที่ ${thDate(effValid)}`),
-          ], fontSize: 11, color: "#52525b" },
+          ], fontSize: 9, color: "#52525b" },
         ],
       },
 
@@ -278,14 +280,14 @@ export function quotationDocDef(q: Quotation): any {
         margin: [0, 8, 0, 0],
         columns: [
           { width: "*", stack: [
-            { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 12, margin: [0, 0, 0, 2] },
-            { text: seg(`( ${q.salesName} )`), alignment: "center", fontSize: 12 },
-            { text: "พนักงานขาย", alignment: "center", color: "#71717a", fontSize: 12 },
+            { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 10, margin: [0, 0, 0, 2] },
+            { text: seg(`( ${q.salesName} )`), alignment: "center", bold: true, fontSize: 10 },
+            { text: "พนักงานขาย", alignment: "center", color: "#71717a", fontSize: 10 },
           ] },
           { width: "*", stack: [
-            { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 12, margin: [0, 0, 0, 2] },
-            { text: seg(`( ${q.customerName} )`), alignment: "center", fontSize: 12 },
-            { text: "ลูกค้า / ผู้ซื้อ", alignment: "center", color: "#71717a", fontSize: 12 },
+            { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 10, margin: [0, 0, 0, 2] },
+            { text: seg(`( ${q.customerName} )`), alignment: "center", bold: true, fontSize: 10 },
+            { text: "ลูกค้า / ผู้ซื้อ", alignment: "center", color: "#71717a", fontSize: 10 },
           ] },
         ],
       },
