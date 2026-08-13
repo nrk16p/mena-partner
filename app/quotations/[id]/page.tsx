@@ -150,7 +150,11 @@ export default function DealPage() {
   const eSel = prices.find((p) => p.licensePlate === ePlate)
   const eRemain = Math.max(0, (eSnap.downPayment ?? 0) - eCash)
   const ePerInst = eSnap.downInstallmentCount ? Math.round(eRemain / eSnap.downInstallmentCount) : 0
-  const ePlateMatches = prices.filter((p) => p.status !== "contract" && p.licensePlate.replace(/\s/g, "").includes(plateQ.replace(/\s/g, ""))).slice(0, 25)
+  // เลือกได้ทุกคัน — ไม่ติดเงื่อนไขสถานะสัญญา · ค้นได้ทั้งทะเบียนและเบอร์รถ
+  const ePlateQuery = plateQ.replace(/[\s.\-]/g, "").toLowerCase()
+  const ePlateMatches = prices.filter((p) =>
+    `${p.licensePlate}${p.truckNumber ?? ""}`.replace(/[\s.\-]/g, "").toLowerCase().includes(ePlateQuery)
+  ).slice(0, 25)
   async function saveVehicle(alsoQuote: boolean) {
     if (!ePlate) { setErr("เลือกรถก่อน"); return }
     await patch({
@@ -288,7 +292,14 @@ export default function DealPage() {
                   <div className="absolute z-20 left-0 right-0 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
                     {ePlateMatches.map((p) => (
                       <button key={p.licensePlate} onClick={() => { setEPlate(p.licensePlate); setPlateQ(p.licensePlate); setPlateOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50 flex justify-between"><span className="font-medium">{p.licensePlate}</span><span className="text-zinc-400 dark:text-zinc-500 text-xs">{p.vehicleBrand} · {formatMoney(p.totalSalePrice)}</span></button>
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50 flex justify-between">
+                        <span className="font-medium">
+                          {p.licensePlate}
+                          {p.truckNumber && <span className="text-zinc-400 dark:text-zinc-500 font-normal"> · {p.truckNumber}</span>}
+                          {p.status === "contract" && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">มีสัญญาแล้ว</span>}
+                        </span>
+                        <span className="text-zinc-400 dark:text-zinc-500 text-xs">{p.vehicleBrand} · {formatMoney(p.totalSalePrice)}</span>
+                      </button>
                     ))}
                   </div>
                 )}
