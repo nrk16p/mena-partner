@@ -237,7 +237,8 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
   // ดาวน์ต่องวด = (ดาวน์รวม − ดาวน์ชำระเลย) / จำนวนงวดดาวน์ (คำนวณอัตโนมัติ)
   const remainDown = Math.max(0, (snap.downPayment ?? 0) - cashDown)
   const downPerInstallment = snap.downInstallmentCount ? Math.round(remainDown / snap.downInstallmentCount) : 0
-  const plateMatches = prices.filter((p) => p.status !== "contract" && p.licensePlate.replace(/\s/g, "").includes(plateQ.replace(/\s/g, ""))).slice(0, 25)
+  // เลือกได้ทุกคัน — ไม่ติดเงื่อนไขสถานะสัญญา
+  const plateMatches = prices.filter((p) => p.licensePlate.replace(/\s/g, "").includes(plateQ.replace(/\s/g, ""))).slice(0, 25)
   const fmtNum = (n: number) => (n ?? 0).toLocaleString("th-TH")
 
   async function submit() {

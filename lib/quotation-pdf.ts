@@ -56,11 +56,7 @@ export function quotationDocDef(q: Quotation): any {
     { text: value, alignment: "right", fontSize: opts.big ? 13 : 10, bold: true, color: opts.gold ? GOLD_DK : INK, margin: [0, opts.big ? 3 : 1.5, 0, opts.big ? 3 : 1.5] },
   ]
 
-  // สถานะ (แถบ/ป้าย) + ลายน้ำ ฉบับร่าง/ยกเลิก
-  const STATUS_LABEL: Record<string, string> = { lead: "ฉบับร่าง", quoted: "ใบเสนอราคา", booked: "วางจอง", won: "ปิดการขาย", lost: "ยกเลิก" }
-  const STATUS_COLOR: Record<string, string> = { lead: "#71717a", quoted: GOLD_DK, booked: "#0369a1", won: "#15803d", lost: "#b91c1c" }
-  const stColor = STATUS_COLOR[q.status] ?? "#71717a"
-  const stLabel = STATUS_LABEL[q.status] ?? q.status
+  // สถานะ: ไม่แสดงป้ายสถานะบนเอกสาร — คงไว้แค่ลายน้ำ ฉบับร่าง/ยกเลิก
   // ยืนราคา: ใช้ค่าที่ตั้งไว้ ถ้าไม่มี default +30 วันจากวันออกเอกสาร
   const addDays = (iso: string, n: number) => { const d = new Date(iso.slice(0, 10) + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString() }
   const effValid = q.validUntil || addDays(q.createdAt || new Date().toISOString(), 30)
@@ -118,7 +114,7 @@ export function quotationDocDef(q: Quotation): any {
             width: "*",
             stack: [
               ...(LOGO
-                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 200, margin: [0, 6, 0, 0] }]
+                ? [{ image: `data:image/jpeg;base64,${LOGO}`, width: 300, margin: [0, 10, 0, 0] }]
                 : [{ text: seg(COMPANY.name), bold: true, fontSize: 16, color: INK }]),
             ],
           },
@@ -129,10 +125,6 @@ export function quotationDocDef(q: Quotation): any {
               { text: "QUOTATION", fontSize: 9, color: GOLD, alignment: "right", characterSpacing: 2 },
               { text: seg(`เลขที่ ${q.quotationNo}`), fontSize: 11, bold: true, color: INK, alignment: "right", margin: [0, 4, 0, 0] },
               { text: seg(`วันที่ ${thDate(q.createdAt)}`), fontSize: 10, color: "#52525b", alignment: "right" },
-              // สถานะ (ป้ายสี) — ซ่อนตอน quoted เพราะซ้ำกับชื่อเอกสาร "ใบเสนอราคา"
-              ...(q.status === "quoted" ? [] : [
-                { text: [{ text: "• ", color: stColor }, { text: seg(stLabel), color: stColor, bold: true }], fontSize: 10, alignment: "right", margin: [0, 3, 0, 0] },
-              ]),
               // ยืนราคา (กล่องเด่น — แสดงเสมอ, default +30 วัน)
               { table: { widths: ["*"], body: [[
                 { text: seg(`ยืนราคาถึง ${thDate(effValid)}`), color: "#9a3412", fillColor: "#FEF3C7", bold: true, fontSize: 10, alignment: "center", margin: [4, 3, 4, 3] },
