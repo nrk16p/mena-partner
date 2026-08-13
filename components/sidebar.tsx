@@ -25,6 +25,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
       { href: "/price-list", label: "ราคาขาย", icon: Tag, hint: "เพิ่ม/แก้ไขได้ในหน้า" },
       { href: "/contracts", label: "สัญญา", icon: FileText },
       { href: "/quotations", label: "ระบบขาย", icon: Receipt },
+      { href: "/quotations/commission", label: "ยอดขาย & ค่าคอม", icon: HandCoins, hint: "ขายกี่คัน ได้คอมเท่าไหร่" },
     ],
   },
   {
@@ -134,7 +135,7 @@ export function Sidebar() {
         {GROUPS.map((g0, gi) => {
           // ฝ่ายขาย: เหลือเฉพาะ ราคาขาย + ใบเสนอราคา
           const g = isSales
-            ? { ...g0, items: g0.items.filter((it) => it.href === "/price-list" || it.href === "/quotations") }
+            ? { ...g0, items: g0.items.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission") }
             : g0
           if (isSales && g.title && g.items.length === 0) return null
           if (!g.title) {

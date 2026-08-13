@@ -16,6 +16,7 @@ const ITEMS: Item[] = [
   { href: "/contracts", label: "สัญญา", group: "สัญญา" },
   { href: "/quotations", label: "ระบบขาย (ใบเสนอ/ดีล)", group: "ขาย" },
   { href: "/quotations/dashboard", label: "แดชบอร์ดงานขาย", group: "ขาย" },
+  { href: "/quotations/commission", label: "ยอดขาย & ค่าคอมมิชชั่น", group: "ขาย" },
   { href: "/promotions", label: "โปรโมชั่น", group: "โปรโมชั่น" },
   { href: "/reports/promotions", label: "รายงานสรุปยอดโปรโมชั่น", group: "โปรโมชั่น" },
   { href: "/vehicle-cost", label: "ค่าใช้จ่ายรถ", group: "เงินเดือน" },
