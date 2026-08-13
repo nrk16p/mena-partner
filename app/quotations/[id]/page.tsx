@@ -7,6 +7,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
+import { SALES_PEOPLE } from "@/lib/quotation-people"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const FLOW: Status[] = ["lead", "quoted", "booked", "won"]
@@ -23,7 +24,7 @@ interface Quote {
   customerName: string; customerPhone?: string
   licensePlate: string; vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; vehiclePhotoUrl?: string
   vehiclePhotos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
-  totalSalePrice: number; downPayment: number; cashDown: number
+  totalSalePrice: number; downPayment: number; cashDown: number; savingsUsed?: number
   downInstallmentCount: number; downInstallmentAmt: number
   financeAmount: number; financeInstallments: number; monthlyPayment: number
   extras?: string; note?: string; validUntil?: string
@@ -66,6 +67,8 @@ export default function DealPage() {
   const [ePlate, setEPlate] = useState("")
   const [eSnap, setESnap] = useState<Record<string, number>>({})
   const [eCash, setECash] = useState(0)
+  const [eSavings, setESavings] = useState(0)   // เงินสะสม พจส. (บันทึกไว้เฉย ๆ)
+  const [eSales, setESales] = useState("")      // ผู้ขาย
   const [eExtras, setEExtras] = useState("")
   const [ePromoNote, setEPromoNote] = useState("")
 
@@ -79,7 +82,7 @@ export default function DealPage() {
     if (q) { setEPlate(q.licensePlate ?? ""); setPlateQ(q.licensePlate ?? ""); setEExtras(q.extras ?? "")
       setESnap({ totalSalePrice: q.totalSalePrice, downPayment: q.downPayment, downInstallmentCount: q.downInstallmentCount,
         financeAmount: q.financeAmount, financeInstallments: q.financeInstallments, monthlyPayment: q.monthlyPayment })
-      setECash(q.cashDown ?? 0) }
+      setECash(q.cashDown ?? 0); setESavings(q.savingsUsed ?? 0); setESales(q.salesName ?? "") }
     setEditing(true)
   }
   // เลือกรถใน editor → เติม snapshot + โปรฯ
@@ -161,6 +164,7 @@ export default function DealPage() {
       licensePlate: ePlate, vehicleBrand: eSel?.vehicleBrand ?? "", vehicleModel: eSel?.vehicleModel ?? "",
       truckNumber: eSel?.truckNumber ?? "", vehiclePhotoUrl: eSel?.photoUrl ?? "", vehiclePhotos: eSel?.photos ?? undefined,
       totalSalePrice: eSnap.totalSalePrice ?? 0, downPayment: eSnap.downPayment ?? 0, cashDown: eCash,
+      savingsUsed: eSavings, ...(eSales && eSales !== q?.salesName ? { salesName: eSales } : {}),
       downInstallmentCount: eSnap.downInstallmentCount ?? 0, downInstallmentAmt: ePerInst,
       financeAmount: eSnap.financeAmount ?? 0, financeInstallments: eSnap.financeInstallments ?? 0, monthlyPayment: eSnap.monthlyPayment ?? 0,
       extras: eExtras, ...(alsoQuote && q?.status === "lead" ? { status: "quoted" } : {}),
@@ -270,6 +274,7 @@ export default function DealPage() {
                   <Row k="เงินดาวน์รวม" v={formatMoney(q.downPayment)} />
                   <Row k="ยอดจัดไฟแนนซ์" v={formatMoney(q.financeAmount)} />
                   <Row k="ค่างวด/เดือน" v={`${formatMoney(q.monthlyPayment)} × ${q.financeInstallments} งวด`} />
+                  {!!q.savingsUsed && <Row k="ใช้เงินสะสม พจส." v={formatMoney(q.savingsUsed)} />}
                   {q.extras && <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">🎁 {q.extras}</p>}
                 </div>
               ) : (
@@ -314,6 +319,19 @@ export default function DealPage() {
                   </div>
                   <div className="flex justify-between text-sm font-semibold text-[#8C6B1F]"><span>→ ดาวน์/งวด (คำนวณ)</span><span>{formatMoney(ePerInst)} × {eSnap.downInstallmentCount ?? 0} งวด</span></div>
                   <Row k="ค่างวด/เดือน" v={`${formatMoney(eSnap.monthlyPayment ?? 0)} × ${eSnap.financeInstallments ?? 0} งวด`} />
+                  <div className="flex items-center justify-between bg-sky-50/60 dark:bg-sky-950/20 rounded-lg px-2 py-1.5">
+                    <span className="text-sm text-zinc-600 dark:text-zinc-300">ใช้เงินสะสม พจส. <span className="text-[10px] text-sky-600">(บันทึกไว้ ไม่หักยอด)</span></span>
+                    <input type="number" value={eSavings} onChange={(e) => setESavings(Number(e.target.value) || 0)}
+                      className="w-28 h-8 text-sm border border-sky-300 rounded-lg px-2 text-right tabular-nums bg-white dark:bg-zinc-900" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-1">ผู้ขาย (Sale)</label>
+                    <select value={eSales} onChange={(e) => setESales(e.target.value)}
+                      className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
+                      {eSales && !SALES_PEOPLE.includes(eSales as (typeof SALES_PEOPLE)[number]) && <option value={eSales}>{eSales} (เดิม)</option>}
+                      {SALES_PEOPLE.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-1">ของแถม / โปรโมชั่น {ePromoNote && <span className="text-[10px] text-emerald-600">· {ePromoNote}</span>}</label>
                     <textarea value={eExtras} onChange={(e) => setEExtras(e.target.value)} rows={2} className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5" />

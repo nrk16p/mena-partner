@@ -195,6 +195,7 @@ export function quotationDocDef(q: Quotation): any {
                     priceRow("เงินดาวน์รวม", `${fm2(q.downPayment)} บาท`),
                     priceRow("ดาวน์ชำระวันทำสัญญา", `${fm2(q.cashDown)} บาท`),
                     priceRow("ดาวน์ผ่อน", q.downInstallmentCount ? `${fm(q.downInstallmentAmt)} × ${q.downInstallmentCount} งวด` : "-"),
+                    ...(q.savingsUsed ? [priceRow("ใช้เงินสะสม พจส.", `${fm2(q.savingsUsed)} บาท`)] : []),
                   ] }, layout: "noBorders" },
                 ],
               },

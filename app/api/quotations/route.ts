@@ -60,11 +60,14 @@ export async function POST(req: NextRequest) {
       ? Object.fromEntries(["front", "back", "left", "right", "cabin"].map((k) => [k, typeof b.vehiclePhotos[k] === "string" ? b.vehiclePhotos[k] : ""]))
       : undefined,
     totalSalePrice: n(b.totalSalePrice), downPayment: n(b.downPayment), cashDown: n(b.cashDown),
+    savingsUsed: n(b.savingsUsed),
     downInstallmentCount: n(b.downInstallmentCount), downInstallmentAmt: n(b.downInstallmentAmt),
     financeAmount: n(b.financeAmount), financeInstallments: n(b.financeInstallments), monthlyPayment: n(b.monthlyPayment),
     extras: (b.extras ?? "").trim(), note: (b.note ?? "").trim(),
     validUntil: b.validUntil || null,
-    salesEmail: email, salesName,
+    // เลือกผู้ขายคนอื่นจากลิสต์ → ไม่ผูกอีเมลผู้สร้าง กันยอดคอมไปรวมผิดคน
+    salesEmail: salesName === session.user?.name ? email : "",
+    salesName,
     createdAt: now, updatedAt: now,
     timeline: [{ at: now, by: email, action: "สร้างใบเสนอ" }],
   }

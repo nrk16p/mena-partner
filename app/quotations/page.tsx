@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
+import { SALES_PEOPLE } from "@/lib/quotation-people"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
@@ -202,6 +203,7 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
   useEffect(() => { if (session?.user?.name) setSalesName((s) => s || session.user!.name!) }, [session])
   const [snap, setSnap] = useState<Record<string, number>>({})
   const [cashDown, setCashDown] = useState(0)
+  const [savingsUsed, setSavingsUsed] = useState(0)   // เงินสะสม พจส. (บันทึกไว้เฉย ๆ)
   const [extras, setExtras] = useState("")
   const [extrasAuto, setExtrasAuto] = useState(true)
   const [promoNote, setPromoNote] = useState("")
@@ -258,7 +260,7 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
         vehiclePhotoUrl: sel?.photoUrl ?? "",
         vehiclePhotos: sel?.photos ?? undefined,
         customerId: cid, customerName: cname, customerPhone: cphone,
-        salesName: salesName.trim(),
+        salesName: salesName.trim(), savingsUsed,
         totalSalePrice: snap.totalSalePrice ?? 0, downPayment: snap.downPayment ?? 0, cashDown,
         downInstallmentCount: snap.downInstallmentCount ?? 0, downInstallmentAmt: downPerInstallment,
         financeAmount: snap.financeAmount ?? 0, financeInstallments: snap.financeInstallments ?? 0, monthlyPayment: snap.monthlyPayment ?? 0,
@@ -331,7 +333,10 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
             )}
             <input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="เบอร์โทร" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 mt-2" />
             <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 mt-3">พนักงานขาย (เซล)</label>
-            <input value={salesName} onChange={(e) => setSalesName(e.target.value)} placeholder="ชื่อเซล (เว้นว่าง = ใช้ชื่อผู้ล็อกอิน)" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3" />
+            <select value={salesName} onChange={(e) => setSalesName(e.target.value)} className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
+              {salesName && !SALES_PEOPLE.includes(salesName as (typeof SALES_PEOPLE)[number]) && <option value={salesName}>{salesName} (ผู้ล็อกอิน)</option>}
+              {SALES_PEOPLE.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
             {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
           </div>
 
@@ -353,6 +358,11 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
               <div className="border-t border-zinc-100 dark:border-zinc-800 my-1" />
               {ro("ยอดจัดไฟแนนซ์", `${fmtNum(snap.financeAmount)} บาท`)}
               {ro("ค่างวด/เดือน", `${fmtNum(snap.monthlyPayment)} × ${snap.financeInstallments || 0} งวด`)}
+              <div className="flex items-center justify-between py-1.5 bg-sky-50/60 dark:bg-sky-950/20 rounded-lg px-2 my-1">
+                <span className="text-sm text-zinc-600 dark:text-zinc-300">ใช้เงินสะสม พจส. <span className="text-[10px] text-sky-600">(บันทึกไว้ ไม่หักยอด)</span></span>
+                <input type="number" value={savingsUsed} onChange={(e) => setSavingsUsed(Number(e.target.value) || 0)}
+                  className="w-32 h-8 text-sm border border-sky-300 rounded-lg px-2 text-right tabular-nums bg-white dark:bg-zinc-900" />
+              </div>
             </div>
           )}
 

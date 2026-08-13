@@ -17,6 +17,8 @@ export interface QuotePricing {
   totalSalePrice: number
   downPayment: number
   cashDown: number
+  /** เงินสะสม พจส. ที่นำมาใช้ — บันทึกไว้เฉย ๆ ไม่นำไปหักดาวน์/ไฟแนนซ์ */
+  savingsUsed?: number
   downInstallmentCount: number
   downInstallmentAmt: number
   financeAmount: number

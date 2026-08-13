@@ -37,8 +37,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     $set.status = b.status
     events.push({ at: now, by: email, action: `เปลี่ยนสถานะ → ${QUOTE_STATUS_LABEL[b.status as QuoteStatus]}`, ...(b.note ? { note: b.note } : {}) })
   }
-  for (const k of ["depositAmount", "totalSalePrice", "downPayment", "cashDown", "downInstallmentCount", "downInstallmentAmt", "financeAmount", "financeInstallments", "monthlyPayment"]) {
+  for (const k of ["depositAmount", "totalSalePrice", "downPayment", "cashDown", "savingsUsed", "downInstallmentCount", "downInstallmentAmt", "financeAmount", "financeInstallments", "monthlyPayment"]) {
     if (b[k] !== undefined) $set[k] = Number(b[k]) || 0
+  }
+  // เปลี่ยนผู้ขาย: ยอดคอมจับกลุ่มด้วยชื่อ จึงล้าง salesEmail ของผู้สร้างออก กันไปรวมกับยอดคนอื่น
+  if (b.salesName !== undefined) {
+    $set.salesEmail = b.salesName === session.user?.name ? (session.user?.email ?? "") : ""
+    events.push({ at: now, by: email, action: `เปลี่ยนผู้ขาย → ${b.salesName}` })
   }
   for (const k of ["depositSlipUrl", "depositPaidAt", "extras", "note", "validUntil", "customerName", "customerPhone",
                    "licensePlate", "vehicleBrand", "vehicleModel", "truckNumber", "vehiclePhotoUrl", "salesName"]) {
