@@ -10,6 +10,7 @@ import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
 import { PriceHistoryDrawer } from "@/components/price-history-drawer"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
+import { hasPerm } from "@/lib/rbac"
 
 type SaleStatus = "ready" | "repair15" | "repair30" | "review"
 
@@ -357,7 +358,8 @@ const STATUS_TABS = [
 
 export default function PriceListPage() {
   const { data: session } = useSession()
-  const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
+  // แก้ราคา/ยอดผ่อนได้ = สิทธิ์ masterdata (superadmin/admin/fleet) — ตรงกับที่ API บังคับ
+  const isAdmin = hasPerm(session?.user?.role, "masterdata")
 
   const [rows,    setRows]    = useState<PriceRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -813,10 +815,10 @@ export default function PriceListPage() {
                             <button
                               type="button"
                               onClick={() => setPriceForm({ mode: "edit", row: r })}
-                              title="แก้ไขราคาขาย"
-                              className="ml-1 align-middle text-zinc-300 hover:text-emerald-600 dark:text-zinc-600 dark:hover:text-emerald-400"
+                              title="แก้ไขราคา / ยอดผ่อน"
+                              className="ml-1 inline-flex items-center gap-1 align-middle rounded-md border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                             >
-                              <Pencil className="w-3 h-3 inline" />
+                              <Pencil className="w-3 h-3" /> แก้ราคา
                             </button>
                           )}
                           <Link

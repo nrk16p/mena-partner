@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
+import { resolveRole } from "@/lib/roles"
+import { hasPerm } from "@/lib/rbac"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -16,6 +18,11 @@ type Ctx = { params: Promise<{ plate: string }> }
 
 /** PUT /api/price-list/[plate] — แก้ตัวเลขราคาขาย + บันทึกประวัติ (activity_log → drawer ประวัติราคา) */
 export async function PUT(req: NextRequest, { params }: Ctx) {
+  const session = await getServerSession(authOptions)
+  const role = await resolveRole(session?.user?.email)
+  if (!hasPerm(role, "masterdata"))
+    return NextResponse.json({ error: "ไม่มีสิทธิ์แก้ราคาขาย" }, { status: 403 })
+
   const { plate: raw } = await params
   const plate = decodeURIComponent(raw).trim()
   const body = await req.json() as Record<string, unknown>

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { logActivity } from "@/lib/activity-log"
+import { resolveRole } from "@/lib/roles"
+import { hasPerm } from "@/lib/rbac"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -61,6 +63,11 @@ const NUM_FIELDS = [
 ] as const
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const role = await resolveRole(session?.user?.email)
+  if (!hasPerm(role, "masterdata"))
+    return NextResponse.json({ error: "ไม่มีสิทธิ์เพิ่มราคาขาย" }, { status: 403 })
+
   const body = await req.json() as Record<string, unknown>
   const plate = String(body.licensePlate ?? "").trim()
   if (!plate) return NextResponse.json({ error: "licensePlate required" }, { status: 400 })
@@ -82,7 +89,6 @@ export async function POST(req: NextRequest) {
 
   await col.insertOne(doc)
 
-  const session = await getServerSession(authOptions)
   await logActivity({
     entity: "price_list",
     entityId: plate,

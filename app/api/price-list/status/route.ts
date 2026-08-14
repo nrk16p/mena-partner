@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
+import { resolveRole } from "@/lib/roles"
+import { hasPerm } from "@/lib/rbac"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "master_price_list"
@@ -19,6 +21,11 @@ const TRACKED = ["saleStatus", "repairStart", "repairEnd"]
  * บันทึก audit log (ใคร/เมื่อไหร่/เปลี่ยนอะไร) ลง activity_log ทุกครั้งที่มีการเปลี่ยนแปลงจริง
  */
 export async function POST(req: NextRequest) {
+  const session0 = await getServerSession(authOptions)
+  const role = await resolveRole(session0?.user?.email)
+  if (!hasPerm(role, "masterdata"))
+    return NextResponse.json({ error: "ไม่มีสิทธิ์แก้สถานะความพร้อมขาย" }, { status: 403 })
+
   const body = await req.json() as {
     licensePlate?: string
     saleStatus?:   string | null
