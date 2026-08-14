@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
-import { SALES_PEOPLE } from "@/lib/quotation-people"
+import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
@@ -333,10 +333,8 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
             )}
             <input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="เบอร์โทร" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 mt-2" />
             <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 mt-3">พนักงานขาย (เซล)</label>
-            <select value={salesName} onChange={(e) => setSalesName(e.target.value)} className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
-              {salesName && !SALES_PEOPLE.includes(salesName as (typeof SALES_PEOPLE)[number]) && <option value={salesName}>{salesName} (ผู้ล็อกอิน)</option>}
-              {SALES_PEOPLE.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <SalesPersonSelect value={salesName} onChange={setSalesName}
+              className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
             {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
           </div>
 

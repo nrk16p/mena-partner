@@ -7,7 +7,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
-import { SALES_PEOPLE } from "@/lib/quotation-people"
+import { SalesPersonSelect } from "@/components/sales-person-select"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const FLOW: Status[] = ["lead", "quoted", "booked", "won"]
@@ -312,11 +312,7 @@ export default function DealPage() {
               {/* ผู้ขายอยู่นอกบล็อกรถ — เปลี่ยนเซลได้เสมอ ไม่ต้องรอเลือกรถ/รถไม่มีในไพรซ์ลิสต์ */}
               <div>
                 <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ผู้ขาย (Sale)</label>
-                <select value={eSales} onChange={(e) => setESales(e.target.value)}
-                  className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
-                  {eSales && !SALES_PEOPLE.includes(eSales as (typeof SALES_PEOPLE)[number]) && <option value={eSales}>{eSales} (เดิม)</option>}
-                  {SALES_PEOPLE.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <SalesPersonSelect value={eSales} onChange={setESales} />
               </div>
               {eSel && (
                 <div className="text-sm space-y-1">
