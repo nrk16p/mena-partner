@@ -309,6 +309,15 @@ export default function DealPage() {
                   </div>
                 )}
               </div>
+              {/* ผู้ขายอยู่นอกบล็อกรถ — เปลี่ยนเซลได้เสมอ ไม่ต้องรอเลือกรถ/รถไม่มีในไพรซ์ลิสต์ */}
+              <div>
+                <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ผู้ขาย (Sale)</label>
+                <select value={eSales} onChange={(e) => setESales(e.target.value)}
+                  className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
+                  {eSales && !SALES_PEOPLE.includes(eSales as (typeof SALES_PEOPLE)[number]) && <option value={eSales}>{eSales} (เดิม)</option>}
+                  {SALES_PEOPLE.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
               {eSel && (
                 <div className="text-sm space-y-1">
                   <Row k="ราคาขายรวม" v={formatMoney(eSnap.totalSalePrice ?? 0)} bold />
@@ -323,14 +332,6 @@ export default function DealPage() {
                     <span className="text-sm text-zinc-600 dark:text-zinc-300">ใช้เงินสะสม พจส. <span className="text-[10px] text-sky-600">(บันทึกไว้ ไม่หักยอด)</span></span>
                     <input type="number" value={eSavings} onChange={(e) => setESavings(Number(e.target.value) || 0)}
                       className="w-28 h-8 text-sm border border-sky-300 rounded-lg px-2 text-right tabular-nums bg-white dark:bg-zinc-900" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-1">ผู้ขาย (Sale)</label>
-                    <select value={eSales} onChange={(e) => setESales(e.target.value)}
-                      className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
-                      {eSales && !SALES_PEOPLE.includes(eSales as (typeof SALES_PEOPLE)[number]) && <option value={eSales}>{eSales} (เดิม)</option>}
-                      {SALES_PEOPLE.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
                   </div>
                   <div>
                     <label className="block text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-1">ของแถม / โปรโมชั่น {ePromoNote && <span className="text-[10px] text-emerald-600">· {ePromoNote}</span>}</label>
