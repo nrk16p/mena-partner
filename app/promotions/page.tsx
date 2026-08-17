@@ -183,6 +183,17 @@ const PROMO_FIELDS: Record<ProType, Array<{ key: string; placeholder: string; nu
   custom: [{ key: "description",  placeholder: "รายละเอียด" }],
 }
 
+/** ยอดเงินของโปรโมชั่น 1 รายการ — ดึงจากช่องเงินตามประเภทใน PROMO_FIELDS
+ *  custom ไม่มีช่องกรอกเงิน (มีแต่รายละเอียด) จึงนับเป็น 0 */
+function promoAmount(e: PromoEntry): number {
+  const d = e.details ?? {}
+  const num = (v: unknown) => { const n = Number(v); return isFinite(n) ? n : 0 }
+  if (e.proType === "pro1") return num(d.totalValue) || num(d.freeCount) * num(d.installmentValue)
+  if (e.proType === "pro2") return num(d.repairBudget)
+  if (e.proType === "pro3") return num(d.annualPm)
+  return 0
+}
+
 // ─── Add-plate modal ──────────────────────────────────────────────────────────
 
 interface AddPlateModalProps {
@@ -619,7 +630,9 @@ export default function PromotionsPage() {
   async function handleExportExcel() {
     const XLSX = await import("xlsx")
     const rows = filteredPlates.map((plate) => {
-      const b = budgetMap[plate]
+      // ต้อง normPlate ให้ตรงกับคีย์ของ budgetMap เหมือนที่หน้าจอใช้ ไม่งั้นงบซ่อม/PM ออกเป็น 0 หมด
+      const b = budgetMap[normPlate(plate)]
+      const entries = data[plate] ?? []
       return {
         "ทะเบียน": plate,
         "รหัสสัญญา": b?.contractCode ?? "",
@@ -630,8 +643,10 @@ export default function PromotionsPage() {
         "เพดาน PM/ปี": b?.annualPmCap ?? 0,
         "PM ใช้ไปปีนี้": b?.pmUsedThisYear ?? 0,
         "PM คงเหลือ": b?.pmRemainingThisYear ?? 0,
-        "จำนวนโปรฯ": (data[plate] ?? []).length,
-        "โปรฯ ใช้งาน": (data[plate] ?? []).filter((e) => e.active).length,
+        "จำนวนโปรฯ": entries.length,
+        "โปรฯ ใช้งาน": entries.filter((e) => e.active).length,
+        "ยอดโปรโมชั่นรวม": entries.reduce((s, e) => s + promoAmount(e), 0),
+        "ยอดโปรฯ ใช้งาน": entries.filter((e) => e.active).reduce((s, e) => s + promoAmount(e), 0),
       }
     })
     const entryRows = filteredPlates.flatMap((plate) =>
@@ -639,6 +654,7 @@ export default function PromotionsPage() {
         "ทะเบียน": plate,
         "ประเภท": TYPE_META[e.proType as ProType]?.label ?? e.proType,
         "ชื่อโปรโมชั่น": e.label ?? "",
+        "ยอดโปรโมชั่น": promoAmount(e),
         "สถานะ": e.active ? "ใช้งาน" : "ระงับ",
         "เหตุผลที่ระงับ": e.disabledReason ?? "",
         "รายละเอียด": Object.entries(e.details ?? {}).map(([k, v]) => `${k}: ${v}`).join(" · "),
