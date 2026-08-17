@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -100,7 +100,19 @@ export function Sidebar() {
   const isSales = role === "salesperson"
 
   const initial = (session?.user?.email ?? session?.user?.name ?? "?")[0].toUpperCase()
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
+
+  // แถบสี active: "เมนูที่เจาะจงที่สุดชนะ" เมนูเดียวเท่านั้น
+  // เดิมใช้ pathname.startsWith(href) เฉย ๆ → /quotations/commission ทำให้ทั้ง
+  // "สร้างใบเสนอราคา" และ "ยอดขาย & ค่าคอม" ติดพร้อมกัน (เหมือนแถบสีค้าง)
+  // และ /payroll-extras ยังไปจุด /payroll ติดด้วยเพราะ prefix ชนกันทั้งที่คนละเมนู
+  const activeHref = useMemo(() => {
+    const matches = (href: string) =>
+      href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
+    return [...GROUPS.flatMap((g) => g.items.map((i) => i.href)), ...ADMIN_NAV.map((i) => i.href)]
+      .filter(matches)
+      .sort((a, b) => b.length - a.length)[0] ?? ""
+  }, [pathname])
+  const isActive = (href: string) => href === activeHref
 
   // accordion: จำสถานะพับ/กางใน localStorage + กางหมวดของหน้าปัจจุบันเสมอ
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
