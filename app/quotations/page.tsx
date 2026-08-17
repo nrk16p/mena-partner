@@ -8,6 +8,7 @@ import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp }
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePagination, PaginationBar } from "@/components/pagination"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const STATUS: { key: Status; label: string; cls: string }[] = [
@@ -63,6 +64,9 @@ function QuotationsInner() {
     rows.forEach((r) => { c[r.status] = (c[r.status] ?? 0) + 1 })
     return c
   }, [rows])
+
+  // แบ่งหน้าเฉพาะ view ตาราง — สถิติ/ตัวนับสถานะ/kanban ยังคิดจาก rows ทั้งหมด
+  const pg = usePagination(rows, 50, [q, filter, view])
 
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 space-y-5">
@@ -133,16 +137,17 @@ function QuotationsInner() {
           ))}
         </div>
       ) : (
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-x-auto">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden">
+      <div className="overflow-auto max-h-[65vh]">
         <table className="w-full text-sm whitespace-nowrap">
-          <thead><tr className="text-zinc-400 dark:text-zinc-500 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60">
+          <thead className="sticky top-0 z-10"><tr className="text-zinc-400 dark:text-zinc-500">
             {["เลขที่", "ลูกค้า", "รถ", "ราคาขาย", "ค่างวด/ด.", "สถานะ", "เซลล์", ""].map((h) => (
-              <th key={h} className="text-left px-3 py-2 font-medium">{h}</th>))}
+              <th key={h} className="text-left px-3 py-2 font-medium bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-100 dark:border-zinc-800">{h}</th>))}
           </tr></thead>
           <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
             {loading ? Array.from({ length: 6 }).map((_, i) => (<tr key={`sk${i}`}>{Array.from({ length: 8 }).map((_, c) => (<td key={c} className="px-3 py-2"><Skeleton className="h-4" /></td>))}</tr>))
               : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีใบเสนอราคา — กด &quot;สร้างใบเสนอราคา&quot;</td></tr>
-              : rows.map((r) => (
+              : pg.paged.map((r) => (
                 <tr key={r._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                   <td className="px-3 py-2 font-mono text-xs font-semibold text-[#8C6B1F]"><Link href={`/quotations/${r._id}`} className="hover:underline">{r.quotationNo}</Link></td>
                   <td className="px-3 py-2">{r.customerName}<span className="text-zinc-400 dark:text-zinc-500 text-xs">{r.customerPhone ? ` · ${r.customerPhone}` : ""}</span></td>
@@ -160,6 +165,8 @@ function QuotationsInner() {
               ))}
           </tbody>
         </table>
+      </div>
+      {!loading && <PaginationBar {...pg} unit="ดีล" />}
       </div>
       )}
 
