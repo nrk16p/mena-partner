@@ -55,6 +55,7 @@ export default function DealPage() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
   const [depAmt, setDepAmt] = useState("")
+  const [savAmt, setSavAmt] = useState("")   // เงินสะสม พจส. (บันทึกไว้เฉย ๆ ไม่หักยอด)
   const [noteText, setNoteText] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
@@ -67,13 +68,12 @@ export default function DealPage() {
   const [ePlate, setEPlate] = useState("")
   const [eSnap, setESnap] = useState<Record<string, number>>({})
   const [eCash, setECash] = useState(0)
-  const [eSavings, setESavings] = useState(0)   // เงินสะสม พจส. (บันทึกไว้เฉย ๆ)
   const [eSales, setESales] = useState("")      // ผู้ขาย
   const [eExtras, setEExtras] = useState("")
   const [ePromoNote, setEPromoNote] = useState("")
 
   const load = useCallback(() => {
-    fetch(`/api/quotations/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?._id) { setQ(d); setDepAmt(d.depositAmount ? String(d.depositAmount) : "") } })
+    fetch(`/api/quotations/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?._id) { setQ(d); setDepAmt(d.depositAmount ? String(d.depositAmount) : ""); setSavAmt(d.savingsUsed ? String(d.savingsUsed) : "") } })
   }, [id])
   useEffect(load, [load])
   useEffect(() => { fetch("/api/price-list").then((r) => r.ok ? r.json() : []).then(setPrices) }, [])
@@ -82,7 +82,7 @@ export default function DealPage() {
     if (q) { setEPlate(q.licensePlate ?? ""); setPlateQ(q.licensePlate ?? ""); setEExtras(q.extras ?? "")
       setESnap({ totalSalePrice: q.totalSalePrice, downPayment: q.downPayment, downInstallmentCount: q.downInstallmentCount,
         financeAmount: q.financeAmount, financeInstallments: q.financeInstallments, monthlyPayment: q.monthlyPayment })
-      setECash(q.cashDown ?? 0); setESavings(q.savingsUsed ?? 0); setESales(q.salesName ?? "") }
+      setECash(q.cashDown ?? 0); setESales(q.salesName ?? "") }
     setEditing(true)
   }
   // เลือกรถใน editor → เติม snapshot + โปรฯ
@@ -164,7 +164,7 @@ export default function DealPage() {
       licensePlate: ePlate, vehicleBrand: eSel?.vehicleBrand ?? "", vehicleModel: eSel?.vehicleModel ?? "",
       truckNumber: eSel?.truckNumber ?? "", vehiclePhotoUrl: eSel?.photoUrl ?? "", vehiclePhotos: eSel?.photos ?? undefined,
       totalSalePrice: eSnap.totalSalePrice ?? 0, downPayment: eSnap.downPayment ?? 0, cashDown: eCash,
-      savingsUsed: eSavings, ...(eSales && eSales !== q?.salesName ? { salesName: eSales } : {}),
+      ...(eSales && eSales !== q?.salesName ? { salesName: eSales } : {}),
       downInstallmentCount: eSnap.downInstallmentCount ?? 0, downInstallmentAmt: ePerInst,
       financeAmount: eSnap.financeAmount ?? 0, financeInstallments: eSnap.financeInstallments ?? 0, monthlyPayment: eSnap.monthlyPayment ?? 0,
       extras: eExtras, ...(alsoQuote && q?.status === "lead" ? { status: "quoted" } : {}),
@@ -324,11 +324,6 @@ export default function DealPage() {
                   </div>
                   <div className="flex justify-between text-sm font-semibold text-[#8C6B1F]"><span>→ ดาวน์/งวด (คำนวณ)</span><span>{formatMoney(ePerInst)} × {eSnap.downInstallmentCount ?? 0} งวด</span></div>
                   <Row k="ค่างวด/เดือน" v={`${formatMoney(eSnap.monthlyPayment ?? 0)} × ${eSnap.financeInstallments ?? 0} งวด`} />
-                  <div className="flex items-center justify-between bg-sky-50/60 dark:bg-sky-950/20 rounded-lg px-2 py-1.5">
-                    <span className="text-sm text-zinc-600 dark:text-zinc-300">ใช้เงินสะสม พจส. <span className="text-[10px] text-sky-600">(บันทึกไว้ ไม่หักยอด)</span></span>
-                    <input type="number" value={eSavings} onChange={(e) => setESavings(Number(e.target.value) || 0)}
-                      className="w-28 h-8 text-sm border border-sky-300 rounded-lg px-2 text-right tabular-nums bg-white dark:bg-zinc-900" />
-                  </div>
                   <div>
                     <label className="block text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-1">ของแถม / โปรโมชั่น {ePromoNote && <span className="text-[10px] text-emerald-600">· {ePromoNote}</span>}</label>
                     <textarea value={eExtras} onChange={(e) => setEExtras(e.target.value)} rows={2} className="w-full text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5" />
@@ -352,13 +347,18 @@ export default function DealPage() {
 
         {/* เงินจอง */}
         <Section title="เงินจอง & หลักฐาน">
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
+          <div className="flex items-end gap-2 flex-wrap">
+            <div className="flex-1 min-w-[150px]">
               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ยอดเงินจอง (บาท)</label>
               <input type="number" value={depAmt} onChange={(e) => setDepAmt(e.target.value)}
                 className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 text-right tabular-nums" />
             </div>
-            <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(Number(depAmt) > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}) })}
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ใช้เงินสะสม พจส. <span className="text-[10px] text-sky-600">(บันทึกไว้ ไม่หักยอด)</span></label>
+              <input type="number" value={savAmt} onChange={(e) => setSavAmt(e.target.value)}
+                className="w-full h-9 text-sm border border-sky-300 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/20 rounded-lg px-3 text-right tabular-nums" />
+            </div>
+            <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, savingsUsed: Number(savAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(Number(depAmt) > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}) })}
               disabled={busy} className="h-9 bg-emerald-600 text-white text-sm font-semibold px-4 rounded-lg disabled:opacity-50">บันทึก</button>
           </div>
           {q.depositAmount ? (
