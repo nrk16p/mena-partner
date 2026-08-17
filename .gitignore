@@ -37,3 +37,6 @@ next-env.d.ts
 .env*
 ~$*
 .firecrawl/
+
+# backup ข้อมูล prod ที่ dump จาก scripts/ (ห้าม commit)
+/backups/
