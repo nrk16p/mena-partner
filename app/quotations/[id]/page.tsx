@@ -175,6 +175,8 @@ export default function DealPage() {
 
   if (!q) return <div className="p-8 text-sm text-zinc-400 dark:text-zinc-500">กำลังโหลด...</div>
   const stepIdx = FLOW.indexOf(q.status)
+  // ดาวน์ที่ต้องชำระเลย หักด้วยเงินจองที่วางไว้ + เงินสะสม พจส. ที่ยกมาใช้
+  const cashLeft = (q.cashDown ?? 0) - (Number(depAmt) || 0) - (Number(savAmt) || 0)
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5">
@@ -361,6 +363,19 @@ export default function DealPage() {
             <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, savingsUsed: Number(savAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(Number(depAmt) > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}) })}
               disabled={busy} className="h-9 bg-emerald-600 text-white text-sm font-semibold px-4 rounded-lg disabled:opacity-50">บันทึก</button>
           </div>
+          {/* ดาวน์ชำระเลย − (เงินจอง + เงินสะสม) = ยอดคงเหลือ — คิดสดจากที่พิมพ์ ยังไม่ต้องกดบันทึก */}
+          <div className="mt-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/30 px-3 py-2 text-sm space-y-0.5">
+            <Row k="ดาวน์ชำระเลย" v={formatMoney(q.cashDown ?? 0)} />
+            <Row k="− ยอดเงินจอง" v={formatMoney(Number(depAmt) || 0)} />
+            <Row k="− ใช้เงินสะสม พจส." v={formatMoney(Number(savAmt) || 0)} />
+            <div className="flex justify-between font-semibold border-t border-zinc-200 dark:border-zinc-700 mt-1.5 pt-1.5">
+              <span className="text-zinc-600 dark:text-zinc-300">= ยอดคงเหลือ</span>
+              <span className={`tabular-nums ${cashLeft <= 0 ? "text-emerald-600" : "text-[#8C6B1F]"}`}>
+                {formatMoney(cashLeft)}{cashLeft <= 0 && <span className="text-[10px] font-normal ml-1">ครบแล้ว</span>}
+              </span>
+            </div>
+          </div>
+
           {q.depositAmount ? (
             <p className="text-xs text-emerald-700 mt-2">✓ วางจอง {formatMoney(q.depositAmount)} บาท{q.depositPaidAt ? ` เมื่อ ${q.depositPaidAt}` : ""}</p>
           ) : <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">ยังไม่มีเงินจอง</p>}
