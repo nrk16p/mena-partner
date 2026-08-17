@@ -12,7 +12,7 @@ import { useSession } from "next-auth/react"
 import { statusOf, STATUS_META } from "@/lib/module-status"
 
 // จัดหมวดเป็น 3 ระบบหลัก: สัญญา · โปรโมชั่น · เงินเดือน (ปรับตามคำสั่ง 2026-08-05)
-const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; hint?: string }[] }[] = [
+const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; hint?: string; adminOnly?: boolean }[] }[] = [
   {
     title: null,
     items: [{ href: "/", label: "หน้าหลัก · คู่มือ", icon: Home }],
@@ -24,8 +24,14 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
       { href: "/vehicles", label: "รถ", icon: Truck, hint: "ยี่ห้อ รุ่น เลขตัวถัง เลขเครื่อง" },
       { href: "/price-list", label: "ราคาขาย", icon: Tag, hint: "เพิ่ม/แก้ไขได้ในหน้า" },
       { href: "/contracts", label: "สัญญา", icon: FileText },
-      { href: "/quotations", label: "ระบบขาย", icon: Receipt },
+    ],
+  },
+  {
+    title: "ระบบขาย",
+    items: [
+      { href: "/quotations", label: "สร้างใบเสนอราคา", icon: Receipt },
       { href: "/quotations/commission", label: "ยอดขาย & ค่าคอม", icon: HandCoins, hint: "ขายกี่คัน ได้คอมเท่าไหร่" },
+      { href: "/quotations/sales-people", label: "ทีมขาย", icon: Users, hint: "ชื่อ / email / เบอร์โทร พนักงานขาย", adminOnly: true },
     ],
   },
   {
@@ -133,11 +139,12 @@ export function Sidebar() {
       {/* Grouped nav — accordion: พับ/กางรายหมวด จำสถานะไว้ และกางหมวดของหน้าปัจจุบันอัตโนมัติ */}
       <nav className="flex-1 py-3 overflow-y-auto">
         {GROUPS.map((g0, gi) => {
+          const visible = g0.items.filter((it) => !it.adminOnly || isAdmin)
           // ฝ่ายขาย: เหลือเฉพาะ ราคาขาย + ใบเสนอราคา
           const g = isSales
-            ? { ...g0, items: g0.items.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission") }
-            : g0
-          if (isSales && g.title && g.items.length === 0) return null
+            ? { ...g0, items: visible.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission") }
+            : { ...g0, items: visible }
+          if (g.title && g.items.length === 0) return null
           if (!g.title) {
             return (
               <div key={gi} className="px-2">

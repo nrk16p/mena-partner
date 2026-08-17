@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp } from "lucide-react"
+import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp, Users } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,6 +39,9 @@ interface Customer { _id: string; name: string; phone?: string }
 
 function QuotationsInner() {
   const sp = useSearchParams()
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string } | undefined)?.role
+  const isAdmin = role === "admin" || role === "superadmin"
   const [rows, setRows] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Status | "">("")
@@ -77,6 +80,11 @@ function QuotationsInner() {
           <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">คนขายเลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีล (ทั้งทีมเห็นทุกดีล)</p>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link href="/quotations/sales-people" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+              <Users className="w-4 h-4 text-[#C9A227]" /> ทีมขาย
+            </Link>
+          )}
           <Link href="/quotations/dashboard" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
             <TrendingUp className="w-4 h-4 text-[#C9A227]" /> แดชบอร์ด
           </Link>
