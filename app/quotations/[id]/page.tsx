@@ -56,6 +56,7 @@ export default function DealPage() {
   const [err, setErr] = useState("")
   const [depAmt, setDepAmt] = useState("")
   const [savAmt, setSavAmt] = useState("")   // เงินสะสม พจส. (บันทึกไว้เฉย ๆ ไม่หักยอด)
+  const [savedAt, setSavedAt] = useState(0)  // เวลาที่ auto-save เงินจองสำเร็จ — ใช้โชว์ "บันทึกแล้ว"
   const [noteText, setNoteText] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
@@ -106,6 +107,24 @@ export default function DealPage() {
       if (!r.ok) { setErr(d.error ?? "ทำรายการไม่สำเร็จ"); return }
       setQ(d); if (ok) setNoteText("")
     } finally { setBusy(false) }
+  }
+
+  /** auto-save เงินจอง/เงินสะสม ตอนคลิกออกจากช่อง (ไม่มีปุ่มบันทึกแล้ว)
+   *  ส่งเฉพาะฟิลด์ที่ค่าเปลี่ยนจริง — depositAmount ที่ส่งไปทุกครั้งจะไปสร้าง event
+   *  "บันทึกเงินจอง" ใน timeline ทุกรอบ (route.ts:57) แก้เงินสะสมอย่างเดียวจึงไม่ควรส่ง */
+  async function saveDeposit() {
+    if (!q || busy) return
+    const dep = Number(depAmt) || 0
+    const sav = Number(savAmt) || 0
+    const depChanged = dep !== (q.depositAmount ?? 0)
+    const savChanged = sav !== (q.savingsUsed ?? 0)
+    if (!depChanged && !savChanged) return
+    await patch({
+      ...(depChanged ? { depositAmount: dep, depositPaidAt: new Date().toISOString().slice(0, 10) } : {}),
+      ...(savChanged ? { savingsUsed: sav } : {}),
+      ...(depChanged && dep > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}),
+    })
+    setSavedAt(Date.now())
   }
 
   function allSlips(): string[] {
@@ -356,15 +375,22 @@ export default function DealPage() {
             <div className="flex-1 min-w-[150px]">
               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ยอดเงินจอง (บาท)</label>
               <input type="number" value={depAmt} onChange={(e) => setDepAmt(e.target.value)}
+                onBlur={saveDeposit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
                 className="w-full h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 text-right tabular-nums" />
             </div>
             <div className="flex-1 min-w-[150px]">
               <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ใช้เงินสะสม พจส. <span className="text-[10px] text-sky-600">(บันทึกไว้ ไม่หักยอด)</span></label>
               <input type="number" value={savAmt} onChange={(e) => setSavAmt(e.target.value)}
+                onBlur={saveDeposit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
                 className="w-full h-9 text-sm border border-sky-300 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/20 rounded-lg px-3 text-right tabular-nums" />
             </div>
-            <button onClick={() => patch({ depositAmount: Number(depAmt) || 0, savingsUsed: Number(savAmt) || 0, depositPaidAt: new Date().toISOString().slice(0, 10), ...(Number(depAmt) > 0 && (q.status === "lead" || q.status === "quoted") ? { status: "booked" } : {}) })}
-              disabled={busy} className="h-9 bg-emerald-600 text-white text-sm font-semibold px-4 rounded-lg disabled:opacity-50">บันทึก</button>
+            <span className="h-9 flex items-center text-[11px] shrink-0">
+              {busy
+                ? <span className="text-zinc-400">กำลังบันทึก…</span>
+                : savedAt
+                  ? <span className="text-emerald-600">✓ บันทึกแล้ว</span>
+                  : <span className="text-zinc-400">บันทึกอัตโนมัติ</span>}
+            </span>
           </div>
           {/* ดาวน์ชำระเลย − (เงินจอง + เงินสะสม) = ยอดคงเหลือ — คิดสดจากที่พิมพ์ ยังไม่ต้องกดบันทึก */}
           <div className="mt-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/30 px-3 py-2 text-sm space-y-0.5">
