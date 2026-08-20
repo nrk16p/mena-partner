@@ -45,6 +45,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     $set.salesEmail = b.salesName === session.user?.name ? (session.user?.email ?? "") : ""
     events.push({ at: now, by: email, action: `เปลี่ยนผู้ขาย → ${b.salesName}` })
   }
+  // แก้ชื่อลูกค้า (สะกดผิด) — เก็บร่องรอยไว้ใน timeline
+  if (b.customerName !== undefined) {
+    events.push({ at: now, by: email, action: `แก้ชื่อลูกค้า → ${String(b.customerName)}` })
+  }
   for (const k of ["depositSlipUrl", "depositPaidAt", "extras", "note", "validUntil", "customerName", "customerPhone",
                    "licensePlate", "vehicleBrand", "vehicleModel", "truckNumber", "vehiclePhotoUrl", "salesName"]) {
     if (b[k] !== undefined) $set[k] = b[k]

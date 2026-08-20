@@ -127,6 +127,16 @@ export default function DealPage() {
     setSavedAt(Date.now())
   }
 
+  // แก้ชื่อลูกค้า (กรณีสะกดผิด) — PDF ดึงจาก DB ทุกครั้ง ชื่อใหม่จึงไปโผล่ในใบเสนอเอง
+  async function editCustomerName() {
+    if (!q) return
+    const name = await prompt({ title: "แก้ไขชื่อลูกค้า", description: "ใช้กรณีสะกดชื่อผิด — ชื่อใหม่จะแสดงในใบเสนอ PDF ทันที", defaultValue: q.customerName, placeholder: "ชื่อลูกค้า" })
+    if (name === null) return
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === q.customerName) return
+    await patch({ customerName: trimmed })
+  }
+
   function allSlips(): string[] {
     const arr = [...(q?.depositSlips ?? [])]
     if (q?.depositSlipUrl && !arr.includes(q.depositSlipUrl)) arr.unshift(q.depositSlipUrl)
@@ -210,7 +220,12 @@ export default function DealPage() {
             <span className="font-mono text-[#8C6B1F]">{q.quotationNo}</span>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${META[q.status].cls}`}>{META[q.status].label}</span>
           </h1>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">{q.customerName}{q.customerPhone ? ` · ${q.customerPhone}` : ""} · โดย {q.salesName}</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 flex items-center gap-1 flex-wrap">
+            <span>{q.customerName}</span>
+            <button onClick={editCustomerName} disabled={busy} title="แก้ไขชื่อลูกค้า (กรณีสะกดผิด)" aria-label="แก้ไขชื่อลูกค้า"
+              className="text-zinc-300 dark:text-zinc-600 hover:text-[#C9A227]"><Pencil className="w-3 h-3" /></button>
+            <span>{q.customerPhone ? `· ${q.customerPhone} ` : ""}· โดย {q.salesName}</span>
+          </p>
         </div>
         <a href={`/api/quotations/${q._id}/pdf`} target="_blank" rel="noreferrer" className="flex items-center gap-2 gold-grad text-[#031B14] text-sm font-semibold px-4 py-2 rounded-lg">
           <FileText className="w-4 h-4" /> ใบเสนอ PDF
