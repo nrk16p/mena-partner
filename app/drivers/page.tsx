@@ -811,14 +811,13 @@ export default function DriversPage() {
                               360°
                             </Link>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => setPanelDriver(d)}
+                          <Link
+                            href={`/drivers/${d._id}?edit=1`}
                             title={`แก้ไขข้อมูล ${fullName || ""}`.trim()}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-[10px] font-semibold text-zinc-600 dark:text-zinc-300 whitespace-nowrap transition-colors hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:text-emerald-400 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/40"
                           >
                             <Pencil className="w-3 h-3" /> แก้ไข
-                          </button>
+                          </Link>
                           <Link
                             href={`/drivers/${d._id}`}
                             title="ดูข้อมูลทั้งหมด"

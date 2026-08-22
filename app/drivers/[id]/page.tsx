@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -286,6 +286,16 @@ export default function DriverDetailPage() {
     setError("")
     setEditing(true)
   }
+
+  // มาจากปุ่ม "แก้ไข" ในหน้ารายชื่อ (?edit=1) → เข้าโหมดแก้ไขให้เลย ไม่ต้องกดซ้ำ
+  const autoEdited = useRef(false)
+  useEffect(() => {
+    if (autoEdited.current || !driver || !isAdmin) return
+    if (new URLSearchParams(window.location.search).get("edit") !== "1") return
+    autoEdited.current = true
+    startEdit()
+    window.history.replaceState(null, "", `/drivers/${id}`)   // ล้าง query กัน refresh แล้วเข้าโหมดแก้ไขซ้ำ
+  }, [driver, isAdmin, id])   // eslint-disable-line react-hooks/exhaustive-deps
 
   function cancelEdit() {
     setEditing(false)
