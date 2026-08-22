@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react"
 import Link from "next/link"
-import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2, AlertTriangle } from "lucide-react"
+import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2, AlertTriangle, Pencil } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
@@ -687,7 +687,7 @@ export default function DriversPage() {
                     </span>
                   </th>
                 ))}
-                <th className="px-3 py-2.5 w-8" />
+                <th className="px-3 py-2.5 text-right font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap w-36">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/60">
@@ -801,17 +801,27 @@ export default function DriversPage() {
 
                       {/* Actions */}
                       <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1">
                           {d.contractCode && (
                             <Link
                               href={`/drivers/360/${d.contractCode.trim()}`}
-                              className="px-2 py-1 text-[10px] font-semibold text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                              title={`มุมมอง 360° · ${d.contractCode.trim()}`}
+                              className="px-2 py-1 text-[10px] font-semibold text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
                             >
                               360°
                             </Link>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => setPanelDriver(d)}
+                            title={`แก้ไขข้อมูล ${fullName || ""}`.trim()}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-[10px] font-semibold text-zinc-600 dark:text-zinc-300 whitespace-nowrap transition-colors hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:text-emerald-400 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/40"
+                          >
+                            <Pencil className="w-3 h-3" /> แก้ไข
+                          </button>
                           <Link
                             href={`/drivers/${d._id}`}
+                            title="ดูข้อมูลทั้งหมด"
                             className="p-1 text-zinc-300 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors"
                           >
                             <ChevronRight className="w-3.5 h-3.5" />
