@@ -87,7 +87,7 @@ export function ThaiDateInput({ value, onChange, disabled, placeholder = "เล
   const nextMonth = () => (viewM === 12 ? (setViewM(1), setViewY(viewY + 1)) : setViewM(viewM + 1))
 
   const beNow = now.getFullYear() + 543
-  const years = Array.from({ length: 85 }, (_, i) => beNow + 2 - i)   // +2 ถึง -82 ปี
+  const years = Array.from({ length: 93 }, (_, i) => beNow + 10 - i)  // +10 ถึง -82 ปี
 
   return (
     <div ref={ref} className="relative">
