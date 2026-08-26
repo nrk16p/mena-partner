@@ -5,9 +5,10 @@ import { prompt } from "@/components/ui/confirm"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil } from "lucide-react"
+import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil, Copy } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
+import { COMPANY_BANK } from "@/lib/company-bank"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
 const FLOW: Status[] = ["lead", "quoted", "booked", "won"]
@@ -58,6 +59,7 @@ export default function DealPage() {
   const [savAmt, setSavAmt] = useState("")   // เงินสะสม พจส. (บันทึกไว้เฉย ๆ ไม่หักยอด)
   const [savedAt, setSavedAt] = useState(0)  // เวลาที่ auto-save เงินจองสำเร็จ — ใช้โชว์ "บันทึกแล้ว"
   const [noteText, setNoteText] = useState("")
+  const [copiedBank, setCopiedBank] = useState(false)  // feedback ปุ่มคัดลอกเลขบัญชี
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const [photoSlot, setPhotoSlot] = useState<string>("")
@@ -72,6 +74,16 @@ export default function DealPage() {
   const [eSales, setESales] = useState("")      // ผู้ขาย
   const [eExtras, setEExtras] = useState("")
   const [ePromoNote, setEPromoNote] = useState("")
+
+  // คัดลอกบัญชีรับโอนเป็นข้อความ — เซลส์ส่งต่อให้ลูกค้าทางแชทได้เลย
+  const copyBank = async () => {
+    const text = `${COMPANY_BANK.bank}\nชื่อบัญชี ${COMPANY_BANK.accountName}\nเลขบัญชี ${COMPANY_BANK.accountNo}\nประเภทบัญชี ${COMPANY_BANK.accountType}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedBank(true)
+      setTimeout(() => setCopiedBank(false), 1800)
+    } catch { setErr("คัดลอกไม่สำเร็จ — กรุณาคัดลอกด้วยตนเอง") }
+  }
 
   const load = useCallback(() => {
     fetch(`/api/quotations/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?._id) { setQ(d); setDepAmt(d.depositAmount ? String(d.depositAmount) : ""); setSavAmt(d.savingsUsed ? String(d.savingsUsed) : "") } })
@@ -429,6 +441,33 @@ export default function DealPage() {
           {q.depositAmount ? (
             <p className="text-xs text-emerald-700 mt-2">✓ วางจอง {formatMoney(q.depositAmount)} บาท{q.depositPaidAt ? ` เมื่อ ${q.depositPaidAt}` : ""}</p>
           ) : <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">ยังไม่มีเงินจอง</p>}
+
+          {/* ช่องทางการโอนเงิน — ตรงกับกล่องในใบเสนอ PDF (แหล่งข้อมูลเดียวกัน lib/company-bank.ts) */}
+          <div className="mt-3 rounded-lg border border-[#E7C86E] bg-[#FAF7EF] dark:bg-amber-950/10 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-[#8C6B1F]">ช่องทางการโอนเงิน</span>
+              <button onClick={copyBank} className="flex items-center gap-1 text-[11px] text-[#8C6B1F] hover:underline">
+                {copiedBank
+                  ? <><CheckCircle2 className="w-3 h-3" /> คัดลอกแล้ว</>
+                  : <><Copy className="w-3 h-3" /> คัดลอก</>}
+              </button>
+            </div>
+            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 mt-1">{COMPANY_BANK.bank}</p>
+            <dl className="mt-1 text-xs space-y-0.5">
+              <div className="flex gap-2">
+                <dt className="w-20 shrink-0 text-zinc-500 dark:text-zinc-400">ชื่อบัญชี</dt>
+                <dd className="text-zinc-700 dark:text-zinc-200">{COMPANY_BANK.accountName}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-20 shrink-0 text-zinc-500 dark:text-zinc-400">เลขบัญชี</dt>
+                <dd className="font-semibold tabular-nums tracking-wide text-zinc-800 dark:text-zinc-100">{COMPANY_BANK.accountNo}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-20 shrink-0 text-zinc-500 dark:text-zinc-400">ประเภทบัญชี</dt>
+                <dd className="text-zinc-700 dark:text-zinc-200">{COMPANY_BANK.accountType}</dd>
+              </div>
+            </dl>
+          </div>
 
           <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSlip(f); e.target.value = "" }} />
           <div className="mt-3">

@@ -2,6 +2,7 @@ import "server-only"
 import fs from "fs"
 import path from "path"
 import { COMPANY } from "@/lib/contract-pdfmake-helpers"
+import { COMPANY_BANK } from "@/lib/company-bank"
 import { seg } from "@/lib/pdfmake-printer"
 import type { Quotation } from "@/lib/quotation"
 
@@ -240,23 +241,23 @@ export function quotationDocDef(q: Quotation): any {
           },
         ]] },
         layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => GOLD, vLineColor: () => GOLD },
-        margin: [0, 0, 0, 8],
+        margin: [0, 0, 0, 6],
       },
 
       ...(q.extras ? [
         { text: "ของแถม / โปรโมชั่น", headlineLevel: 1, bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 4, 0, 2] },
-        { text: seg(q.extras), fontSize: 10, color: INK, margin: [0, 0, 0, 8] },
+        { text: seg(q.extras), fontSize: 10, color: INK, margin: [0, 0, 0, 6] },
       ] : []),
       ...(q.note ? [
         { text: "หมายเหตุ", headlineLevel: 1, bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 2, 0, 2] },
-        { text: seg(q.note), fontSize: 10, color: "#52525b", margin: [0, 0, 0, 8] },
+        { text: seg(q.note), fontSize: 10, color: "#52525b", margin: [0, 0, 0, 6] },
       ] : []),
 
       // ── เงื่อนไข (เป็นข้อ) — อยู่ใน flow, unbreakable ──
       {
         unbreakable: true,
         stack: [
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: RULE }], margin: [0, 4, 0, 6] },
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 0.5, lineColor: RULE }], margin: [0, 4, 0, 4] },
           { text: "เงื่อนไข", bold: true, fontSize: 11, color: GOLD_DK, margin: [0, 0, 0, 4] },
           { ol: [
             seg("ราคานี้เป็นการเสนอเบื้องต้น ยังไม่รวมภาษีมูลค่าเพิ่มและค่าธรรมเนียมโอน (ถ้ามี)"),
@@ -267,10 +268,34 @@ export function quotationDocDef(q: Quotation): any {
         ],
       },
 
+      // ── ช่องทางการโอนเงิน — แถบบัญชีบริษัท (หลังเงื่อนไข ก่อนลายเซ็น)
+      //    จงใจทำเป็นแถบบรรทัดเดียว: หน้า 1 เหลือที่ว่างใต้ลายเซ็นราว 30pt เท่านั้น
+      //    กล่องสูงกว่านี้จะดันลายเซ็นตกไปหน้า 2 (ของเดิมจบใน 1 หน้า) ──
+      {
+        unbreakable: true,
+        margin: [0, 5, 0, 0],
+        table: { widths: ["*"], body: [[
+          {
+            fillColor: "#FAF7EF",
+            margin: [10, 3, 10, 3],
+            columns: [
+              { width: "auto", text: seg("ช่องทางการโอนเงิน"), color: GOLD_DK, bold: true, fontSize: 10 },
+              { width: "*", alignment: "right", text: [
+                { text: seg(`${COMPANY_BANK.bank}  ·  ${COMPANY_BANK.accountName}  ·  `), color: "#52525b", fontSize: 9 },
+                // เลขบัญชีไม่ผ่าน seg() — มี "-" ถ้าใส่ ZWSP จะถูกตัดขึ้นบรรทัดใหม่
+                { text: COMPANY_BANK.accountNo, color: INK, bold: true, fontSize: 11 },
+                { text: seg(`  ·  ${COMPANY_BANK.accountType}`), color: "#52525b", fontSize: 9 },
+              ] },
+            ],
+          },
+        ]] },
+        layout: { hLineWidth: () => 0.7, vLineWidth: () => 0.7, hLineColor: () => RULE, vLineColor: () => RULE },
+      },
+
       // ── ลายเซ็น (อยู่ใน flow ท้ายเอกสาร, unbreakable — hero box ช่วยดันเนื้อหาเต็มหน้า ลายเซ็นจึงอยู่ล่าง) ──
       {
         unbreakable: true,
-        margin: [0, 8, 0, 0],
+        margin: [0, 5, 0, 0],
         columns: [
           { width: "*", stack: [
             { text: "ลงชื่อ .............................................", alignment: "center", fontSize: 10, margin: [0, 0, 0, 2] },
