@@ -79,13 +79,26 @@ const EMPTY_FORM: FormData = {
   licenseNumber: "", licenseType: "", licenseExpiry: "",
 }
 
-interface SlidePanelProps {
-  driver:  Driver | null
-  onClose: () => void
-  onSaved: () => void
+/** ค่าตั้งต้นตอน "เพิ่มพนักงานใหม่" จากดีล/ใบเสนอราคา (ชื่อ-นามสกุล-โทร ของลูกค้า) */
+interface DriverPrefill { firstName?: string; lastName?: string; phone?: string }
+
+/** แยก "นาย สมชาย ใจดี" → { firstName: "สมชาย", lastName: "ใจดี" } — ตัดคำนำหน้าออก, ชื่อคำเดียว = firstName อย่างเดียว */
+function splitThaiName(full: string): { firstName: string; lastName: string } {
+  const cleaned = full.replace(/^(นางสาว|นาง|นาย|น\.ส\.|ด\.ช\.|ด\.ญ\.|คุณ)\s*/u, "").trim().replace(/\s+/g, " ")
+  if (!cleaned) return { firstName: "", lastName: "" }
+  const sp = cleaned.indexOf(" ")
+  if (sp < 0) return { firstName: cleaned, lastName: "" }
+  return { firstName: cleaned.slice(0, sp), lastName: cleaned.slice(sp + 1) }
 }
 
-function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
+interface SlidePanelProps {
+  driver:   Driver | null
+  prefill?: DriverPrefill | null
+  onClose:  () => void
+  onSaved:  () => void
+}
+
+function SlidePanel({ driver, prefill, onClose, onSaved }: SlidePanelProps) {
   const isEdit = !!driver
   const [form, setForm]           = useState<FormData>(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
@@ -120,7 +133,7 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
         status:       driver.status       ?? "active",
       })
     } else {
-      setForm(EMPTY_FORM)
+      setForm({ ...EMPTY_FORM, ...(prefill ?? {}) })
       // เพิ่มพนักงานใหม่ → auto รหัสพนักงาน = ล่าสุด+1 (ชุดเดียวกับรหัสสัญญา) + ตั้งรหัสสัญญาให้ตรงกัน
       fetch("/api/drivers/next-code")
         .then((r) => (r.ok ? r.json() : null))
@@ -128,6 +141,8 @@ function SlidePanel({ driver, onClose, onSaved }: SlidePanelProps) {
         .catch(() => {})
     }
     setError("")
+  // prefill ใช้เฉพาะตอนเปิดพาเนล (ค่าจาก URL คงที่) — ไม่ต้องเป็น dep
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driver])
 
   function set<K extends keyof FormData>(field: K, val: FormData[K]) {
@@ -529,6 +544,7 @@ export default function DriversPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active")
   const [loading, setLoading]           = useState(true)
   const [panelDriver, setPanelDriver]   = useState<Driver | null | "new">(null)
+  const [prefill, setPrefill]           = useState<DriverPrefill | null>(null)   // จาก /drivers?new=1&name=&phone=
   const [showImport, setShowImport]     = useState(false)
   const [contractMap, setContractMap]   = useState<Map<string, string>>(new Map())  // รหัสสัญญา → _id
   const [onlyMissing, setOnlyMissing]   = useState(false)   // แสดงเฉพาะคนที่หารหัสสัญญาไม่เจอ
@@ -544,6 +560,17 @@ export default function DriversPage() {
   }, [statusFilter])
 
   useEffect(() => { load() }, [load])
+
+  // เปิดพาเนล "เพิ่มพนักงานใหม่" พร้อมชื่อ/โทรจากดีล: /drivers?new=1&name=<ชื่อลูกค้า>&phone=<โทร>
+  // (อ่าน window.location ตรงๆ แทน useSearchParams — ไม่ต้องห่อ Suspense; ล้าง query ทิ้งกัน F5 เด้งซ้ำ)
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search)
+    if (sp.get("new") !== "1") return
+    const { firstName, lastName } = splitThaiName(sp.get("name") ?? "")
+    setPrefill({ firstName, lastName, phone: (sp.get("phone") ?? "").trim() })
+    setPanelDriver("new")
+    window.history.replaceState(null, "", window.location.pathname)
+  }, [])
 
   // รหัสสัญญา → _id ในระบบ — ใช้ลิงก์ไปหน้าสัญญาตรงๆ + เช็ครหัสที่ไม่พบ
   useEffect(() => {
@@ -843,7 +870,8 @@ export default function DriversPage() {
       {showPanel && (
         <SlidePanel
           driver={editDriver}
-          onClose={() => setPanelDriver(null)}
+          prefill={panelDriver === "new" ? prefill : null}
+          onClose={() => { setPanelDriver(null); setPrefill(null) }}
           onSaved={load}
         />
       )}

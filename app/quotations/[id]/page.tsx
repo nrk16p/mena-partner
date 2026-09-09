@@ -273,7 +273,7 @@ export default function DealPage() {
               className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">
               สร้างสัญญาจากดีลนี้ →
             </Link>
-            <Link href="/drivers"
+            <Link href={`/drivers?new=1&name=${encodeURIComponent(q.customerName ?? "")}&phone=${encodeURIComponent(q.customerPhone ?? "")}`}
               className="flex items-center gap-2 border border-blue-300 text-blue-700 hover:bg-blue-50 text-sm font-semibold px-4 py-2 rounded-lg">
               สร้างข้อมูลคนขับ →
             </Link>
