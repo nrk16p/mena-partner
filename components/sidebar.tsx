@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
   ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck, BookOpenCheck, ChevronDown,
+  UserMinus, BookImage,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
@@ -20,8 +21,9 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
   {
     title: "ระบบสัญญา",
     items: [
-      { href: "/drivers", label: "คนขับ", icon: Users, hint: "บัตร ปชช. / วันเกิด / ที่อยู่ / บัญชี" },
-      { href: "/vehicles", label: "รถ", icon: Truck, hint: "ยี่ห้อ รุ่น เลขตัวถัง เลขเครื่อง" },
+      { href: "/drivers", label: "คนขับ", icon: Users, hint: "Active ผ่อนชำระ / ปิดงวดแล้ว" },
+      { href: "/drivers?status=exit", label: "พ้นสภาพ", icon: UserMinus, hint: "ผ่อนหมดเอารถออก / โดนปลด-คืนรถ" },
+      { href: "/vehicles", label: "รถ", icon: Truck, hint: "วิ่งงานอยู่ / พร้อมขาย / ระหว่างดำเนินการ" },
       { href: "/price-list", label: "ราคาขาย", icon: Tag, hint: "เพิ่ม/แก้ไขได้ในหน้า" },
       { href: "/contracts", label: "สัญญา", icon: FileText },
     ],
@@ -30,6 +32,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     title: "ระบบขาย",
     items: [
       { href: "/quotations", label: "สร้างใบเสนอราคา", icon: Receipt },
+      { href: "/catalog", label: "Catalog รถ", icon: BookImage, hint: "แคตตาล็อกรายคัน PDF อัตโนมัติ" },
       { href: "/quotations/commission", label: "ยอดขาย & ค่าคอม", icon: HandCoins, hint: "ขายกี่คัน ได้คอมเท่าไหร่" },
       { href: "/quotations/sales-people", label: "ทีมขาย", icon: Users, hint: "ชื่อ / email / เบอร์โทร พนักงานขาย", adminOnly: true },
     ],
@@ -92,8 +95,23 @@ function NavLink({ href, label, icon: Icon, active, hint }: {
   )
 }
 
+/** อ่าน query string ปัจจุบัน (ต้องห่อ Suspense — useSearchParams ทำ prerender ล้ม) แล้วส่งขึ้นให้ Sidebar */
+function SearchWatcher({ onChange }: { onChange: (s: string) => void }) {
+  const sp = useSearchParams()
+  const str = sp.toString()
+  useEffect(() => { onChange(str) }, [str, onChange])
+  return null
+}
+
+/** แยก href เมนูเป็น path + query (เมนูอย่าง /drivers?status=exit) */
+function splitHref(href: string): { path: string; params: [string, string][] } {
+  const [path, qs = ""] = href.split("?")
+  return { path, params: [...new URLSearchParams(qs).entries()] }
+}
+
 export function Sidebar() {
   const pathname = usePathname()
+  const [search, setSearch] = useState("")
   const { data: session } = useSession()
   const role = session?.user?.role ?? ""
   const isAdmin = ["admin", "superadmin"].includes(role)
@@ -105,13 +123,21 @@ export function Sidebar() {
   // เดิมใช้ pathname.startsWith(href) เฉย ๆ → /quotations/commission ทำให้ทั้ง
   // "สร้างใบเสนอราคา" และ "ยอดขาย & ค่าคอม" ติดพร้อมกัน (เหมือนแถบสีค้าง)
   // และ /payroll-extras ยังไปจุด /payroll ติดด้วยเพราะ prefix ชนกันทั้งที่คนละเมนู
+  // เมนูที่มี query (เช่น /drivers?status=exit) ต้องตรงทั้ง path และทุกคู่ query จึงติด และชนะเมนู path เปล่า
   const activeHref = useMemo(() => {
-    const matches = (href: string) =>
-      href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
-    return [...GROUPS.flatMap((g) => g.items.map((i) => i.href)), ...ADMIN_NAV.map((i) => i.href)]
-      .filter(matches)
-      .sort((a, b) => b.length - a.length)[0] ?? ""
-  }, [pathname])
+    const cur = new URLSearchParams(search)
+    const matches = (href: string) => {
+      const { path, params } = splitHref(href)
+      const pathOk = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/")
+      return pathOk && params.every(([k, v]) => cur.get(k) === v)
+    }
+    const all = [...GROUPS.flatMap((g) => g.items.map((i) => i.href)), ...ADMIN_NAV.map((i) => i.href)].filter(matches)
+    // เจาะจงที่สุดชนะ: มี query ก่อน แล้วค่อย path ยาวสุด
+    return all.sort((a, b) => {
+      const qa = splitHref(a).params.length, qb = splitHref(b).params.length
+      return qb - qa || b.length - a.length
+    })[0] ?? ""
+  }, [pathname, search])
   const isActive = (href: string) => href === activeHref
 
   // accordion: จำสถานะพับ/กางใน localStorage + กางหมวดของหน้าปัจจุบันเสมอ
@@ -126,7 +152,7 @@ export function Sidebar() {
     const active = GROUPS.find((g) => g.title && g.items.some((i) => isActive(i.href)))?.title
     if (active) setOpenGroups((prev) => (prev[active] === false ? { ...prev, [active]: true } : prev))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname])
+  }, [pathname, search])
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => {
       const next = { ...prev, [title]: !(prev[title] ?? false) }
@@ -137,6 +163,7 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col w-56 shrink-0 green-grad h-screen border-r border-[#0A3328]">
+      <Suspense fallback={null}><SearchWatcher onChange={setSearch} /></Suspense>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-[18px] border-b border-[#C9A227]/25 shrink-0">
         <div className="w-7 h-7 rounded-lg gold-grad flex items-center justify-center text-[#031B14] font-bold text-sm shrink-0">

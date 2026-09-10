@@ -537,7 +537,10 @@ function StatusFromUrl({ onChange }: { onChange: (s: StatusFilter) => void }) {
   const sp = useSearchParams()
   const st = sp.get("status")
   useEffect(() => {
-    if (st !== null && STATUS_KEYS.includes(st as StatusFilter)) onChange(st as StatusFilter)
+    // ไม่มี ?status (กด sidebar "คนขับ") → กลับแท็บ default · "all" = ทั้งหมด
+    if (st === null) onChange("paying")
+    else if (st === "all") onChange("")
+    else if (STATUS_KEYS.includes(st as StatusFilter)) onChange(st as StatusFilter)
   }, [st, onChange])
   return null
 }
@@ -622,8 +625,7 @@ export default function DriversPage() {
   // เปลี่ยนแท็บ → sync ?status= ใน URL (deep-link ได้ เช่น sidebar "พ้นสภาพ" = /drivers?status=exit)
   function changeStatus(k: StatusFilter) {
     setStatusFilter(k)
-    const url = k ? `${window.location.pathname}?status=${k}` : window.location.pathname
-    window.history.replaceState(null, "", url)
+    window.history.replaceState(null, "", `${window.location.pathname}?status=${k || "all"}`)
   }
 
   // เปิดพาเนล "เพิ่มพนักงานใหม่" พร้อมชื่อ/โทรจากดีล: /drivers?new=1&name=<ชื่อลูกค้า>&phone=<โทร>

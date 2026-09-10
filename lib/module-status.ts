@@ -8,12 +8,15 @@ export const MODULE_STATUS: Record<string, ModuleStatus> = {
   "/":                   "ready", // หน้าหลัก/คู่มือ
   // ข้อมูลหลัก — พร้อมใช้งานแล้ว
   "/drivers":            "ready",
+  "/drivers?status=exit": "ready",
   "/vehicles":           "ready",
   "/price-list":         "ready",
   // สัญญา — พร้อมใช้งานแล้ว
   "/contracts":          "ready",
   // ระบบขาย — ใบเสนอราคา/CRM (เฟส 1) กำลังทดสอบ
   "/quotations":         "testing",
+  // Catalog รายคัน (PDF อัตโนมัติ) — กำลังทดสอบ
+  "/catalog":            "testing",
   // งานประจำวัน — พร้อมใช้งานแล้ว
   "/vehicle-cost":       "ready",
   "/insurance-tax":      "ready",
