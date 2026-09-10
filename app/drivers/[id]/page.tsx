@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react"
 import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check, X, Phone, Landmark, AlertTriangle, CheckCircle2, Truck, IdCard } from "lucide-react"
+import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check, X, Phone, Landmark, AlertTriangle, CheckCircle2, Truck, IdCard, UserMinus } from "lucide-react"
 import { ActivityHistory } from "@/components/activity-history"
+import { DriverExitDialog } from "@/components/driver-exit-dialog"
+import { EXIT_TYPE_LABEL } from "@/lib/driver-state"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -255,6 +257,7 @@ export default function DriverDetailPage() {
   const [driver, setDriver]     = useState<Driver | null>(null)
   const [contract, setContract] = useState<Contract | null>(null)
   const [editing, setEditing]   = useState(false)
+  const [showExit, setShowExit] = useState(false)
   const [form, setForm]         = useState<DriverForm | null>(null)
   const [saving, setSaving]     = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -484,14 +487,22 @@ export default function DriverDetailPage() {
                     <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                       v.status === "active"
                         ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                        : driver.exitType
+                          ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                          : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${v.status === "active" ? "bg-emerald-500" : "bg-zinc-400"}`} />
-                      {v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
+                      <span className={`w-1.5 h-1.5 rounded-full ${v.status === "active" ? "bg-emerald-500" : driver.exitType ? "bg-rose-500" : "bg-zinc-400"}`} />
+                      {v.status === "active" ? "ใช้งาน" : driver.exitType ? "พ้นสภาพ" : "ไม่ใช้งาน"}
                     </span>
                     {v.isDriver     && <span className="text-[11px] bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">พนักงานขับรถ</span>}
                     {v.isTruckOwner && <span className="text-[11px] bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium">เจ้าของรถ</span>}
                   </div>
+                  {driver.exitType && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-300 mt-2 leading-snug">
+                      {EXIT_TYPE_LABEL[driver.exitType]}{driver.endDate ? ` · ${driver.endDate.split("-").reverse().join("/")}` : ""}
+                      {driver.exitReason ? <><br /><span className="text-zinc-400">{driver.exitReason}</span></> : null}
+                    </p>
+                  )}
                   {age !== null && <p className="text-xs text-zinc-400 mt-2">อายุ {age} ปี</p>}
                 </>
               )}
@@ -501,6 +512,12 @@ export default function DriverDetailPage() {
                   <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 flex-1" onClick={startEdit}>
                     <Pencil className="w-3 h-3" />แก้ไขข้อมูล
                   </Button>
+                  {driver.status === "active" && (
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 text-rose-600 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      onClick={() => setShowExit(true)} title="บันทึกพ้นสภาพ — ปิด/ยกเลิกสัญญา + จัดการรถให้ครบชุด">
+                      <UserMinus className="w-3 h-3" />พ้นสภาพ
+                    </Button>
+                  )}
                   <Button
                     size="sm" variant="ghost"
                     className="h-8 px-2.5 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
@@ -509,6 +526,9 @@ export default function DriverDetailPage() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
+              )}
+              {showExit && (
+                <DriverExitDialog driver={driver} onClose={() => setShowExit(false)} onDone={() => { setShowExit(false); reload() }} />
               )}
             </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback, Suspense } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2, AlertTriangle, Pencil } from "lucide-react"
@@ -595,14 +595,21 @@ export default function DriversPage() {
   const [contractMap, setContractMap]   = useState<Map<string, string>>(new Map())  // รหัสสัญญา → _id
   const [onlyMissing, setOnlyMissing]   = useState(false)   // แสดงเฉพาะคนที่หารหัสสัญญาไม่เจอ
 
+  // กัน race: เปลี่ยนแท็บเร็ว ๆ แล้วคำตอบเก่า (ช้ากว่า) มาทับคำตอบใหม่ → ยกเลิกคำขอก่อนหน้าเสมอ
+  const loadAbort = useRef<AbortController | null>(null)
   const load = useCallback(async () => {
+    loadAbort.current?.abort()
+    const ac = new AbortController()
+    loadAbort.current = ac
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (statusFilter) params.set("status", statusFilter)
-      const res = await fetch(`/api/drivers?${params}`)
-      if (res.ok) setItems(await res.json())
-    } finally { setLoading(false) }
+      const res = await fetch(`/api/drivers?${params}`, { signal: ac.signal })
+      if (res.ok && !ac.signal.aborted) setItems(await res.json())
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return
+    } finally { if (loadAbort.current === ac) setLoading(false) }
   }, [statusFilter])
 
   useEffect(() => { load() }, [load])
