@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, Suspense } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Search, Plus, X, Check, User, ChevronRight, Download, Upload, FileText, Trash2, AlertTriangle, Pencil } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
@@ -10,6 +11,7 @@ import { useSort } from "@/components/use-sort"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Driver } from "@/types"
+import { EXIT_TYPE_LABEL, INSTALLMENT_LABEL, type DriverListStatus } from "@/lib/driver-state"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -525,7 +527,50 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-type StatusFilter = "" | "active" | "inactive"
+type StatusFilter = DriverListStatus
+const STATUS_KEYS: StatusFilter[] = ["", "paying", "paidoff", "exit", "inactive"]
+type Counts = { all: number; paying: number; paidoff: number; exit: number; inactive: number }
+
+/** เฝ้าดู ?status= ตอนอยู่หน้านี้อยู่แล้ว (เช่น กด sidebar "พ้นสภาพ" → /drivers?status=exit ไม่ remount)
+ *  ต้องห่อ <Suspense> เสมอ (useSearchParams ทำ prerender ล้มบน Vercel) — จึงแยกเป็น component เล็ก */
+function StatusFromUrl({ onChange }: { onChange: (s: StatusFilter) => void }) {
+  const sp = useSearchParams()
+  const st = sp.get("status")
+  useEffect(() => {
+    if (st !== null && STATUS_KEYS.includes(st as StatusFilter)) onChange(st as StatusFilter)
+  }, [st, onChange])
+  return null
+}
+
+/** ป้ายสถานะในตาราง — active แยกตามการผ่อน, inactive แยกพ้นสภาพ/อื่นๆ */
+function DriverStatusBadge({ d }: { d: Driver }) {
+  if (d.status === "active") {
+    const paid = d.installmentState === "paidoff"
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
+        paid ? "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+             : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${paid ? "bg-sky-500" : "bg-emerald-500"}`} />
+        {INSTALLMENT_LABEL[d.installmentState ?? "paying"]}
+      </span>
+    )
+  }
+  if (d.exitType) {
+    return (
+      <span className="inline-flex flex-col gap-0.5">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] w-fit bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />พ้นสภาพ
+        </span>
+        <span className="text-[10px] text-zinc-400 pl-1">{EXIT_TYPE_LABEL[d.exitType]}</span>
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />ไม่ใช้งาน
+    </span>
+  )
+}
 
 const COLS = [
   { key: "name",      label: "ชื่อ - นามสกุล",  w: "w-48" },
@@ -541,7 +586,8 @@ const COLS = [
 export default function DriversPage() {
   const [items, setItems]               = useState<Driver[]>([])
   const [q, setQ]                       = useState("")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("paying")
+  const [counts, setCounts]             = useState<Counts | null>(null)   // นับจากชุดเต็ม (API ?counts=1)
   const [loading, setLoading]           = useState(true)
   const [panelDriver, setPanelDriver]   = useState<Driver | null | "new">(null)
   const [prefill, setPrefill]           = useState<DriverPrefill | null>(null)   // จาก /drivers?new=1&name=&phone=
@@ -560,6 +606,18 @@ export default function DriversPage() {
   }, [statusFilter])
 
   useEffect(() => { load() }, [load])
+
+  const loadCounts = useCallback(() => {
+    fetch("/api/drivers?counts=1").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c) setCounts(c) }).catch(() => {})
+  }, [])
+  useEffect(() => { loadCounts() }, [loadCounts])
+
+  // เปลี่ยนแท็บ → sync ?status= ใน URL (deep-link ได้ เช่น sidebar "พ้นสภาพ" = /drivers?status=exit)
+  function changeStatus(k: StatusFilter) {
+    setStatusFilter(k)
+    const url = k ? `${window.location.pathname}?status=${k}` : window.location.pathname
+    window.history.replaceState(null, "", url)
+  }
 
   // เปิดพาเนล "เพิ่มพนักงานใหม่" พร้อมชื่อ/โทรจากดีล: /drivers?new=1&name=<ชื่อลูกค้า>&phone=<โทร>
   // (อ่าน window.location ตรงๆ แทน useSearchParams — ไม่ต้องห่อ Suspense; ล้าง query ทิ้งกัน F5 เด้งซ้ำ)
@@ -616,8 +674,8 @@ export default function DriversPage() {
   })
   const pg = usePagination(sort.sorted, 50, [q, statusFilter, onlyMissing, sort.sortKey, sort.sortDir])
 
-  const activeCount   = items.filter((d) => d.status === "active").length
-  const inactiveCount = items.filter((d) => d.status !== "active").length
+  const activeCount   = counts ? counts.paying + counts.paidoff : items.filter((d) => d.status === "active").length
+  const inactiveCount = counts ? counts.exit + counts.inactive : items.filter((d) => d.status !== "active").length
   const showPanel     = panelDriver !== null
   const editDriver    = panelDriver === "new" ? null : panelDriver
 
@@ -655,16 +713,20 @@ export default function DriversPage() {
         </div>
       </div>
 
+      <Suspense fallback={null}><StatusFromUrl onChange={setStatusFilter} /></Suspense>
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         {([
-          { key: "",         label: `ทั้งหมด (${items.length})` },
-          { key: "active",   label: `ใช้งาน (${activeCount})` },
-          { key: "inactive", label: `ไม่ใช้งาน (${inactiveCount})` },
+          { key: "",         label: `ทั้งหมด (${counts?.all ?? items.length})` },
+          { key: "paying",   label: `Active (ผ่อนชำระ) (${counts?.paying ?? "…"})` },
+          { key: "paidoff",  label: `Active (ปิดงวดแล้ว) (${counts?.paidoff ?? "…"})` },
+          { key: "exit",     label: `พ้นสภาพ (${counts?.exit ?? "…"})` },
+          { key: "inactive", label: `ไม่ใช้งาน (${counts?.inactive ?? "…"})` },
         ] as { key: StatusFilter; label: string }[]).map((f) => (
           <button
             key={f.key}
-            onClick={() => setStatusFilter(f.key)}
+            onClick={() => changeStatus(f.key)}
             className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
               statusFilter === f.key
                 ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
@@ -816,14 +878,7 @@ export default function DriversPage() {
 
                       {/* Status */}
                       <td className="px-3 py-2.5">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
-                          d.status === "active"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                            : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${d.status === "active" ? "bg-emerald-500" : "bg-zinc-400"}`} />
-                          {d.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
-                        </span>
+                        <DriverStatusBadge d={d} />
                       </td>
 
                       {/* Actions */}
@@ -872,7 +927,7 @@ export default function DriversPage() {
           driver={editDriver}
           prefill={panelDriver === "new" ? prefill : null}
           onClose={() => { setPanelDriver(null); setPrefill(null) }}
-          onSaved={load}
+          onSaved={() => { load(); loadCounts() }}
         />
       )}
 

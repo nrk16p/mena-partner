@@ -1,5 +1,7 @@
 export type ContractStatus = "active" | "completed" | "terminated"
 export type DriverStatus = "active" | "inactive"
+/** ประเภทพ้นสภาพ: paid_exit = ผ่อนหมดแล้ว ขอเอารถออกจากระบบ · early_exit = ผ่อนยังไม่หมด โดนปลด/ขอคืนรถ */
+export type ExitType = "paid_exit" | "early_exit"
 export type UserRole = "admin" | "viewer"
 
 export interface Vehicle {
@@ -171,8 +173,14 @@ export interface Driver {
   // ประวัติการทำงาน เช่น เคยเป็น พจส. ช่วงวันไหนถึงวันไหน (to ว่าง = ปัจจุบัน)
   workHistory?:   { role: string; from?: string; to?: string; note?: string }[]
   status:         DriverStatus
+  // พ้นสภาพ (ตั้งเมื่อ status → inactive ผ่าน POST /api/drivers/[id]/exit)
+  exitType?:      ExitType
+  exitReason?:    string
+  exitedAt?:      string   // ISO เวลาที่บันทึกพ้นสภาพ
   createdAt?: string
   updatedAt?: string
+  // derived โดย GET /api/drivers (เฉพาะ active) — ไม่เก็บใน DB
+  installmentState?: "paying" | "paidoff"
   // legacy — optional so old pages don't break at compile time
   contractCode?: string
   buyerName?:    string

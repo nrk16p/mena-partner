@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { computeInstallmentStates, type DriverListStatus } from "@/lib/driver-state"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "drivers"
@@ -7,7 +8,8 @@ const COLL = "drivers"
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const q      = searchParams.get("q")?.trim() ?? ""
-  const status = searchParams.get("status")?.trim() ?? ""
+  const status = (searchParams.get("status")?.trim() ?? "") as DriverListStatus
+  const wantCounts = searchParams.get("counts") === "1"
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {}
@@ -21,15 +23,44 @@ export async function GET(req: NextRequest) {
       { address:    { $regex: q, $options: "i" } },
     ]
   }
-  if (status) filter.status = status
+  if (status === "active" || status === "paying" || status === "paidoff") filter.status = "active"
+  else if (status === "exit")     { filter.status = "inactive"; filter.exitType = { $exists: true, $ne: null } }
+  else if (status === "inactive") { filter.status = "inactive"; filter.exitType = { $in: [null, ""] } }
+  else if (wantCounts)            { /* นับทุกสถานะ — ไม่กรอง */ }
 
   const client = await clientPromise
-  const items  = await client.db(DB).collection(COLL)
+  const db     = client.db(DB)
+  const raw    = await db.collection(COLL)
     .find(filter)
     .sort({ firstName: 1, lastName: 1 })
     .toArray()
 
-  return NextResponse.json(items)
+  // installmentState (derived) เฉพาะคนขับ active — จาก contracts + driver_ledger ค่างวดรถ
+  const states = await computeInstallmentStates(
+    db,
+    raw.filter((d) => d.status === "active").map((d) => String(d.contractCode ?? "")),
+  )
+  const items = raw.map((d) => {
+    if (d.status !== "active") return d
+    const code = String(d.contractCode ?? "").trim()
+    return { ...d, installmentState: code ? (states.get(code) ?? "paidoff") : "paidoff" }
+  })
+
+  if (wantCounts) {
+    // นับจากชุดเต็ม (ไม่ใช่ชุดที่กรอง) เพื่อให้ตัวเลขบนแท็บคงที่
+    const counts = { all: items.length, paying: 0, paidoff: 0, exit: 0, inactive: 0 }
+    for (const d of items) {
+      if (d.status === "active") { if (d.installmentState === "paidoff") counts.paidoff++; else counts.paying++ }
+      else if (d.exitType) counts.exit++
+      else counts.inactive++
+    }
+    return NextResponse.json(counts)
+  }
+
+  const filtered =
+    status === "paying"  ? items.filter((d) => d.installmentState === "paying")  :
+    status === "paidoff" ? items.filter((d) => d.installmentState === "paidoff") : items
+  return NextResponse.json(filtered)
 }
 
 export async function POST(req: NextRequest) {

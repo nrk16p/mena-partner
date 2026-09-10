@@ -12,7 +12,7 @@ Deep-link `/drivers?status=paying|paidoff|exit|inactive|` (sidebar highlight ต
 2. else driver_ledger ที่ `contractCode` เดียวกัน, `source.type === "vehicle_installment"`, status ∉ {cancelled}:
    ถ้ามี และทุกใบ `status === "paid"` หรือ `paidAmount >= principal - 0.005` → paidoff
    ถ้ามีและยังเหลือ → paying
-3. else ไม่มี ledger ค่างวด: `contracts.monthlyInstallment > 0` → paying, ไม่งั้น paidoff
+3. else ไม่มี ledger ค่างวด: ไม่มีสัญญาในระบบ → paying (คนขับใหม่/รหัสหาไม่เจอ ไม่ถือว่าปิดงวด); `contracts.monthlyInstallment > 0` → paying, ไม่งั้น paidoff
 ปุ่ม "ปิดงวด (ผ่อนครบ)" ในหน้าสัญญา → `contracts.status = "completed"` (+ log activity) — เฉพาะ admin/finance
 
 **พ้นสภาพ (exit)** — drivers ใหม่: `exitType: "paid_exit" | "early_exit"`, `exitReason: string`, `endDate`.
