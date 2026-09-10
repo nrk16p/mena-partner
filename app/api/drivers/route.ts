@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   const items = raw.map((d) => {
     if (d.status !== "active") return d
     const code = String(d.contractCode ?? "").trim()
-    return { ...d, installmentState: code ? (states.get(code) ?? "paidoff") : "paidoff" }
+    return { ...d, installmentState: code ? (states.get(code) ?? "paying") : "paying" }
   })
 
   if (wantCounts) {
