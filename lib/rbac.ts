@@ -50,7 +50,7 @@ export function hasPerm(role: string | undefined | null, domain: PermDomain): bo
 export const isAdminRole = (role?: string | null) => role === "admin" || role === "superadmin"
 
 /** ฝ่ายขาย: เข้าได้แค่หน้าราคาขาย (ดู) + ใบเสนอราคา/ดีล + หน้าหลัก */
-export const SALESPERSON_PAGES = ["/price-list", "/quotations"]
+export const SALESPERSON_PAGES = ["/price-list", "/quotations", "/catalog"]
 export function salespersonPageAllowed(pathname: string): boolean {
   if (pathname === "/") return true
   return SALESPERSON_PAGES.some((base) => pathname === base || pathname.startsWith(base + "/") || pathname.startsWith(base + "?"))
@@ -62,6 +62,7 @@ export function domainOfApiPath(pathname: string): PermDomain | null {
   if (p.startsWith("/api/drivers") || p.startsWith("/api/vehicles") || p.startsWith("/api/price-list")) return "masterdata"
   if (p.startsWith("/api/contracts")) return "contracts"
   if (p.startsWith("/api/quotations") || p.startsWith("/api/customers")) return "sales"
+  if (p.startsWith("/api/catalog")) return "masterdata"   // template catalog (route เช็ค masterdata ซ้ำ)
   if (p.startsWith("/api/promotions")) return "promotions"
   if (
     p.startsWith("/api/vehicle-cost") ||

@@ -181,7 +181,7 @@ export function Sidebar() {
           const visible = g0.items.filter((it) => !it.adminOnly || isAdmin)
           // ฝ่ายขาย: เหลือเฉพาะ ราคาขาย + ใบเสนอราคา
           const g = isSales
-            ? { ...g0, items: visible.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission") }
+            ? { ...g0, items: visible.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission" || it.href === "/catalog") }
             : { ...g0, items: visible }
           if (g.title && g.items.length === 0) return null
           if (!g.title) {

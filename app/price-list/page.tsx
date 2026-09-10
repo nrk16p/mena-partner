@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useMemo } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download, ExternalLink , FileText } from "lucide-react"
+import { Car, CreditCard, Banknote, Search, BarChart3, AlertTriangle, Wrench, X, Clock, PlusCircle, Pencil, Download, ExternalLink , FileText, BookImage } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ThaiDateInput } from "@/components/thai-date-input"
 import { usePagination, PaginationBar } from "@/components/pagination"
@@ -828,6 +828,14 @@ export default function PriceListPage() {
                           >
                             <FileText className="w-3 h-3 inline" />
                           </Link>
+                          <a
+                            href={`/api/catalog/${encodeURIComponent(r.licensePlate)}/pdf`}
+                            target="_blank" rel="noreferrer"
+                            title="Catalog PDF รถคันนี้"
+                            className="ml-1 align-middle text-zinc-300 hover:text-[#C9A227] dark:text-zinc-600"
+                          >
+                            <BookImage className="w-3 h-3 inline" />
+                          </a>
                           {isRepair && r.repairEnd && dLeft !== null && (
                             <div
                               className={`text-[9px] font-semibold mt-0.5 tabular-nums ${
