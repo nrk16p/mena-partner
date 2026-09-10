@@ -24,7 +24,15 @@ export interface Vehicle {
   dataExpectedDate?: string  // YYYY-MM-DD วันที่คาดว่าจะเก็บข้อมูลครบ (ถ้ายังไม่ครบ)
   createdAt?: string
   updatedAt?: string
+  // ── derived โดย GET /api/vehicles (ไม่ได้เก็บใน DB) ──
+  fleetState?: FleetState   // สถานะฝูงรถ: วิ่งงานอยู่ / พร้อมขาย / ระหว่างดำเนินการ / ไม่ใช้งาน
+  saleStatus?: SaleStatus | null  // จาก master_price_list (ถ้ามีแถวราคาขาย)
+  contractCode?: string     // รหัสสัญญา active ที่ผูกทะเบียนนี้ (ถ้าวิ่งงานอยู่)
 }
+
+/** สถานะฝูงรถ (derived): working=มีสัญญา active · ready=ว่าง+พร้อมขาย · preparing=ว่าง+ยังไม่พร้อม · inactive=ไม่ใช้งาน */
+export type FleetState = "working" | "ready" | "preparing" | "inactive"
+export type SaleStatus = "ready" | "repair15" | "repair30" | "review"
 
 export interface Contract {
   _id?: string

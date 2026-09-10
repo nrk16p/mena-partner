@@ -500,7 +500,18 @@ const TABLE_COLS = [
   { key: "data",      label: "ข้อมูล",             w: "w-28" },
 ]
 
-type StatusFilter = "" | "active" | "inactive"
+type StatusFilter = "" | "working" | "ready" | "preparing" | "inactive"
+
+/** ป้ายสถานะฝูงรถ (fleetState จาก API) + ป้ายย่อย saleStatus */
+const FLEET_META: Record<string, { label: string; cls: string; dot: string }> = {
+  working:   { label: "วิ่งงานอยู่",          cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400", dot: "bg-emerald-500" },
+  ready:     { label: "พร้อมขาย",             cls: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",         dot: "bg-amber-500" },
+  preparing: { label: "ระหว่างดำเนินการ",     cls: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",                 dot: "bg-sky-500" },
+  inactive:  { label: "ไม่ใช้งาน",            cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",               dot: "bg-zinc-400" },
+}
+const SALE_SUB: Record<string, string> = {
+  ready: "", repair15: "รอซ่อม 15 วัน", repair30: "รอซ่อม 30 วัน", review: "ยังไม่ได้เริ่มดำเนินการ",
+}
 
 export default function VehiclesPage() {
   const [items, setItems]               = useState<Vehicle[]>([])
@@ -586,8 +597,7 @@ export default function VehiclesPage() {
   const filtered = useMemo(() => {
     const lq = q.toLowerCase()
     return items.filter((v) => {
-      if (statusFilter === "active"   && v.status !== "active") return false
-      if (statusFilter === "inactive" && v.status === "active") return false
+      if (statusFilter && (v.fleetState ?? (v.status === "inactive" ? "inactive" : "preparing")) !== statusFilter) return false
       if (typeFilter && vType(v) !== typeFilter) return false
       if (dataFilter === "complete"   && !isVehicleComplete(v)) return false
       if (dataFilter === "incomplete" && isVehicleComplete(v)) return false
@@ -601,6 +611,10 @@ export default function VehiclesPage() {
   // ── pagination: สูงสุด 50 คัน/หน้า ──
   const pg = usePagination(filtered, 50, [q, statusFilter, typeFilter, dataFilter])
 
+  const fleetOf       = (v: Vehicle) => v.fleetState ?? (v.status === "inactive" ? "inactive" : "preparing")
+  const workingCount   = items.filter((v) => fleetOf(v) === "working").length
+  const readyCount     = items.filter((v) => fleetOf(v) === "ready").length
+  const preparingCount = items.filter((v) => fleetOf(v) === "preparing").length
   const activeCount   = items.filter((v) => v.status === "active").length
   const inactiveCount = items.filter((v) => v.status !== "active").length
   const mixerCount    = items.filter((v) => vType(v) === "mixer").length
@@ -625,7 +639,7 @@ export default function VehiclesPage() {
       "เลขตัวถัง":     v.chassisNumber ?? "",
       "เลขเครื่อง":    v.engineNumber  ?? "",
       "กำลังเครื่อง":  v.engineSize    ?? "",
-      "สถานะ":         v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน",
+      "สถานะ":         FLEET_META[fleetOf(v)].label,
       "ข้อมูลครบถ้วน": isVehicleComplete(v) ? "ครบ" : "ไม่ครบ",
       "วันที่คาดจะเสร็จ": isVehicleComplete(v) ? "" : (v.dataExpectedDate ?? ""),
     }))
@@ -689,8 +703,10 @@ export default function VehiclesPage() {
       <div className="flex items-center gap-2 flex-wrap">
         {([
           { key: "",         label: `ทั้งหมด (${items.length})` },
-          { key: "active",   label: `ใช้งาน (${activeCount})` },
-          { key: "inactive", label: `ไม่ใช้งาน (${inactiveCount})` },
+          { key: "working",   label: `รถวิ่งงานอยู่ (${workingCount})` },
+          { key: "ready",     label: `รถพร้อมขาย (${readyCount})` },
+          { key: "preparing", label: `รถอยู่ระหว่างดำเนินการให้พร้อมขาย (${preparingCount})` },
+          { key: "inactive",  label: `ไม่ใช้งาน (${inactiveCount})` },
         ] as { key: StatusFilter; label: string }[]).map((f) => (
           <button
             key={f.key}
@@ -833,14 +849,19 @@ export default function VehiclesPage() {
 
                     {/* สถานะ */}
                     <td className="px-2.5 py-2 align-top">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
-                        v.status === "active"
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                          : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${v.status === "active" ? "bg-emerald-500" : "bg-zinc-400"}`} />
-                        {v.status === "active" ? "ใช้งาน" : "ไม่ใช้งาน"}
-                      </span>
+                      {(() => {
+                        const fm  = FLEET_META[fleetOf(v)]
+                        const sub = fleetOf(v) === "preparing" ? (v.saleStatus ? SALE_SUB[v.saleStatus] : "ยังไม่ระบุ") : ""
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] w-fit ${fm.cls}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${fm.dot}`} />
+                              {fm.label}{fleetOf(v) === "working" && v.contractCode ? ` · ${v.contractCode}` : ""}
+                            </span>
+                            {sub && <span className="text-[10px] text-zinc-400 pl-1">{sub}</span>}
+                          </div>
+                        )
+                      })()}
                     </td>
 
                     {/* ข้อมูลครบ / ไม่ครบ (ยึด tick box manual) */}

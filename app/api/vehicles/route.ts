@@ -38,12 +38,37 @@ export async function GET(req: NextRequest) {
   if (status) filter.status = status
 
   const client = await clientPromise
-  const items  = await client.db(DB).collection(COLL)
-    .find(filter)
-    .sort({ truckNumber: 1, licensePlate: 1 })
-    .toArray()
+  const db     = client.db(DB)
+  const [items, contracts, prices] = await Promise.all([
+    db.collection(COLL).find(filter).sort({ truckNumber: 1, licensePlate: 1 }).toArray(),
+    db.collection("contracts").find({ status: "active" }, { projection: { licensePlate: 1, contractCode: 1 } }).toArray(),
+    db.collection("master_price_list").find({}, { projection: { licensePlate: 1, saleStatus: 1 } }).toArray(),
+  ])
 
-  return NextResponse.json(items)
+  // fleetState (derived): working = ทะเบียนมีสัญญา active · ready = ว่าง + saleStatus ready
+  // · preparing = ว่าง + ยังไม่พร้อม (รอซ่อม/ยังไม่เริ่ม/ไม่ระบุ/ไม่มีแถวราคา) · inactive = vehicle.status inactive
+  const contractByPlate = new Map<string, string>()
+  for (const c of contracts) {
+    const k = normPlate(c.licensePlate as string)
+    if (k && !contractByPlate.has(k)) contractByPlate.set(k, String(c.contractCode ?? ""))
+  }
+  const saleByPlate = new Map<string, string | null>()
+  for (const r of prices) {
+    const k = normPlate(r.licensePlate as string)
+    if (k) saleByPlate.set(k, (r.saleStatus as string | null) ?? null)
+  }
+  const enriched = items.map((v) => {
+    const k = normPlate(v.licensePlate as string)
+    const contractCode = contractByPlate.get(k)
+    const saleStatus   = saleByPlate.has(k) ? saleByPlate.get(k) : null
+    const fleetState =
+      v.status === "inactive"     ? "inactive" :
+      contractCode !== undefined  ? "working" :
+      saleStatus === "ready"      ? "ready" : "preparing"
+    return { ...v, fleetState, saleStatus, contractCode: contractCode || undefined }
+  })
+
+  return NextResponse.json(enriched)
 }
 
 export async function POST(req: NextRequest) {
