@@ -80,6 +80,8 @@ export interface Contract {
   notes: string
   ledgerDebtCode?: string       // ถ้าสร้างรายการผ่อนรถใน driver-ledger แล้ว (ผ่อนจริง+หลักฐาน)
   ledgerConvertedAt?: string
+  completedAt?: string | null   // ปิดงวดเอง (POST /api/contracts/[id]/close)
+  completedBy?: string | null
   locked?: { by: string; at: string } | null  // 🔒 ล็อคโดยแอดมิน — ห้ามแก้จนกว่าจะปลด
   // Insurance / tax fields (from ภาษี ประกัน พรบ sheet)
   insurer?: string

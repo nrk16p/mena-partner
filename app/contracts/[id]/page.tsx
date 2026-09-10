@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -691,6 +692,48 @@ export default function ContractDetailPage() {
               }`}
             >
               {form.locked ? "🔓 ปลดล็อค" : "🔒 ล็อคสัญญา"}
+            </button>
+          )}
+        </div>
+      )}
+      {/* ปิดงวดเอง (ผ่อนครบ) — สัญญา active ⇄ completed; คนขับขึ้นแท็บ "Active (ปิดงวดแล้ว)" */}
+      {step === 0 && (
+        <div className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+          form.status === "completed"
+            ? "border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/30"
+            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+        }`}>
+          <div className="text-xs">
+            {form.status === "completed" ? (
+              <span className="font-semibold text-sky-700 dark:text-sky-300">✅ ปิดงวดแล้ว (ผ่อนครบ) — คนขับอยู่ในกลุ่ม Active (ปิดงวดแล้ว)</span>
+            ) : form.status === "terminated" ? (
+              <span className="font-semibold text-rose-600">สัญญาถูกยกเลิก</span>
+            ) : (
+              <span className="text-zinc-500">ค่างวดรถ: ระบบนับจาก ledger อัตโนมัติ — ถ้าผ่อนครบแล้วแต่ยังไม่ขึ้น กด "ปิดงวด" ได้เลย</span>
+            )}
+          </div>
+          {form.status !== "terminated" && (
+            <button
+              type="button"
+              onClick={async () => {
+                const reopen = form.status === "completed"
+                const ok = await confirm(reopen
+                  ? { title: "เปิดสัญญาใหม่?", description: `${form.contractCode} จะกลับเป็นสถานะใช้งาน (ผ่อนชำระ)`, confirmText: "เปิดใหม่" }
+                  : { title: "ปิดงวดสัญญานี้?", description: `${form.contractCode} — ยืนยันว่าผ่อนชำระค่างวดรถครบแล้ว คนขับจะย้ายไปกลุ่ม Active (ปิดงวดแล้ว)`, confirmText: "ปิดงวด (ผ่อนครบ)" })
+                if (!ok) return
+                const r = await fetch(`/api/contracts/${id}/close`, {
+                  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reopen }),
+                })
+                if (r.ok) { toast.success(reopen ? "เปิดสัญญาใหม่แล้ว" : "ปิดงวดแล้ว"); reloadContract() }
+                else toast.error((await r.json().catch(() => ({}))).error ?? "ไม่สำเร็จ")
+              }}
+              className={`shrink-0 text-xs font-semibold rounded-lg px-3 py-1.5 border ${
+                form.status === "completed"
+                  ? "text-zinc-600 border-zinc-300 bg-white hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-300"
+                  : "text-sky-700 border-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:border-sky-800 dark:text-sky-300"
+              }`}
+            >
+              {form.status === "completed" ? "เปิดสัญญาใหม่" : "✅ ปิดงวด (ผ่อนครบ)"}
             </button>
           )}
         </div>
