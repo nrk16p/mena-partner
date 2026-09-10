@@ -14,6 +14,7 @@ import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react"
 const TH_MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"]
 const TH_MONTHS_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
 const TH_DOW = ["อา","จ","อ","พ","พฤ","ศ","ส"]
+const MENU_W = 264
 
 function parseISO(v: string): { y: number; m: number; d: number } | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || "")
@@ -50,7 +51,11 @@ export function ThaiDateInput({ value, onChange, disabled, placeholder = "เล
 
   const updatePos = () => {
     const r = ref.current?.getBoundingClientRect()
-    if (r) setPos({ top: r.bottom + 4, left: r.left })
+    if (!r) return
+    // clamp ให้เมนูอยู่ในจอเสมอ — ช่องที่อยู่คอลัมน์ขวา (เช่น วันหมดอายุ ใน side panel)
+    // เคยล้นขอบขวา ทำให้ปุ่มเดือนถัดไปอยู่นอกจอ กดไม่ได้
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - MENU_W - 8))
+    setPos({ top: r.bottom + 4, left })
   }
 
   useEffect(() => {
@@ -116,7 +121,7 @@ export function ThaiDateInput({ value, onChange, disabled, placeholder = "เล
       {open && pos && createPortal(
         <div
           ref={menuRef}
-          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999, width: 264 }}
+          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999, width: MENU_W }}
           className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg p-3"
         >
           <div className="flex items-center justify-between mb-2">
