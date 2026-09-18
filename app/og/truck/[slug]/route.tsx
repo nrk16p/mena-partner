@@ -10,7 +10,7 @@ export const revalidate = 600
 /** satori ไม่อ่าน EXIF orientation (รูปจากมือถือหมุน 90°) → หมุน+ครอปด้วย sharp ก่อน เหมือน catalog PDF */
 async function photoDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    const res = await fetch(url, { signal: AbortSignal.timeout(20000) })
     if (!res.ok) return null
     const out = await sharp(Buffer.from(await res.arrayBuffer()))
       .rotate().resize({ width: 1200, height: 420, fit: "cover" }).jpeg({ quality: 78 }).toBuffer()
