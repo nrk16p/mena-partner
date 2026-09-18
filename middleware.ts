@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { domainOfApiPath, hasPerm, isAdminRole, canUpload, salespersonPageAllowed } from "@/lib/rbac"
+import { isPublicPath } from "@/lib/public-routes"
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
 
@@ -10,6 +11,11 @@ export async function middleware(request: NextRequest) {
 
   // Allow auth API and login page through
   if (pathname.startsWith("/api/auth") || pathname === "/login") {
+    return NextResponse.next()
+  }
+
+  // หน้าเว็บขายรถสาธารณะ — ไม่ต้อง login (allowlist แคบ ๆ ใน lib/public-routes.ts)
+  if (isPublicPath(pathname)) {
     return NextResponse.next()
   }
 

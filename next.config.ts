@@ -14,10 +14,12 @@ const nextConfig: NextConfig = {
     "/api/quotations/[id]/pdf": ["./fonts/**"],
     "/api/catalog/[plate]/pdf": ["./fonts/**"],
     "/api/catalog/pdf": ["./fonts/**"],
+    "/og/truck/[slug]": ["./fonts/**"],
   },
-  // รูปอัปโหลด (สำเนาเอกสาร) เสิร์ฟผ่าน next/image ได้เร็วขึ้น
+  // รูปอัปโหลด (สำเนาเอกสาร/รูปรถบน DO Spaces) เสิร์ฟผ่าน next/image ได้เร็วขึ้น
   images: {
     formats: ["image/avif", "image/webp"],
+    remotePatterns: [{ protocol: "https", hostname: "*.digitaloceanspaces.com" }],
   },
 };
 

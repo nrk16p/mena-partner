@@ -1,7 +1,6 @@
 import "./globals.css"
 import { Inter, JetBrains_Mono, Noto_Sans_Thai } from "next/font/google"
 import { Providers } from "@/components/providers"
-import { AppShell } from "@/components/app-shell"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "sonner"
 import { ConfirmHost } from "@/components/ui/confirm"
@@ -29,6 +28,8 @@ const jbMono = JetBrains_Mono({
 
 export const metadata = { title: "Mena Partner Driver", description: "ระบบเงินเดือนรถร่วม Mixer" }
 
+// Root layout ครอบทั้งระบบภายใน (app) และหน้าสาธารณะ (public) — shell/ความสูงจอ
+// อยู่ใน layout ของแต่ละ route group เพราะหน้าสาธารณะต้อง scroll ยาวตามปกติ
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" suppressHydrationWarning className={`${inter.variable} ${notoThai.variable} ${jbMono.variable}`}>
@@ -36,10 +37,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")!=="light")document.documentElement.classList.add("dark")}catch(e){document.documentElement.classList.add("dark")}` }} />
       </head>
-      <body className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+      <body className="bg-zinc-50 dark:bg-zinc-950">
+        <Providers>{children}</Providers>
         <ConfirmHost />
         <Toaster richColors position="top-center" toastOptions={{ style: { fontFamily: "var(--font-noto-thai)" } }} />
         <Analytics />
