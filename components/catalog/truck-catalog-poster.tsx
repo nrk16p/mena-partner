@@ -30,6 +30,7 @@ export interface TruckCatalog {
   status: string
   price: number
   monthlyPayment: number
+  installments?: number       // จำนวนงวดผ่อน (แสดง × N งวด)
   heroImage: string
   gallery: GalleryItem[]
   quote: string
@@ -37,6 +38,7 @@ export interface TruckCatalog {
   promotions: Promotion[]
   contactPhone?: string
   lineId?: string
+  logoUrl?: string            // โลโก้บริษัทท้ายโปสเตอร์ (default /mena-logo.jpg)
 }
 
 /** โทเคนสีแบรนด์ — override ได้บางตัว */
@@ -105,12 +107,13 @@ export const MOCK_TRUCK: TruckCatalog = {
   status: "พร้อมขาย",
   price: 1_698_591,
   monthlyPayment: 16_652,
+  installments: 72,
   heroImage: PLACEHOLDER(1024, 620, "NISSAN ME135"),
   gallery: [
     { src: PLACEHOLDER(400, 300, "Front"), caption: "ด้านหน้า" },
-    { src: PLACEHOLDER(400, 300, "Left"), caption: "ด้านซ้าย" },
-    { src: PLACEHOLDER(400, 300, "Right"),  caption: "ด้านขวา" },
-    { src: PLACEHOLDER(400, 300, "Back"), caption: "ด้านหลัง" },
+    { src: PLACEHOLDER(400, 300, "Back"),  caption: "ด้านหลัง" },
+    { src: PLACEHOLDER(400, 300, "Right"), caption: "ด้านขวา" },
+    { src: PLACEHOLDER(400, 300, "Left"),  caption: "ด้านซ้าย" },
   ],
   quote: "ซื้อรถกับเรา ไม่ใช่แค่ได้รถ แต่ได้งานวิ่งตั้งแต่วันแรก",
   highlights: [
@@ -137,6 +140,7 @@ export const MOCK_TRUCK: TruckCatalog = {
   ],
   contactPhone: "",
   lineId: "",
+  logoUrl: "/mena-logo.jpg",
 }
 
 const PROMO_ICONS = [<Gift key="g" className="w-10 h-10" />, <Wrench key="w" className="w-10 h-10" />, <ShieldCheck key="s" className="w-10 h-10" />]
@@ -189,11 +193,10 @@ function Header({ quote, highlights }: { quote: string; highlights: string[] }) 
           <Crown className="w-6 h-6 text-[var(--mt-gold)]" strokeWidth={2} />
         </div>
         {/* ป้าย: ขอบทองนอก + เส้นทองอ่อนใน + แสงสะท้อนบน */}
-        <div className={`relative rounded-[22px] border-2 border-[var(--mt-gold)] bg-[image:var(--mt-green-grad)] px-12 pt-7 pb-5 ${T.shadow}`}>
+        <div className={`relative rounded-[22px] border-2 border-[var(--mt-gold)] bg-[image:var(--mt-green-grad)] px-12 pt-8 pb-5 ${T.shadow}`}>
           <div aria-hidden className="absolute inset-[5px] rounded-[16px] border border-[var(--mt-gold-light)]/45" />
           <div aria-hidden className="absolute inset-x-[5px] top-[5px] h-1/2 rounded-t-[16px] bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent)]" />
-          <p className="relative text-[11px] @3xl:text-xs tracking-[0.42em] font-semibold text-[var(--mt-gold-light)] uppercase">Used Mixer Truck</p>
-          <h1 className={`relative mt-1 text-4xl @3xl:text-[64px] font-black italic leading-[1.05] pr-2 ${T.goldText} [text-shadow:0_2px_0_rgba(0,0,0,0.0)]`}>เถ้าแก่น้อยมีนา</h1>
+          <h1 className={`relative text-4xl @3xl:text-[64px] font-black italic leading-[1.05] pr-2 ${T.goldText} [text-shadow:0_2px_0_rgba(0,0,0,0.0)]`}>เถ้าแก่น้อยมีนา</h1>
         </div>
         {/* ริบบิ้นปลายบาก */}
         <div className={`relative mx-auto -mt-3.5 w-fit px-9 py-1.5 text-[11px] @3xl:text-xs font-bold tracking-[0.22em] text-[#3F3000] ${T.goldBg} [clip-path:polygon(0_0,100%_0,calc(100%-10px)_50%,100%_100%,0_100%,10px_50%)]`}>
@@ -267,7 +270,7 @@ function SpecCard({ brand, modelCode, plate, specs, status }: Pick<TruckCatalog,
 }
 
 /** 2b. PriceBlock — ราคารถ + ผ่อนต่อเดือน พื้นเขียวไล่เฉด มีแสงกวาดทแยง + ลายน้ำ ฿ */
-function PriceBlock({ price, monthlyPayment }: Pick<TruckCatalog, "price" | "monthlyPayment">) {
+function PriceBlock({ price, monthlyPayment, installments }: Pick<TruckCatalog, "price" | "monthlyPayment" | "installments">) {
   return (
     <div className={`relative overflow-hidden rounded-3xl ${T.greenGrad} text-white px-6 py-5 @3xl:px-8 @3xl:py-6 ${T.shadow} ring-1 ring-[var(--mt-gold)]/50 grid gap-4 @3xl:grid-cols-2 items-end`}>
       <div aria-hidden className="absolute -inset-y-10 -left-1/4 w-1/2 rotate-[20deg] bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
@@ -286,6 +289,11 @@ function PriceBlock({ price, monthlyPayment }: Pick<TruckCatalog, "price" | "mon
           <span className={`text-4xl @3xl:text-[56px] font-black ${T.numeral} ${T.goldText}`}>{baht(monthlyPayment)}</span>
           <span className="ml-2 text-base text-[var(--mt-gold-light)]">บาท</span>
         </p>
+        {!!installments && (
+          <p className="mt-2 text-sm @3xl:text-base text-[var(--mt-gold-light)]">
+            ผ่อน <span className="font-black text-white text-lg @3xl:text-xl">{installments}</span> งวด
+          </p>
+        )}
       </div>
     </div>
   )
@@ -315,7 +323,7 @@ function HeroSection({ truck }: { truck: TruckCatalog }) {
         </div>
       </div>
       <div className="mt-6 @3xl:mt-16">
-        <PriceBlock price={truck.price} monthlyPayment={truck.monthlyPayment} />
+        <PriceBlock price={truck.price} monthlyPayment={truck.monthlyPayment} installments={truck.installments} />
       </div>
     </section>
   )
@@ -344,16 +352,19 @@ function Gallery({ items }: { items: GalleryItem[] }) {
 /** 4. PromoBanner — แถบเขียวขอบบาก เลขจำนวนต่อเป็นเหรียญทอง */
 function PromoBanner({ count }: { count: number }) {
   return (
-    <section className={`relative mt-9 ${T.greenGrad} text-white px-8 py-5 flex flex-wrap items-center justify-between gap-3 overflow-hidden [clip-path:polygon(0_0,100%_0,100%_calc(100%-10px),50%_100%,0_calc(100%-10px))]`}>
+    <section className={`relative mt-10 ${T.greenGrad} text-white px-8 pt-7 pb-8 flex flex-wrap items-center justify-between gap-4 overflow-hidden [clip-path:polygon(0_0,100%_0,100%_calc(100%-10px),50%_100%,0_calc(100%-10px))]`}>
       {/* ลายเส้นทองทแยงจาง ๆ ด้านขวา */}
       <div aria-hidden className="absolute inset-y-0 right-0 w-1/3 bg-[repeating-linear-gradient(-45deg,transparent_0,transparent_10px,rgba(201,162,39,0.10)_10px,rgba(201,162,39,0.10)_12px)]" />
       <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-[image:var(--mt-gold-grad)]" />
-      <p className="relative text-2xl @3xl:text-3xl font-black flex items-center gap-3">
-        <Sparkles className="w-6 h-6 text-[var(--mt-gold)]" />
-        รับโปรโมชั่นพิเศษ
-        <span className={`inline-grid place-items-center w-14 h-14 @3xl:w-16 @3xl:h-16 rounded-full ${T.goldBg} text-[#3F3000] text-4xl @3xl:text-5xl font-black leading-none ring-2 ring-[var(--mt-green-dark)] shadow-[0_0_0_2px_var(--mt-gold-light),0_8px_16px_-6px_rgba(0,0,0,0.5)]`}>{count}</span>
-        ต่อ!
-      </p>
+      <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1">
+        <p className="text-3xl @3xl:text-[40px] font-black flex items-center gap-3 leading-none">
+          <Sparkles className="w-7 h-7 text-[var(--mt-gold)]" />
+          รับโปรโมชั่นพิเศษ
+          <span className={`inline-grid place-items-center w-16 h-16 @3xl:w-20 @3xl:h-20 rounded-full ${T.goldBg} text-[#3F3000] text-5xl @3xl:text-6xl font-black leading-none ring-2 ring-[var(--mt-green-dark)] shadow-[0_0_0_2px_var(--mt-gold-light),0_8px_16px_-6px_rgba(0,0,0,0.5)]`}>{count}</span>
+          ต่อ!
+        </p>
+        <p className={`text-2xl @3xl:text-[32px] font-black leading-none ${T.goldText}`}>ตลอดอายุสัญญา</p>
+      </div>
       <p className="relative italic text-sm @3xl:text-base text-[var(--mt-gold-light)] pb-2">เป็นเจ้าของรถ…ง่ายกว่าที่คิด</p>
     </section>
   )
@@ -364,22 +375,22 @@ function PromoCard({ promo, index, highlight }: { promo: Promotion; index: numbe
   const icon = promo.icon ?? PROMO_ICONS[index % PROMO_ICONS.length]
   return (
     <article className={`relative rounded-2xl bg-white overflow-hidden ${T.shadowSoft} ${T.goldRing} flex flex-col`}>
-      <header className="relative bg-[image:var(--mt-green-grad)] text-white px-4 py-3 rounded-b-2xl flex items-center gap-3">
+      <header className="relative bg-[image:var(--mt-green-grad)] text-white px-5 py-4 rounded-b-2xl flex items-center gap-3">
         <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-[var(--mt-gold)]/80" />
-        <span className={`shrink-0 px-3 py-0.5 text-[11px] font-black text-[#3F3000] ${T.goldBg} [clip-path:polygon(0_0,100%_0,calc(100%-6px)_50%,100%_100%,0_100%,6px_50%)]`}>{promo.badge}</span>
-        <h3 className="font-bold leading-tight">{promo.title}</h3>
+        <span className={`shrink-0 px-3.5 py-1 text-sm font-black text-[#3F3000] ${T.goldBg} [clip-path:polygon(0_0,100%_0,calc(100%-7px)_50%,100%_100%,0_100%,7px_50%)]`}>{promo.badge}</span>
+        <h3 className="text-xl @3xl:text-2xl font-black leading-tight">{promo.title}</h3>
       </header>
-      <div className="relative px-4 pt-4 pb-16 text-sm leading-relaxed text-[var(--mt-green-dark)] flex-1">
+      <div className="relative px-5 pt-5 pb-24 text-base @3xl:text-lg leading-relaxed text-[var(--mt-green-dark)] flex-1 min-h-[220px]">
         {promo.body}
         {highlight && (
-          <div className="mt-3 rounded-xl border border-[var(--mt-gold)] bg-[linear-gradient(180deg,#FBF7EA,var(--mt-cream))] px-3 py-2 text-xs font-semibold text-[var(--mt-green-dark)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <div className="mt-4 rounded-xl border border-[var(--mt-gold)] bg-[linear-gradient(180deg,#FBF7EA,var(--mt-cream))] px-4 py-2.5 text-sm font-semibold text-[var(--mt-green-dark)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
             เงื่อนไข: ชำระค่างวดตรงเวลาต่อเนื่องตามรอบสัญญา
           </div>
         )}
       </div>
       {/* ไอคอนลายน้ำใหญ่จาง ๆ + ไอคอนจริง มุมล่างขวา */}
-      <div aria-hidden className="absolute -right-4 -bottom-5 text-[var(--mt-green)] opacity-[0.07] [&>svg]:w-28 [&>svg]:h-28">{icon}</div>
-      <div className="absolute right-3 bottom-3 text-[var(--mt-gold)]">{icon}</div>
+      <div aria-hidden className="absolute -right-6 -bottom-8 text-[var(--mt-green)] opacity-[0.07] [&>svg]:w-40 [&>svg]:h-40">{icon}</div>
+      <div className="absolute right-4 bottom-4 text-[var(--mt-gold)] [&>svg]:w-14 [&>svg]:h-14">{icon}</div>
     </article>
   )
 }
@@ -394,7 +405,7 @@ function Field({ value, placeholder }: { value?: string; placeholder: string }) 
 }
 
 /** 6. Footer — ช่องติดต่อ + โลโก้ + แถบทองลายเพชรปิดท้าย */
-function Footer({ contactPhone, lineId }: { contactPhone?: string; lineId?: string }) {
+function Footer({ contactPhone, lineId, logoUrl }: { contactPhone?: string; lineId?: string; logoUrl?: string }) {
   return (
     <footer className="mt-8">
       <GoldRule />
@@ -413,9 +424,12 @@ function Footer({ contactPhone, lineId }: { contactPhone?: string; lineId?: stri
             <Field value={lineId} placeholder="@menatransport" />
           </div>
         </div>
-        <div className="@3xl:text-right">
-          <p className="text-2xl font-black tracking-wide leading-none text-[var(--mt-green-dark)]">MENA <span className={T.goldText}>TRANSPORT</span></p>
-          <p className="mt-1 text-[10px] tracking-[0.32em] text-[var(--mt-green-light)]">MOVE FOR A BETTER TOMORROW</p>
+        <div className="@3xl:justify-self-end">
+          {/* โลโก้บริษัท (jpg พื้นขาว → วางบนชิปขาวขอบทอง) */}
+          <div className={`inline-block rounded-xl bg-white px-4 py-2.5 ${T.shadowSoft} ${T.goldRing}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl || "/mena-logo.jpg"} alt="MENA TRANSPORT" className="h-9 @3xl:h-10 w-auto" />
+          </div>
         </div>
       </div>
       <div className={`relative ${T.goldBg} text-center text-[11px] font-bold tracking-[0.28em] text-[#3F3000] py-2.5 pb-4`}>
@@ -467,7 +481,7 @@ export default function TruckCatalogPoster({
             </section>
           </>
         )}
-        <Footer contactPhone={truck.contactPhone} lineId={truck.lineId} />
+        <Footer contactPhone={truck.contactPhone} lineId={truck.lineId} logoUrl={truck.logoUrl} />
       </div>
     </>
   )

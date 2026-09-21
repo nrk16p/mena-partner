@@ -12,6 +12,8 @@ import type { TruckCatalog } from "@/components/catalog/truck-catalog-poster"
 const SALE_STATUS_LABEL: Record<string, string> = {
   ready: "พร้อมขาย", repair15: "ซ่อม 15 วัน", repair30: "ซ่อม 30 วัน", review: "รอตรวจสภาพ",
 }
+/** ราคาบนโปสเตอร์ปัดขึ้นเป็นเลขกลม: ราคารถ → หมื่น, ค่างวด → ร้อย (ตัวเลขจริงยังอยู่ใน PDF/ระบบ) */
+const ceilTo = (n: number, unit: number) => (n > 0 ? Math.ceil(n / unit) * unit : 0)
 const beYear = (d?: string) => { const y = Number(String(d ?? "").slice(0, 4)); return y > 1900 ? y + 543 : null }
 
 /** promoLines (ข้อความสำเร็จรูป) → การ์ดโปรฯ: ชื่อสั้นตามชนิด, เนื้อหา = บรรทัดเต็ม */
@@ -23,7 +25,7 @@ function promotionsFrom(lines: string[]): TruckCatalog["promotions"] {
 
 export function toPosterData(v: CatalogVehicle, cfg: CatalogConfig): TruckCatalog {
   const ph = v.photos ?? {}
-  const hero = v.photoUrl || ph.front || ""
+  // รูปแรก = ด้านซ้าย (เห็นตัวรถทั้งคัน) ถ้าไม่มีค่อยถอยไปหน้า
   const year = beYear(v.registrationDate)
   return {
     brand: v.brand || "—",
@@ -35,20 +37,22 @@ export function toPosterData(v: CatalogVehicle, cfg: CatalogConfig): TruckCatalo
       { label: "ปีจดทะเบียน", value: year ? String(year) : "—" },
     ],
     status: SALE_STATUS_LABEL[v.saleStatus ?? ""] ?? (v.saleStatus || "—"),
-    price: v.totalSalePrice ?? 0,
-    monthlyPayment: v.monthlyPayment ?? 0,
-    heroImage: hero,
+    price: ceilTo(v.totalSalePrice ?? 0, 10_000),
+    monthlyPayment: ceilTo(v.monthlyPayment ?? 0, 100),
+    installments: v.financeInstallments || undefined,
+    heroImage: ph.left || ph.front || v.photoUrl || "",
     gallery: [
       { src: ph.front ?? "", caption: "ด้านหน้า" },
-      { src: ph.left ?? "", caption: "ด้านซ้าย" },
-      { src: ph.right ?? "", caption: "ด้านขวา" },
       { src: ph.back ?? "", caption: "ด้านหลัง" },
+      { src: ph.right ?? "", caption: "ด้านขวา" },
+      { src: ph.left ?? "", caption: "ด้านซ้าย" },
     ].filter((g) => g.src),
     quote: cfg.tagline,
     highlights: cfg.sellingPoints.slice(0, 3),
     promotions: promotionsFrom(v.promoLines),
     contactPhone: cfg.contactPhone,
     lineId: cfg.contactLine,
+    logoUrl: "/mena-logo.jpg",
   }
 }
 
