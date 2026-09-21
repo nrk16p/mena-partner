@@ -52,6 +52,7 @@ export interface CatalogVehicle {
   hasPrice: boolean
   // โปรโมชั่น (promotion_master)
   promoLines: string[]
+  promo?: { pro1Condition: string; pro1FreeCount: number; pro1TotalValue: number; pro2RepairBudget: number; pro3AnnualPm: number }
 }
 
 /** โหลดข้อมูลรถสำหรับ catalog — plates ว่าง = ทุกคันที่พร้อมขาย (saleStatus ready + ไม่มีสัญญา active) */
@@ -103,6 +104,7 @@ export async function loadCatalogVehicles(db: Db, plates?: string[]): Promise<Ca
       financeAmount: n(p?.financeAmount), financeInstallments: n(p?.financeInstallments), monthlyPayment: n(p?.monthlyPayment),
       saleStatus: (p?.saleStatus as string | null) ?? null, hasPrice: !!p,
       promoLines,
+      promo: m ? { pro1Condition: String(m.pro1Condition ?? ""), pro1FreeCount: n(m.pro1FreeCount), pro1TotalValue: n(m.pro1TotalValue), pro2RepairBudget: n(m.pro2RepairBudget), pro3AnnualPm: n(m.pro3AnnualPm) } : undefined,
     }
   })
 }

@@ -20,7 +20,7 @@ import {
 
 export interface TruckSpec { label: string; value: string }
 export interface GalleryItem { src: string; caption: string }
-export interface Promotion { badge: string; title: string; body: ReactNode; icon?: ReactNode }
+export interface Promotion { badge: string; title: string; body: ReactNode; icon?: ReactNode; note?: string }
 
 export interface TruckCatalog {
   brand: string
@@ -126,6 +126,7 @@ export const MOCK_TRUCK: TruckCatalog = {
       badge: "ต่อที่ 1", title: "ฟรีค่างวด 9 ฟรี 1",
       body: <>ผ่อนครบ <b>9 งวด</b> รับ<span className="font-bold text-[var(--mt-gold)]">ฟรี 1 งวด</span> ตลอดอายุสัญญา</>,
       icon: <Gift className="w-10 h-10" />,
+      note: "เงื่อนไข: ชำระค่างวดตรงเวลาต่อเนื่องตามรอบสัญญา",
     },
     {
       badge: "ต่อที่ 2", title: "ฟรีค่าซ่อมบำรุง",
@@ -371,7 +372,7 @@ function PromoBanner({ count }: { count: number }) {
 }
 
 /** 5. PromoCard — การ์ดโปรฯ 1 ใบ: หัวเขียวมีป้ายทองบาก, ตัวการ์ดครีมมีเส้นทองใน, ไอคอนลายน้ำใหญ่ */
-function PromoCard({ promo, index, highlight }: { promo: Promotion; index: number; highlight?: boolean }) {
+function PromoCard({ promo, index }: { promo: Promotion; index: number }) {
   const icon = promo.icon ?? PROMO_ICONS[index % PROMO_ICONS.length]
   return (
     <article className={`relative rounded-2xl bg-white overflow-hidden ${T.shadowSoft} ${T.goldRing} flex flex-col`}>
@@ -382,9 +383,9 @@ function PromoCard({ promo, index, highlight }: { promo: Promotion; index: numbe
       </header>
       <div className="relative px-5 pt-5 pb-24 text-base @3xl:text-lg leading-relaxed text-[var(--mt-green-dark)] flex-1 min-h-[220px]">
         {promo.body}
-        {highlight && (
+        {promo.note && (
           <div className="mt-4 rounded-xl border border-[var(--mt-gold)] bg-[linear-gradient(180deg,#FBF7EA,var(--mt-cream))] px-4 py-2.5 text-sm font-semibold text-[var(--mt-green-dark)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            เงื่อนไข: ชำระค่างวดตรงเวลาต่อเนื่องตามรอบสัญญา
+            {promo.note}
           </div>
         )}
       </div>
@@ -477,7 +478,7 @@ export default function TruckCatalogPoster({
           <>
             <PromoBanner count={Math.min(truck.promotions.length, 3)} />
             <section className="px-8 mt-6 grid gap-4 @3xl:grid-cols-3">
-              {truck.promotions.slice(0, 3).map((p, i) => <PromoCard key={p.badge} promo={p} index={i} highlight={i === 0} />)}
+              {truck.promotions.slice(0, 3).map((p, i) => <PromoCard key={p.badge} promo={p} index={i} />)}
             </section>
           </>
         )}
