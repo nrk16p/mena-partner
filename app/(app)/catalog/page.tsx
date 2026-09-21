@@ -32,6 +32,7 @@ interface Row {
   downPayment: number
 }
 
+const posterHref = (plate: string) => `/catalog/poster?plate=${encodeURIComponent(plate)}`
 const pdfHref = (plate: string, dl = false) => `/api/catalog/${encodeURIComponent(plate)}/pdf${dl ? "?download=1" : ""}`
 
 function ConfigPanel({ onClose }: { onClose: () => void }) {
@@ -203,7 +204,7 @@ export default function CatalogPage() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <a href={pdfHref(r.licensePlate)} target="_blank" rel="noreferrer" title="เปิด Catalog PDF"
+                    <a href={posterHref(r.licensePlate)} target="_blank" rel="noreferrer" title="เปิดโปสเตอร์ (ดาวน์โหลด PNG / PDF ได้ในหน้า)"
                       className="inline-flex items-center gap-1 rounded-md border border-[#E7C86E] px-2 py-1 text-xs font-semibold text-[#8C6B1F] hover:bg-[#FAF7EF] dark:hover:bg-zinc-800">
                       <ExternalLink className="w-3 h-3" />เปิด
                     </a>

@@ -279,13 +279,13 @@ function Gallery({ items }: { items: GalleryItem[] }) {
 }
 
 /** 4. PromoBanner — "รับโปรโมชั่นพิเศษ 3 ต่อ!" */
-function PromoBanner() {
+function PromoBanner({ count }: { count: number }) {
   return (
     <section className={`mt-8 ${T.greenGrad} text-white px-8 py-5 flex flex-wrap items-center justify-between gap-3`}>
       <p className="text-2xl @3xl:text-3xl font-black flex items-baseline gap-2">
         <Sparkles className="w-6 h-6 text-[var(--mt-gold)] self-center" />
         รับโปรโมชั่นพิเศษ
-        <span className={`text-5xl @3xl:text-6xl font-black leading-none ${T.goldText}`}>3</span>
+        <span className={`text-5xl @3xl:text-6xl font-black leading-none ${T.goldText}`}>{count}</span>
         ต่อ!
       </p>
       <p className="italic text-sm @3xl:text-base text-[var(--mt-gold-light)]">เป็นเจ้าของรถ…ง่ายกว่าที่คิด</p>
@@ -387,10 +387,14 @@ export default function TruckCatalogPoster({
         <Header quote={truck.quote} highlights={truck.highlights} />
         <HeroSection truck={truck} />
         <Gallery items={truck.gallery} />
-        <PromoBanner />
-        <section className="px-8 mt-6 grid gap-4 @3xl:grid-cols-3">
-          {truck.promotions.slice(0, 3).map((p, i) => <PromoCard key={p.badge} promo={p} highlight={i === 0} />)}
-        </section>
+        {truck.promotions.length > 0 && (
+          <>
+            <PromoBanner count={Math.min(truck.promotions.length, 3)} />
+            <section className="px-8 mt-6 grid gap-4 @3xl:grid-cols-3">
+              {truck.promotions.slice(0, 3).map((p, i) => <PromoCard key={p.badge} promo={p} highlight={i === 0} />)}
+            </section>
+          </>
+        )}
         <Footer contactPhone={truck.contactPhone} lineId={truck.lineId} />
       </div>
     </>
