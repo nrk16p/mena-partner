@@ -9,7 +9,8 @@ import {
  * ธีมเขียวเข้ม-ทอง · Tailwind utility ล้วน · โทเคนสีเป็น CSS variable (เปลี่ยนแบรนด์ได้ผ่าน prop `theme`)
  *
  * โหมดแสดงผล
- *   fluid (default) — กว้างตามจอ สูงสุด 1024px, จอ <768px กริดยุบเป็น 1-2 คอลัมน์
+ *   fluid (default) — กว้างตามจอ สูงสุด 1024px, กว้าง <768px กริดยุบเป็น 1-2 คอลัมน์
+ *   breakpoint เป็น container query (@3xl = 768px ของตัวโปสเตอร์เอง ไม่ใช่ viewport) → export 1024px ได้ layout เต็มเสมอแม้กดจากมือถือ
  *   fixed           — กว้างคงที่ 1024px (สูง ≥1536) สำหรับพิมพ์/export เป็นภาพ ย่อขยายด้วย `scale`
  */
 
@@ -145,27 +146,27 @@ function Header({ quote, highlights }: { quote: string; highlights: string[] }) 
       <div className="relative mx-auto w-fit text-center">
         <Crown className="mx-auto w-8 h-8 text-[var(--mt-gold)] mb-1" strokeWidth={1.75} />
         <div className={`rounded-2xl border-2 border-[var(--mt-gold)] bg-[var(--mt-green-dark)] px-10 py-4 ${T.shadow}`}>
-          <p className="text-[11px] md:text-xs tracking-[0.35em] font-semibold text-[var(--mt-gold-light)] uppercase">Used Mixer Truck</p>
-          <h1 className={`mt-1 text-4xl md:text-6xl font-black italic leading-tight ${T.goldText}`}>เถ้าแก่น้อยมีนา</h1>
+          <p className="text-[11px] @3xl:text-xs tracking-[0.35em] font-semibold text-[var(--mt-gold-light)] uppercase">Used Mixer Truck</p>
+          <h1 className={`mt-1 text-4xl @3xl:text-6xl font-black italic leading-tight ${T.goldText}`}>เถ้าแก่น้อยมีนา</h1>
         </div>
         {/* ริบบิ้นล่าง */}
-        <div className={`mx-auto -mt-3 w-fit px-6 py-1.5 rounded-full text-[11px] md:text-xs font-bold tracking-[0.2em] text-[#3F3000] ${T.goldBg} ${T.shadowSoft}`}>
+        <div className={`mx-auto -mt-3 w-fit px-6 py-1.5 rounded-full text-[11px] @3xl:text-xs font-bold tracking-[0.2em] text-[#3F3000] ${T.goldBg} ${T.shadowSoft}`}>
           MENA TRANSPORT MIXER TRUCK CATALOG
         </div>
       </div>
 
       {/* quote ซ้าย · จุดเด่นขวา */}
-      <div className="relative mt-8 grid gap-6 md:grid-cols-2 items-start">
-        <blockquote className="text-lg md:text-xl italic text-[var(--mt-green-dark)] leading-relaxed">
+      <div className="relative mt-8 grid gap-6 @3xl:grid-cols-2 items-start">
+        <blockquote className="text-lg @3xl:text-xl italic text-[var(--mt-green-dark)] leading-relaxed">
           <span className="text-3xl text-[var(--mt-gold)] leading-none align-top">“</span>
           {quote}
           <span className="text-3xl text-[var(--mt-gold)] leading-none align-top">”</span>
         </blockquote>
         <div>
-          <p className="text-xl md:text-2xl font-black text-[var(--mt-green-dark)]">รถดี พร้อมลุยงาน</p>
+          <p className="text-xl @3xl:text-2xl font-black text-[var(--mt-green-dark)]">รถดี พร้อมลุยงาน</p>
           <ul className="mt-2 space-y-2">
             {highlights.slice(0, 3).map((h) => (
-              <li key={h} className="flex items-start gap-2.5 text-sm md:text-base text-[var(--mt-green-dark)]">
+              <li key={h} className="flex items-start gap-2.5 text-sm @3xl:text-base text-[var(--mt-green-dark)]">
                 <span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-[var(--mt-green)] text-white grid place-items-center">
                   <Check className="w-3.5 h-3.5" strokeWidth={3} />
                 </span>
@@ -191,8 +192,8 @@ function specIcon(label: string) {
 /** 2a. SpecCard — การ์ดขาวลอยทับมุมขวาของรูป hero */
 function SpecCard({ brand, modelCode, plate, specs, status }: Pick<TruckCatalog, "brand" | "modelCode" | "plate" | "specs" | "status">) {
   return (
-    <div className={`rounded-3xl bg-white p-5 md:p-6 w-full md:w-[360px] ${T.shadow}`}>
-      <p className="text-3xl md:text-4xl font-black tracking-wide text-[var(--mt-green-dark)]">{brand}</p>
+    <div className={`rounded-3xl bg-white p-5 @3xl:p-6 w-full @3xl:w-[360px] ${T.shadow}`}>
+      <p className="text-3xl @3xl:text-4xl font-black tracking-wide text-[var(--mt-green-dark)]">{brand}</p>
       <p className="mt-1 text-sm font-semibold text-[var(--mt-green-light)]">
         {modelCode}<span className="mx-2 text-[var(--mt-gold)]">|</span>{plate}
       </p>
@@ -219,18 +220,18 @@ function SpecCard({ brand, modelCode, plate, specs, status }: Pick<TruckCatalog,
 /** 2b. PriceBlock — ราคารถ + ผ่อนต่อเดือน พื้นเขียวไล่เฉด */
 function PriceBlock({ price, monthlyPayment }: Pick<TruckCatalog, "price" | "monthlyPayment">) {
   return (
-    <div className={`rounded-3xl ${T.greenGrad} text-white px-6 py-5 md:px-8 md:py-6 ${T.shadow} grid gap-4 md:grid-cols-2 items-end`}>
+    <div className={`rounded-3xl ${T.greenGrad} text-white px-6 py-5 @3xl:px-8 @3xl:py-6 ${T.shadow} grid gap-4 @3xl:grid-cols-2 items-end`}>
       <div>
         <p className="text-sm text-[var(--mt-gold-light)]">ราคารถ</p>
         <p className="leading-none">
-          <span className="text-5xl md:text-6xl font-black tracking-tight">{baht(price)}</span>
+          <span className="text-5xl @3xl:text-6xl font-black tracking-tight">{baht(price)}</span>
           <span className="ml-2 text-base text-[var(--mt-gold-light)]">บาท</span>
         </p>
       </div>
-      <div className="md:text-right">
+      <div className="@3xl:text-right">
         <p className="text-sm text-[var(--mt-gold-light)]">ผ่อนเพียงเดือนละ</p>
         <p className="leading-none">
-          <span className={`text-4xl md:text-5xl font-black tracking-tight ${T.goldText}`}>{baht(monthlyPayment)}</span>
+          <span className={`text-4xl @3xl:text-5xl font-black tracking-tight ${T.goldText}`}>{baht(monthlyPayment)}</span>
           <span className="ml-2 text-base text-[var(--mt-gold-light)]">บาท</span>
         </p>
       </div>
@@ -249,11 +250,11 @@ function HeroSection({ truck }: { truck: TruckCatalog }) {
           <img src={truck.heroImage} alt={`${truck.brand} ${truck.modelCode}`} className="w-full h-full object-cover" />
         </div>
         {/* การ์ด spec: จอกว้างลอยทับมุมขวา · จอเล็กวางใต้รูป */}
-        <div className="mt-4 md:mt-0 md:absolute md:right-6 md:-bottom-10">
+        <div className="mt-4 @3xl:mt-0 @3xl:absolute @3xl:right-6 @3xl:-bottom-10">
           <SpecCard brand={truck.brand} modelCode={truck.modelCode} plate={truck.plate} specs={truck.specs} status={truck.status} />
         </div>
       </div>
-      <div className="mt-6 md:mt-16">
+      <div className="mt-6 @3xl:mt-16">
         <PriceBlock price={truck.price} monthlyPayment={truck.monthlyPayment} />
       </div>
     </section>
@@ -263,7 +264,7 @@ function HeroSection({ truck }: { truck: TruckCatalog }) {
 /** 3. Gallery — 4 มุม แถบ caption เขียว */
 function Gallery({ items }: { items: GalleryItem[] }) {
   return (
-    <section className="px-8 mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+    <section className="px-8 mt-8 grid grid-cols-2 @3xl:grid-cols-4 gap-3">
       {items.slice(0, 4).map((g) => (
         <figure key={g.caption} className={`rounded-xl overflow-hidden bg-white ${T.shadowSoft}`}>
           <div className="aspect-[4/3] bg-[var(--mt-cream)]">
@@ -281,13 +282,13 @@ function Gallery({ items }: { items: GalleryItem[] }) {
 function PromoBanner() {
   return (
     <section className={`mt-8 ${T.greenGrad} text-white px-8 py-5 flex flex-wrap items-center justify-between gap-3`}>
-      <p className="text-2xl md:text-3xl font-black flex items-baseline gap-2">
+      <p className="text-2xl @3xl:text-3xl font-black flex items-baseline gap-2">
         <Sparkles className="w-6 h-6 text-[var(--mt-gold)] self-center" />
         รับโปรโมชั่นพิเศษ
-        <span className={`text-5xl md:text-6xl font-black leading-none ${T.goldText}`}>3</span>
+        <span className={`text-5xl @3xl:text-6xl font-black leading-none ${T.goldText}`}>3</span>
         ต่อ!
       </p>
-      <p className="italic text-sm md:text-base text-[var(--mt-gold-light)]">เป็นเจ้าของรถ…ง่ายกว่าที่คิด</p>
+      <p className="italic text-sm @3xl:text-base text-[var(--mt-gold-light)]">เป็นเจ้าของรถ…ง่ายกว่าที่คิด</p>
     </section>
   )
 }
@@ -327,7 +328,7 @@ function Field({ value, placeholder }: { value?: string; placeholder: string }) 
 function Footer({ contactPhone, lineId }: { contactPhone?: string; lineId?: string }) {
   return (
     <footer className="mt-8">
-      <div className="px-8 py-6 grid gap-6 md:grid-cols-3 items-center">
+      <div className="px-8 py-6 grid gap-6 @3xl:grid-cols-3 items-center">
         <div className="flex items-center gap-3">
           <span className="shrink-0 w-11 h-11 rounded-full bg-[var(--mt-green)] text-white grid place-items-center"><Phone className="w-5 h-5" /></span>
           <div>
@@ -342,7 +343,7 @@ function Footer({ contactPhone, lineId }: { contactPhone?: string; lineId?: stri
             <Field value={lineId} placeholder="@menatransport" />
           </div>
         </div>
-        <div className="md:text-right">
+        <div className="@3xl:text-right">
           <p className="text-xl font-black tracking-wide text-[var(--mt-green-dark)]">MENA <span className={T.goldText}>TRANSPORT</span></p>
           <p className="text-[10px] tracking-[0.3em] text-[var(--mt-green-light)]">MOVE FOR A BETTER TOMORROW</p>
         </div>
@@ -381,13 +382,13 @@ export default function TruckCatalogPoster({
       <div
         data-truck-poster
         style={{ ...vars, ...frame }}
-        className={`${T.font} relative overflow-hidden bg-[var(--mt-cream)] text-[var(--mt-green-dark)] print:w-[1024px] print:shadow-none ${mode === "fluid" ? "mx-auto" : ""}`}
+        className={`${T.font} @container relative overflow-hidden bg-[var(--mt-cream)] text-[var(--mt-green-dark)] print:w-[1024px] print:shadow-none ${mode === "fluid" ? "mx-auto" : ""}`}
       >
         <Header quote={truck.quote} highlights={truck.highlights} />
         <HeroSection truck={truck} />
         <Gallery items={truck.gallery} />
         <PromoBanner />
-        <section className="px-8 mt-6 grid gap-4 md:grid-cols-3">
+        <section className="px-8 mt-6 grid gap-4 @3xl:grid-cols-3">
           {truck.promotions.slice(0, 3).map((p, i) => <PromoCard key={p.badge} promo={p} highlight={i === 0} />)}
         </section>
         <Footer contactPhone={truck.contactPhone} lineId={truck.lineId} />
