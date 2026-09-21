@@ -27,8 +27,10 @@ const APPLY = args.includes("--apply"), READY_ONLY = args.includes("--ready-only
 if (!file) { console.error("usage: import-clean-photos.mjs <rows.json> [--apply] [--ready-only] [--overwrite]"); process.exit(1) }
 const normPlate = (p) => String(p ?? "").replace(/^[^0-9]*/, "").trim()
 const SIDES = ["front", "back", "left", "right", "cabin"]
+const isUrl = (u) => /^https?:\/\//.test(String(u ?? ""))
 
-const rows = JSON.parse(readFileSync(file, "utf8"))
+// ชีตใส่ "—" แทนรูปที่ไม่มี — ต้องกรองออก ไม่งั้นกลายเป็น URL เสีย (บทเรียน 2026-09-21)
+const rows = JSON.parse(readFileSync(file, "utf8")).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, SIDES.includes(k) && !isUrl(v) ? "" : v])))
 const byPlate = new Map(rows.map((r) => [normPlate(r.plate), r]))
 
 const client = new MongoClient(process.env.MONGO_URI, { serverSelectionTimeoutMS: 15000 })
