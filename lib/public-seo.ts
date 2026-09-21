@@ -3,6 +3,9 @@ import type { PublicTruck } from "@/lib/public-trucks"
 const FALLBACK_ORIGIN = "https://mena-partner.vercel.app"
 const COMPANY = "มีนา ทรานสปอร์ต"
 
+/** เงินบนหน้าเว็บสาธารณะ = ปัดเป็นบาทเต็ม ไม่มีทศนิยม (formatMoney ของระบบภายในมี .00) */
+export const fmtBaht = (n: number) => Math.round(n).toLocaleString("en-US")
+
 /** ทุก URL สาธารณะต้องผ่านตัวนี้ — ย้ายโดเมนภายหลัง = แก้ env ตัวเดียว */
 export function siteUrl(path = ""): string {
   const origin = (process.env.NEXT_PUBLIC_SITE_URL || FALLBACK_ORIGIN).replace(/\/+$/, "")

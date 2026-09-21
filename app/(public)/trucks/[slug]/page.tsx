@@ -2,10 +2,9 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import clientPromise from "@/lib/mongo"
-import { formatMoney } from "@/lib/utils"
 import { getCatalogConfig } from "@/lib/catalog-config"
 import { loadPublicTruckBySlug, loadPublicTrucks } from "@/lib/public-trucks"
-import { siteUrl, truckTitle, truckDescription, truckJsonLd } from "@/lib/public-seo"
+import { siteUrl, truckTitle, truckDescription, truckJsonLd, fmtBaht } from "@/lib/public-seo"
 import { TruckGallery } from "@/components/public/truck-gallery"
 import { TruckSpecTable } from "@/components/public/truck-spec-table"
 import { TruckCard } from "@/components/public/truck-card"
@@ -71,12 +70,12 @@ export default async function TruckDetailPage({ params }: Params) {
             <p className="mb-3 inline-block rounded-full bg-zinc-900 text-white text-xs font-semibold px-3 py-1">ขายแล้ว</p>
           )}
           <h1 className="text-2xl font-bold">{heading}</h1>
-          <p className="text-3xl font-bold mt-3">฿{formatMoney(truck.totalSalePrice)}</p>
+          <p className="text-3xl font-bold mt-3">฿{fmtBaht(truck.totalSalePrice)}</p>
           {truck.monthlyPayment > 0 && (
             <p className="text-emerald-700 font-semibold mt-1">
-              ผ่อน ฿{formatMoney(truck.monthlyPayment)}/เดือน
+              ผ่อน ฿{fmtBaht(truck.monthlyPayment)}/เดือน
               {truck.financeInstallments > 0 && ` × ${truck.financeInstallments} งวด`}
-              {truck.downPayment > 0 && ` · ดาวน์ ฿${formatMoney(truck.downPayment)}`}
+              {truck.downPayment > 0 && ` · ดาวน์ ฿${fmtBaht(truck.downPayment)}`}
             </p>
           )}
 
