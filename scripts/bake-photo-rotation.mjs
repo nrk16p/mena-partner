@@ -6,6 +6,7 @@
  *   node scripts/bake-photo-rotation.mjs            # dry-run เฉพาะรถพร้อมขาย
  *   node scripts/bake-photo-rotation.mjs --apply    # อัปโหลด + เขียน DB
  *   --all  ทั้งกอง (ไม่ใช่แค่รถพร้อมขาย)
+ *   --plate=71-7760 --turn=front:90,back:90,cabin:90   หมุนมือรายด้าน (รูปที่พิกเซลนอนแต่ไม่มี EXIF) องศาตามเข็ม
  */
 import { MongoClient } from "mongodb"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
@@ -22,6 +23,8 @@ for (const f of [".env.local", ".env"]) {
   } } catch { /* skip */ }
 }
 const APPLY = process.argv.includes("--apply"), ALL = process.argv.includes("--all")
+const PLATE = (process.argv.find((a) => a.startsWith("--plate=")) ?? "").slice(8)
+const TURN = Object.fromEntries(((process.argv.find((a) => a.startsWith("--turn=")) ?? "").slice(7)).split(",").filter(Boolean).map((x) => { const [s, d] = x.split(":"); return [s, Number(d)] }))
 const normPlate = (p) => String(p ?? "").replace(/^[^0-9]*/, "").trim()
 const enc = (u) => { const i = u.lastIndexOf("/"); return u.slice(0, i + 1) + encodeURIComponent(decodeURIComponent(u.slice(i + 1))) }
 const SIDES = ["front", "back", "left", "right", "cabin"]
@@ -41,7 +44,7 @@ try {
   const priceBy = new Map(prices.map((p) => [normPlate(p.licensePlate), p]))
   const underContract = new Set(contracts.map((c) => normPlate(c.licensePlate)))
   const isReady = (v) => { const k = normPlate(v.licensePlate); return v.status !== "inactive" && !underContract.has(k) && priceBy.get(k)?.saleStatus === "ready" }
-  const targets = ALL ? vehicles : vehicles.filter(isReady)
+  const targets = PLATE ? vehicles.filter((v) => normPlate(v.licensePlate) === normPlate(PLATE)) : ALL ? vehicles : vehicles.filter(isReady)
   console.log(`โหมด ${APPLY ? "APPLY" : "DRY-RUN"} · ตรวจ ${targets.length} คัน`)
 
   let checked = 0, rotated = 0, unreadable = 0
@@ -53,11 +56,13 @@ try {
       let buf, meta
       try { const r = await fetch(enc(u)); if (!r.ok) throw new Error("HTTP " + r.status); buf = Buffer.from(await r.arrayBuffer()); meta = await sharp(buf).metadata() }
       catch (e) { unreadable++; console.log(`  ✗ ${v.truckNumber} ${s}: ${e.message} ${u.slice(-50)}`); continue }
-      if (!meta.orientation || meta.orientation === 1) continue
+      const manual = TURN[s]
+      if (!manual && (!meta.orientation || meta.orientation === 1)) continue
       rotated++
-      console.log(`  ↻ ${v.truckNumber} ${s.padEnd(6)} orient ${meta.orientation} ${meta.width}x${meta.height}`)
+      console.log(`  ↻ ${v.truckNumber} ${s.padEnd(6)} ${manual ? `หมุนมือ ${manual}°` : `orient ${meta.orientation}`} ${meta.width}x${meta.height}`)
       if (!APPLY) continue
-      const out = await sharp(buf).rotate().jpeg({ quality: 85 }).toBuffer()
+      // EXIF → .rotate() อัตโนมัติ · หมุนมือ → องศาที่สั่ง (ตามเข็ม) หลัง normalize EXIF แล้ว
+      const out = await (manual ? sharp(buf).rotate().rotate(manual) : sharp(buf).rotate()).jpeg({ quality: 85 }).toBuffer()
       const key = `${folder}/vehicles/photos/${Date.now()}_${normPlate(v.licensePlate).replace(/[^0-9a-z]/gi, "")}_${s}.jpg`
       await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: out, ContentType: "image/jpeg", ACL: "public-read" }))
       const url = `https://${bucket}.${region}.digitaloceanspaces.com/${key}`
