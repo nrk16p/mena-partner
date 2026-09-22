@@ -1,4 +1,4 @@
-import type { ReactNode, CSSProperties } from "react"
+import { Fragment, type ReactNode, type CSSProperties } from "react"
 import {
   Crown, Check, Phone, MessageCircle, Truck, Tag, Calendar, Gauge,
   Wrench, ShieldCheck, Gift, Sparkles, Star,
@@ -20,7 +20,7 @@ import {
 
 export interface TruckSpec { label: string; value: string }
 export interface GalleryItem { src: string; caption: string }
-export interface Promotion { badge: string; title: string; body: ReactNode; icon?: ReactNode; note?: string }
+export interface Promotion { badge: string; title: string; titleParts?: string[]; body: ReactNode; icon?: ReactNode; note?: string }
 
 export interface TruckCatalog {
   brand: string
@@ -29,6 +29,7 @@ export interface TruckCatalog {
   specs: TruckSpec[]
   status: string
   price: number
+  downPayment?: number        // ดาวน์ — แสดงใต้ราคา ให้ ดาวน์ + ค่างวด × งวด = ราคา ลงตัว
   monthlyPayment: number
   installments?: number       // จำนวนงวดผ่อน (แสดง × N งวด)
   heroImage: string
@@ -105,8 +106,9 @@ export const MOCK_TRUCK: TruckCatalog = {
     { label: "ปีจดทะเบียน",   value: "2558" },
   ],
   status: "พร้อมขาย",
-  price: 1_698_591,
-  monthlyPayment: 16_652,
+  price: 1_338_400,
+  downPayment: 100_000,
+  monthlyPayment: 17_200,
   installments: 72,
   heroImage: PLACEHOLDER(1024, 620, "NISSAN ME135"),
   gallery: [
@@ -271,7 +273,7 @@ function SpecCard({ brand, modelCode, plate, specs, status }: Pick<TruckCatalog,
 }
 
 /** 2b. PriceBlock — ราคารถ + ผ่อนต่อเดือน พื้นเขียวไล่เฉด มีแสงกวาดทแยง + ลายน้ำ ฿ */
-function PriceBlock({ price, monthlyPayment, installments }: Pick<TruckCatalog, "price" | "monthlyPayment" | "installments">) {
+function PriceBlock({ price, downPayment, monthlyPayment, installments }: Pick<TruckCatalog, "price" | "downPayment" | "monthlyPayment" | "installments">) {
   return (
     <div className={`relative overflow-hidden rounded-3xl ${T.greenGrad} text-white px-6 py-5 @3xl:px-8 @3xl:py-6 ${T.shadow} ring-1 ring-[var(--mt-gold)]/50 grid gap-4 @3xl:grid-cols-2 items-end`}>
       <div aria-hidden className="absolute -inset-y-10 -left-1/4 w-1/2 rotate-[20deg] bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
@@ -283,6 +285,11 @@ function PriceBlock({ price, monthlyPayment, installments }: Pick<TruckCatalog, 
           <span className={`text-5xl @3xl:text-[68px] font-black ${T.numeral} [text-shadow:0_3px_12px_rgba(0,0,0,0.35)]`}>{baht(price)}</span>
           <span className="ml-2 text-base text-[var(--mt-gold-light)]">บาท</span>
         </p>
+        {!!downPayment && (
+          <p className="mt-2 text-sm @3xl:text-base text-[var(--mt-gold-light)]">
+            ดาวน์ <span className="font-black text-white text-lg @3xl:text-xl">{baht(downPayment)}</span> บาท
+          </p>
+        )}
       </div>
       <div className="relative @3xl:text-right">
         <p className="text-sm text-[var(--mt-gold-light)]">ผ่อนเพียงเดือนละ</p>
@@ -324,7 +331,7 @@ function HeroSection({ truck }: { truck: TruckCatalog }) {
         </div>
       </div>
       <div className="mt-6 @3xl:mt-16">
-        <PriceBlock price={truck.price} monthlyPayment={truck.monthlyPayment} installments={truck.installments} />
+        <PriceBlock price={truck.price} downPayment={truck.downPayment} monthlyPayment={truck.monthlyPayment} installments={truck.installments} />
       </div>
     </section>
   )
@@ -371,6 +378,11 @@ function PromoBanner({ count }: { count: number }) {
   )
 }
 
+/** ข้อความไทยขึ้นบรรทัดเฉพาะรอยต่อวลี — กันตัดกลางคำประสม (น้ำมัน|เครื่อง) หรือกลางวลี (เป็นไป|ตามที่) */
+function Phrases({ parts, sep = "" }: { parts: string[]; sep?: string }) {
+  return <>{parts.map((t, i) => <Fragment key={i}>{i > 0 && (sep || <wbr />)}<span className="whitespace-nowrap">{t}</span></Fragment>)}</>
+}
+
 /** 5. PromoCard — การ์ดโปรฯ 1 ใบ: หัวเขียวมีป้ายทองบาก, ตัวการ์ดครีมมีเส้นทองใน, ไอคอนลายน้ำใหญ่ */
 function PromoCard({ promo, index }: { promo: Promotion; index: number }) {
   const icon = promo.icon ?? PROMO_ICONS[index % PROMO_ICONS.length]
@@ -379,13 +391,13 @@ function PromoCard({ promo, index }: { promo: Promotion; index: number }) {
       <header className="relative bg-[image:var(--mt-green-grad)] text-white px-5 py-4 rounded-b-2xl flex items-center gap-3">
         <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-[var(--mt-gold)]/80" />
         <span className={`shrink-0 px-3.5 py-1 text-sm font-black text-[#3F3000] ${T.goldBg} [clip-path:polygon(0_0,100%_0,calc(100%-7px)_50%,100%_100%,0_100%,7px_50%)]`}>{promo.badge}</span>
-        <h3 className="text-xl @3xl:text-2xl font-black leading-tight">{promo.title}</h3>
+        <h3 className="text-xl @3xl:text-2xl font-black leading-tight">{promo.titleParts ? <Phrases parts={promo.titleParts} /> : promo.title}</h3>
       </header>
       <div className="relative px-5 pt-5 pb-24 text-base @3xl:text-lg leading-relaxed text-[var(--mt-green-dark)] flex-1 min-h-[220px]">
         {promo.body}
         {promo.note && (
           <div className="mt-4 rounded-xl border border-[var(--mt-gold)] bg-[linear-gradient(180deg,#FBF7EA,var(--mt-cream))] px-4 py-2.5 text-sm font-semibold text-[var(--mt-green-dark)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            {promo.note}
+            <Phrases parts={promo.note.split(" ")} sep=" " />
           </div>
         )}
       </div>

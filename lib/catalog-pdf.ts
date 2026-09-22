@@ -6,6 +6,7 @@ import sharp from "sharp"
 import { COMPANY } from "@/lib/contract-pdfmake-helpers"
 import { seg } from "@/lib/pdfmake-printer"
 import type { CatalogConfig } from "@/lib/catalog-config"
+import { promoCopy, type PromoSeg } from "@/lib/promo-copy"
 
 /**
  * Catalog รายคัน — 1 หน้า A4/คัน (pdfmake, Sarabun, โทนทองเดียวกับใบเสนอราคา)
@@ -51,7 +52,6 @@ export interface CatalogVehicle {
   saleStatus?: string | null
   hasPrice: boolean
   // โปรโมชั่น (promotion_master)
-  promoLines: string[]
   promo?: { pro1Condition: string; pro1FreeCount: number; pro1TotalValue: number; pro2RepairBudget: number; pro3AnnualPm: number }
 }
 
@@ -84,15 +84,6 @@ export async function loadCatalogVehicles(db: Db, plates?: string[]): Promise<Ca
     const k = normPlate(v.licensePlate as string)
     const p = priceBy.get(k)
     const m = promoBy.get(k)
-    const promoLines: string[] = []
-    if (m) {
-      if (n(m.pro1TotalValue) > 0 || m.pro1Condition) {
-        const cond = (m.pro1Condition as string) || "ฟรีค่างวด"
-        promoLines.push(`ฟรีค่างวด (${cond})${n(m.pro1FreeCount) ? ` ฟรี ${m.pro1FreeCount} งวด` : ""}${n(m.pro1TotalValue) ? ` รวม ${fm(n(m.pro1TotalValue))} บาท` : ""}`)
-      }
-      if (n(m.pro2RepairBudget) > 0) promoLines.push(`ฟรีค่าซ่อมบำรุง วงเงิน ${fm(n(m.pro2RepairBudget))} บาท`)
-      if (n(m.pro3AnnualPm) > 0) promoLines.push(`ฟรี PM (บำรุงรักษาเชิงป้องกัน) ${fm(n(m.pro3AnnualPm))} บาท/ปี ตลอดสัญญา`)
-    }
     return {
       licensePlate: String(v.licensePlate ?? ""),
       truckNumber: v.truckNumber as string, brand: v.brand as string, model: v.model as string,
@@ -103,7 +94,6 @@ export async function loadCatalogVehicles(db: Db, plates?: string[]): Promise<Ca
       downInstallmentCount: n(p?.downInstallmentCount), downInstallmentAmt: n(p?.downInstallmentAmt),
       financeAmount: n(p?.financeAmount), financeInstallments: n(p?.financeInstallments), monthlyPayment: n(p?.monthlyPayment),
       saleStatus: (p?.saleStatus as string | null) ?? null, hasPrice: !!p,
-      promoLines,
       promo: m ? { pro1Condition: String(m.pro1Condition ?? ""), pro1FreeCount: n(m.pro1FreeCount), pro1TotalValue: n(m.pro1TotalValue), pro2RepairBudget: n(m.pro2RepairBudget), pro3AnnualPm: n(m.pro3AnnualPm) } : undefined,
     }
   })
@@ -152,14 +142,15 @@ const beYear = (iso?: string) => (iso && /^\d{4}/.test(iso) ? String(Number(iso.
 function vehiclePage(v: CatalogVehicle, cfg: CatalogConfig, images: Map<string, string>, isFirst: boolean): any[] {
   const { main, others } = vehicleImageUrls(v)
   const mainData = main ? images.get(main) : undefined
-  const hasPromo = v.promoLines.length > 0
+  const promos = promoCopy(v.promo)
+  const hasPromo = promos.length > 0
 
   // ── รูปหลัก / placeholder ──
   const heroImg = mainData
-    ? { image: mainData, fit: [CONTENT_W, 185], alignment: "center", margin: [0, 0, 0, 0] }
+    ? { image: mainData, fit: [CONTENT_W, 128], alignment: "center", margin: [0, 0, 0, 0] }
     : {
-        table: { widths: ["*"], heights: [150], body: [[{
-          fillColor: CREAM, alignment: "center", margin: [0, 62, 0, 0],
+        table: { widths: ["*"], heights: [100], body: [[{
+          fillColor: CREAM, alignment: "center", margin: [0, 37, 0, 0],
           stack: [
             { text: seg("ยังไม่มีรูปรถ"), color: GOLD_DK, bold: true, fontSize: 14 },
             { text: seg("อัปโหลดรูป 5 มุมได้ที่หน้า รถ → แก้ไข"), color: MUTED, fontSize: 9, margin: [0, 2, 0, 0] },
@@ -233,6 +224,29 @@ function vehiclePage(v: CatalogVehicle, cfg: CatalogConfig, images: Map<string, 
     columns: [{ text: "•", width: 10, color: GOLD, bold: true }, { text: seg(t), width: "*", color, fontSize: 9.5 }], margin: [0, 0.5, 0, 0.5],
   }))
 
+  // โปรฯ: ถ้อยคำจาก lib/promo-copy (ชุดเดียวกับโปสเตอร์/หน้า /trucks) — การ์ด 3 คอลัมน์เหมือนโปสเตอร์,
+  // 1 บรรทัดใน promo-copy = 1 บรรทัดในการ์ด (ตัดบรรทัดตามวลีที่ฝ่ายขายกำหนด)
+  const promoLine = (l: PromoSeg[]) => ({
+    text: l.map((x) => typeof x === "string" ? { text: seg(x) }
+      : "b" in x ? { text: seg(x.b), bold: true }
+      : { text: seg(x.big), bold: true, fontSize: 12, color: GOLD_DK }),
+  })
+  const promoCards = {
+    columnGap: 6,
+    columns: promos.slice(0, 3).map((p) => ({
+      width: "*",
+      table: { widths: ["*"], body: [
+        [{ fillColor: CREAM, margin: [6, 3, 6, 3], stack: [
+          { text: seg(p.badge), color: GOLD, bold: true, fontSize: 8 },
+          { text: seg(p.title), color: GOLD_DK, bold: true, fontSize: 9.5 },
+        ] }],
+        [{ margin: [6, 3, 6, 4], color: INK, fontSize: 9, lineHeight: 1, stack: p.lines.map(promoLine) }],
+      ] },
+      layout: { hLineWidth: () => 0.7, vLineWidth: () => 0.7, hLineColor: () => RULE, vLineColor: () => RULE },
+    })),
+  }
+  const promoNotes = [...new Set(promos.map((p) => p.note).filter((t): t is string => !!t))]
+
   return [
     // header — ขึ้นหน้าใหม่ก่อนหัวคันถัดไป (ไม่ใช้ pageBreak after ท้ายหน้า: หน้าเต็มพอดีจะได้หน้าเปล่า)
     {
@@ -253,22 +267,23 @@ function vehiclePage(v: CatalogVehicle, cfg: CatalogConfig, images: Map<string, 
     { canvas: [{ type: "line", x1: 0, y1: 0, x2: CONTENT_W, y2: 0, lineWidth: 1.2, lineColor: GOLD }], margin: [0, 6, 0, 8] },
     // hero image + thumbs
     heroImg,
-    ...(thumbs.length ? [{ columns: thumbs.map((d) => ({ image: d, fit: [116, 62], alignment: "center" })), columnGap: 6, margin: [0, 5, 0, 0] }] : []),
+    ...(thumbs.length ? [{ columns: thumbs.map((d) => ({ image: d, fit: [116, 48], alignment: "center" })), columnGap: 6, margin: [0, 5, 0, 0] }] : []),
     // spec + price
     { columns: [specBlock, priceBlock], columnGap: 14, margin: [0, 8, 0, 0] },
     // promo
     ...(hasPromo ? [
-      { text: seg("โปรโมชั่นสำหรับรถคันนี้"), color: GOLD_DK, bold: true, fontSize: 10, margin: [0, 7, 0, 1] },
-      ...bullets(v.promoLines, INK),
+      { text: seg("โปรโมชั่นสำหรับรถคันนี้"), color: GOLD_DK, bold: true, fontSize: 10, margin: [0, 5, 0, 2] },
+      promoCards,
+      ...promoNotes.map((t) => ({ text: seg(t), color: MUTED, fontSize: 8, margin: [0, 2, 0, 0] })),
     ] : []),
     // selling points
     ...(cfg.sellingPoints.length ? [
-      { text: seg("ทำไมต้องรถร่วม Mixer กับเรา"), color: GOLD_DK, bold: true, fontSize: 10, margin: [0, 6, 0, 1] },
+      { text: seg("ทำไมต้องรถร่วม Mixer กับเรา"), color: GOLD_DK, bold: true, fontSize: 10, margin: [0, 4, 0, 1] },
       ...bullets(cfg.sellingPoints),
     ] : []),
     // contact + terms (ล่างสุด — absolute ไม่ใช้ เพราะเนื้อหาสั้นยาวต่างกัน)
     {
-      margin: [0, 7, 0, 0],
+      margin: [0, 5, 0, 0],
       table: { widths: ["*"], body: [[{
         fillColor: CREAM, margin: [10, 4, 10, 4],
         columns: [

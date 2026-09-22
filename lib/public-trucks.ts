@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { promoCopy, type PromoCopy } from "@/lib/promo-copy"
 
 /** ทะเบียนไม่เอา prefix "สบ." — สูตรเดียวกับ lib/catalog-pdf (ไม่ import เพราะไฟล์นั้น server-only เทสต์โหลดไม่ได้) */
 const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim()
@@ -26,14 +27,13 @@ export interface PublicTruck {
   cashDown: number
   monthlyPayment: number
   financeInstallments: number
-  promoLines: string[]
+  promos: PromoCopy[]   // ถ้อยคำจาก lib/promo-copy (ชุดเดียวกับโปสเตอร์/Catalog PDF)
   isSold: boolean
 }
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 const s = (v: unknown) => String(v ?? "").trim()
 const n = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0) || 0)
-const fm = (v: number) => v.toLocaleString("en-US")
 
 /** a-z0-9 + ขีด; ภาษาไทย/อักขระพิเศษกลายเป็นขีด แล้วยุบขีดซ้ำ */
 const slugPart = (v: string) =>
@@ -66,7 +66,7 @@ export function uniqueSlug(base: string, taken: Set<string>): string {
 export function toPublicTruck(
   vehicle: Record<string, unknown>,
   price: Record<string, unknown> | undefined,
-  promoLines: string[],
+  promos: PromoCopy[],
   slug: string,
   isSold: boolean,
 ): PublicTruck {
@@ -90,7 +90,7 @@ export function toPublicTruck(
     cashDown: n(price?.cashDown),
     monthlyPayment: n(price?.monthlyPayment),
     financeInstallments: n(price?.financeInstallments),
-    promoLines: promoLines.filter(Boolean).slice(0, 6),
+    promos,
     isSold,
   }
 }
@@ -104,16 +104,6 @@ export function isReadyForSale(
   if (!price) return false
   const key = normPlate(String(vehicle.licensePlate ?? ""))
   return vehicle.status !== "inactive" && !underContract.has(key) && price.saleStatus === "ready"
-}
-
-export function promoLinesFrom(promo: Record<string, unknown> | undefined): string[] {
-  if (!promo) return []
-  const lines: string[] = []
-  const budget = n(promo.pro2RepairBudget)
-  const pm = n(promo.pro3AnnualPm)
-  if (budget > 0) lines.push(`ฟรีค่าซ่อมบำรุง วงเงิน ${fm(budget)} บาท`)
-  if (pm > 0) lines.push(`ฟรี PM (บำรุงรักษาเชิงป้องกัน) ${fm(pm)} บาท/ปี ตลอดสัญญา`)
-  return lines
 }
 
 /** projection = field ที่เปิดเผยได้เท่านั้น (ไม่ดึงเลขตัวถัง/เลขเครื่องออกจาก DB ตั้งแต่ต้น) */
@@ -130,7 +120,7 @@ async function loadAll() {
   const [vehicles, prices, promos, contracts] = await Promise.all([
     db.collection("vehicle_master").find({}, { projection: VEHICLE_PROJECTION }).toArray(),
     db.collection("master_price_list").find({}, { projection: { licensePlate: 1, saleStatus: 1, totalSalePrice: 1, downPayment: 1, cashDown: 1, monthlyPayment: 1, financeInstallments: 1 } }).toArray(),
-    db.collection("promotion_master").find({}, { projection: { licensePlate: 1, pro2RepairBudget: 1, pro3AnnualPm: 1 } }).toArray(),
+    db.collection("promotion_master").find({}, { projection: { licensePlate: 1, pro1Condition: 1, pro1FreeCount: 1, pro1TotalValue: 1, pro2RepairBudget: 1, pro3AnnualPm: 1 } }).toArray(),
     db.collection("contracts").find({ status: "active" }, { projection: { licensePlate: 1 } }).toArray(),
   ])
   return {
@@ -161,7 +151,7 @@ export async function loadPublicTrucks(): Promise<PublicTruck[]> {
     if (!isReadyForSale(v, priceBy.get(key), underContract)) continue
     const slug = slugOf(v, taken)
     taken.add(slug)
-    out.push(toPublicTruck(v, priceBy.get(key), promoLinesFrom(promoBy.get(key)), slug, false))
+    out.push(toPublicTruck(v, priceBy.get(key), promoCopy(promoBy.get(key)), slug, false))
   }
   // มีรูปขึ้นก่อน (หน้าแรกต้องดูดี) แล้วเรียงราคาต่ำ→สูง
   return out.sort((a, b) =>
@@ -179,7 +169,7 @@ export async function loadPublicTruckBySlug(slug: string): Promise<PublicTruck |
     const price = priceBy.get(key)
     const ready = isReadyForSale(v, price, underContract)
     // รถที่ขายแล้ว/เข้าสัญญาแล้ว ยังเปิดหน้าได้ (ริบบิ้น "ขายแล้ว" + noindex)
-    return toPublicTruck(v, price, promoLinesFrom(promoBy.get(key)), s2, !ready)
+    return toPublicTruck(v, price, promoCopy(promoBy.get(key)), s2, !ready)
   }
   return null
 }

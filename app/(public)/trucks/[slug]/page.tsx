@@ -88,10 +88,27 @@ export default async function TruckDetailPage({ params }: Params) {
             )}
           </div>
 
-          {truck.promoLines.length > 0 && (
-            <ul className="mt-6 space-y-1.5 text-sm">
-              {truck.promoLines.map((l) => <li key={l} className="flex gap-2"><span className="text-amber-500">★</span>{l}</li>)}
-            </ul>
+          {truck.promos.length > 0 && (
+            <div className="mt-6 space-y-2.5">
+              {truck.promos.map((p) => (
+                <div key={p.badge} className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-sm">
+                  <p className="font-semibold">
+                    <span className="mr-2 rounded-full bg-amber-500 text-white text-[11px] px-2 py-0.5 align-middle">{p.badge}</span>
+                    {p.title}
+                  </p>
+                  <div className="mt-1 text-zinc-700">
+                    {p.lines.map((l, i) => (
+                      <p key={i}>
+                        {l.map((s, j) => typeof s === "string" ? s
+                          : "b" in s ? <b key={j} className="text-zinc-900">{s.b}</b>
+                          : <span key={j} className="text-base font-bold text-amber-700">{s.big}</span>)}
+                      </p>
+                    ))}
+                  </div>
+                  {p.note && <p className="mt-1.5 text-xs text-zinc-500">{p.note}</p>}
+                </div>
+              ))}
+            </div>
           )}
 
           <div className="mt-6 rounded-2xl border border-zinc-200 p-5">

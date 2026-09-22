@@ -3,6 +3,7 @@ import type { Db } from "mongodb"
 import { loadCatalogVehicles, type CatalogVehicle } from "@/lib/catalog-pdf"
 import { getCatalogConfig, type CatalogConfig } from "@/lib/catalog-config"
 import type { TruckCatalog } from "@/components/catalog/truck-catalog-poster"
+import { promoCopy, type PromoSeg } from "@/lib/promo-copy"
 
 /**
  * แปลงข้อมูลรถ (ชุดเดียวกับ Catalog PDF) → props ของ TruckCatalogPoster
@@ -12,50 +13,34 @@ import type { TruckCatalog } from "@/components/catalog/truck-catalog-poster"
 const SALE_STATUS_LABEL: Record<string, string> = {
   ready: "พร้อมขาย", repair15: "ซ่อม 15 วัน", repair30: "ซ่อม 30 วัน", review: "รอตรวจสภาพ",
 }
-/** ราคาบนโปสเตอร์ปัดขึ้นเป็นเลขกลม: ราคารถ → พัน (1,234,567 → 1,235,000), ค่างวด → ร้อย (ตัวเลขจริงยังอยู่ใน PDF/ระบบ) */
+/** ปัดขึ้นเป็นเลขกลม: ค่างวด → ร้อย, ราคารถ (กรณีไม่มีแผนผ่อน) → พัน — ตัวเลขจริงยังอยู่ใน PDF/ระบบ */
 const ceilTo = (n: number, unit: number) => (n > 0 ? Math.ceil(n / unit) * unit : 0)
 const beYear = (d?: string) => { const y = Number(String(d ?? "").slice(0, 4)); return y > 1900 ? y + 543 : null }
 
-const fm = (n: number) => n.toLocaleString("en-US")
 const B = ({ children }: { children: React.ReactNode }) => <b className="text-[var(--mt-green)]">{children}</b>
+const seg = (s: PromoSeg, i: number) =>
+  typeof s === "string" ? s
+    : "b" in s ? <B key={i}>{s.b}</B>
+    : <span key={i} className="text-2xl @3xl:text-[28px] leading-snug font-black text-[var(--mt-green)]">{s.big}</span>
 
-/**
- * การ์ดโปรฯ 3 ต่อ ข้อความตามที่ฝ่ายขายเคาะ (2026-09-21) — ตัวเลขดึงจาก promotion_master
- * ต่อที่ 1: "ผ่อนครบทุก ๆ N งวด รับฟรีงวดที่ …" — งวดที่ฟรี = k×(N+M) จากเงื่อนไข "N ฟรี M" ตามจำนวนครั้งที่ฟรี
- */
+/** การ์ดโปรฯ 3 ต่อ — ถ้อยคำอยู่ที่ lib/promo-copy (ชุดเดียวกับหน้า /trucks และ Catalog PDF) */
 function promotionsFrom(v: CatalogVehicle): TruckCatalog["promotions"] {
-  const m = v.promo
-  if (!m) return []
-  const out: TruckCatalog["promotions"] = []
-  if (m.pro1TotalValue > 0 || m.pro1FreeCount > 0) {
-    const [, payN = "9", freeM = "1"] = m.pro1Condition.match(/(\d+)\s*ฟรี\s*(\d+)/) ?? []
-    const cycle = Number(payN) + Number(freeM)
-    const freeAt = Array.from({ length: m.pro1FreeCount }, (_, k) => (k + 1) * cycle)
-    out.push({
-      badge: "ต่อที่ 1", title: "ฟรีค่างวด",
-      body: <>ผ่อนค่างวดครบทุก ๆ <B>{payN} งวด</B> รับฟรีงวดที่ <B>{freeAt.join(",")}</B><br />รวมรับฟรี <B>{m.pro1FreeCount} งวด</B> มูลค่ารวม <B>{fm(m.pro1TotalValue)} บาท</B></>,
-    })
-  }
-  if (m.pro2RepairBudget > 0) {
-    out.push({
-      badge: `ต่อที่ ${out.length + 1}`, title: "ฟรีค่าซ่อมบำรุง",
-      body: <>ฟรีค่าซ่อมบำรุง วงเงิน <B>{fm(m.pro2RepairBudget)} บาท</B></>,
-    })
-  }
-  if (m.pro3AnnualPm > 0) {
-    out.push({
-      badge: `ต่อที่ ${out.length + 1}`, title: "ฟรีเปลี่ยนถ่ายน้ำมันเครื่อง (PM)",
-      body: <>ฟรีเปลี่ยนถ่ายน้ำมันเครื่อง ไส้กรอง และของเหลวสำคัญตามระยะ ทุก ๆ <B>6 เดือน</B> *<br />PM (บำรุงรักษาเชิงป้องกัน) มูลค่ารวมไม่เกิน <B>{fm(m.pro3AnnualPm)} บาท/ปี</B></>,
-      note: "*เงื่อนไขอาจมีการเปลี่ยนแปลง เป็นไปตามที่บริษัทกำหนด",
-    })
-  }
-  return out
+  return promoCopy(v.promo).map((p) => ({
+    badge: p.badge, title: p.title, titleParts: p.titleParts, note: p.note,
+    // 1 บรรทัดใน promo-copy = 1 บรรทัดบนการ์ด (ไม่ปล่อยให้ตัดคำเอง)
+    body: <>{p.lines.map((l, i) => <span key={i} className="block">{l.map(seg)}</span>)}</>,
+  }))
 }
 
 export function toPosterData(v: CatalogVehicle, cfg: CatalogConfig): TruckCatalog {
   const ph = v.photos ?? {}
   // รูปแรก = ด้านซ้าย (เห็นตัวรถทั้งคัน) ถ้าไม่มีค่อยถอยไปหน้า
   const year = beYear(v.registrationDate)
+  // ราคาต้องลงตัวกับแผนผ่อน (ฝ่ายขาย 2026-09-22): ราคา = ดาวน์ + ค่างวดที่ปัดแล้ว × งวด
+  // เช่น 100,000 + 17,200 × 72 = 1,338,400 (ในระบบ 1,335,728) · ไม่มีแผนผ่อน → ปัดราคาเต็มพัน
+  const monthly = ceilTo(v.monthlyPayment ?? 0, 100)
+  const count = v.financeInstallments ?? 0
+  const down = v.downPayment ?? 0
   return {
     brand: v.brand || "—",
     modelCode: v.truckNumber || "",
@@ -66,9 +51,10 @@ export function toPosterData(v: CatalogVehicle, cfg: CatalogConfig): TruckCatalo
       { label: "ปีจดทะเบียน", value: year ? String(year) : "—" },
     ],
     status: SALE_STATUS_LABEL[v.saleStatus ?? ""] ?? (v.saleStatus || "—"),
-    price: ceilTo(v.totalSalePrice ?? 0, 1_000),
-    monthlyPayment: ceilTo(v.monthlyPayment ?? 0, 100),
-    installments: v.financeInstallments || undefined,
+    price: monthly > 0 && count > 0 ? down + monthly * count : ceilTo(v.totalSalePrice ?? 0, 1_000),
+    downPayment: down > 0 ? down : undefined,
+    monthlyPayment: monthly,
+    installments: count || undefined,
     heroImage: ph.left || ph.front || v.photoUrl || "",
     gallery: [
       { src: ph.front ?? "", caption: "ด้านหน้า" },

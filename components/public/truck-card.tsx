@@ -14,7 +14,7 @@ export function TruckCard({ truck }: { truck: PublicTruck }) {
         ) : (
           <div className="absolute inset-0 grid place-items-center text-sm text-zinc-400">รูปกำลังอัปเดต</div>
         )}
-        {truck.promoLines.length > 0 && (
+        {truck.promos.length > 0 && (
           <span className="absolute top-3 left-3 rounded-full bg-amber-500 text-white text-[11px] font-semibold px-2.5 py-1">โปรฯ ติดรถ</span>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { makeSlug, uniqueSlug, registrationYear, toPublicTruck, isReadyForSale, promoLinesFrom } from "@/lib/public-trucks"
+import { makeSlug, uniqueSlug, registrationYear, toPublicTruck, isReadyForSale } from "@/lib/public-trucks"
 
 describe("makeSlug", () => {
   it("สร้างจาก เบอร์รถ-ยี่ห้อ-รุ่น-ปีพ.ศ.", () => {
@@ -73,11 +73,12 @@ describe("toPublicTruck — field allowlist", () => {
   })
 
   it("map ข้อมูลที่เปิดเผยได้ครบ", () => {
-    const out = toPublicTruck(vehicle, price, ["ฟรี PM"], "me009-hino-fm2p-2561", false)
+    const promos = [{ badge: "ต่อที่ 1", title: "ฟรีค่าซ่อมบำรุง", lines: [["ฟรีค่าซ่อมบำรุง วงเงิน ", { b: "120,000 บาท" }]] }]
+    const out = toPublicTruck(vehicle, price, promos, "me009-hino-fm2p-2561", false)
     expect(out).toMatchObject({
       slug: "me009-hino-fm2p-2561", truckNumber: "ME009", brand: "HINO", model: "FM2P",
       registrationYear: 2018, totalSalePrice: 1450000, monthlyPayment: 35000,
-      financeInstallments: 48, promoLines: ["ฟรี PM"], isSold: false,
+      financeInstallments: 48, promos, isSold: false,
     })
   })
 
@@ -105,18 +106,5 @@ describe("isReadyForSale", () => {
   })
   it("ไม่มีแถวราคาเลย → ไม่ขึ้นเว็บ", () => {
     expect(isReadyForSale({ status: "active", licensePlate: "สบ.71-1956" }, undefined, new Set())).toBe(false)
-  })
-})
-
-describe("promoLinesFrom", () => {
-  it("แปลง promotion_master เป็นบรรทัดอ่านง่าย", () => {
-    expect(promoLinesFrom({ pro2RepairBudget: 120000, pro3AnnualPm: 10070 })).toEqual([
-      "ฟรีค่าซ่อมบำรุง วงเงิน 120,000 บาท",
-      "ฟรี PM (บำรุงรักษาเชิงป้องกัน) 10,070 บาท/ปี ตลอดสัญญา",
-    ])
-  })
-  it("ไม่มีโปรฯ → ลิสต์ว่าง", () => {
-    expect(promoLinesFrom(undefined)).toEqual([])
-    expect(promoLinesFrom({ pro2RepairBudget: 0, pro3AnnualPm: 0 })).toEqual([])
   })
 })
