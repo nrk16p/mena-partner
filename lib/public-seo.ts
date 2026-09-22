@@ -18,7 +18,7 @@ const beYear = (t: PublicTruck) => (t.registrationYear ? t.registrationYear + 54
 
 export function truckTitle(t: PublicTruck): string {
   const y = beYear(t)
-  const price = t.totalSalePrice > 0 ? ` ราคา ${t.totalSalePrice.toLocaleString("en-US")}` : ""
+  const price = t.display.price > 0 ? ` ราคา ${t.display.price.toLocaleString("en-US")}` : ""
   return `${t.vehicleType || "รถผสมปูน"} ${nameOf(t)}${y ? ` ปี ${y}` : ""}${price} | ${COMPANY}`
 }
 
@@ -27,7 +27,7 @@ export function truckDescription(t: PublicTruck): string {
   const parts = [
     `${nameOf(t)}${y ? ` ปี ${y}` : ""} ${t.characteristic}`.trim(),
     "เจ้าของเดียว ประวัติซ่อมบำรุงครบ",
-    t.monthlyPayment > 0 ? `ผ่อน ${t.monthlyPayment.toLocaleString("en-US")} บาท/เดือน` : "",
+    t.display.monthlyPayment > 0 ? `ผ่อน ${t.display.monthlyPayment.toLocaleString("en-US")} บาท/เดือน` : "",
     "ผ่อนกับบริษัทโดยตรง พร้อมงานวิ่ง",
   ].filter(Boolean)
   return parts.join(" · ").slice(0, 160)
@@ -48,7 +48,7 @@ export function truckJsonLd(t: PublicTruck): Record<string, unknown> {
     url: siteUrl(`/trucks/${t.slug}`),
     offers: {
       "@type": "Offer",
-      price: t.totalSalePrice,
+      price: t.display.price,
       priceCurrency: "THB",
       availability: t.isSold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
       seller: { "@type": "Organization", name: `บริษัท ${COMPANY} จำกัด` },

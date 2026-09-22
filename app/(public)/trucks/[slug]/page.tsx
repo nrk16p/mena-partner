@@ -70,10 +70,10 @@ export default async function TruckDetailPage({ params }: Params) {
             <p className="mb-3 inline-block rounded-full bg-zinc-900 text-white text-xs font-semibold px-3 py-1">ขายแล้ว</p>
           )}
           <h1 className="text-2xl font-bold">{heading}</h1>
-          <p className="text-3xl font-bold mt-3">฿{fmtBaht(truck.totalSalePrice)}</p>
-          {truck.monthlyPayment > 0 && (
+          <p className="text-3xl font-bold mt-3">฿{fmtBaht(truck.display.price)}</p>
+          {truck.display.monthlyPayment > 0 && (
             <p className="text-emerald-700 font-semibold mt-1">
-              ผ่อน ฿{fmtBaht(truck.monthlyPayment)}/เดือน
+              ผ่อน ฿{fmtBaht(truck.display.monthlyPayment)}/เดือน
               {truck.financeInstallments > 0 && ` × ${truck.financeInstallments} งวด`}
               {truck.downPayment > 0 && ` · ดาวน์ ฿${fmtBaht(truck.downPayment)}`}
             </p>

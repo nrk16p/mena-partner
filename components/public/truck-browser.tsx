@@ -20,8 +20,8 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     const out = trucks.filter((t) =>
       (!brand || t.brand === brand) &&
       (!characteristic || t.characteristic === characteristic) &&
-      (!maxPrice || t.totalSalePrice <= maxPrice))
-    if (sort === "price-asc") return [...out].sort((a, b) => a.totalSalePrice - b.totalSalePrice)
+      (!maxPrice || t.display.price <= maxPrice))
+    if (sort === "price-asc") return [...out].sort((a, b) => a.display.price - b.display.price)
     if (sort === "year-desc") return [...out].sort((a, b) => (b.registrationYear ?? 0) - (a.registrationYear ?? 0))
     return out
   }, [trucks, brand, characteristic, maxPrice, sort])

@@ -21,9 +21,9 @@ export function TruckCard({ truck }: { truck: PublicTruck }) {
       <div className="p-4">
         <p className="font-semibold leading-tight">{title}{year ? ` ปี ${year + 543}` : ""}</p>
         <p className="text-xs text-zinc-500 mt-0.5">{[truck.characteristic, truck.vehicleType].filter(Boolean).join(" · ")}</p>
-        <p className="text-xl font-bold mt-2">฿{fmtBaht(truck.totalSalePrice)}</p>
-        {truck.monthlyPayment > 0 && (
-          <p className="text-sm text-emerald-700 font-medium">ผ่อน ฿{fmtBaht(truck.monthlyPayment)}/เดือน</p>
+        <p className="text-xl font-bold mt-2">฿{fmtBaht(truck.display.price)}</p>
+        {truck.display.monthlyPayment > 0 && (
+          <p className="text-sm text-emerald-700 font-medium">ผ่อน ฿{fmtBaht(truck.display.monthlyPayment)}/เดือน</p>
         )}
       </div>
     </Link>

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { promoCopy, type PromoCopy } from "@/lib/promo-copy"
+import { displaySalePrice } from "@/lib/sale-display"
 
 /** ทะเบียนไม่เอา prefix "สบ." — สูตรเดียวกับ lib/catalog-pdf (ไม่ import เพราะไฟล์นั้น server-only เทสต์โหลดไม่ได้) */
 const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim()
@@ -27,6 +28,8 @@ export interface PublicTruck {
   cashDown: number
   monthlyPayment: number
   financeInstallments: number
+  /** ตัวเลขที่แสดงบนหน้าเว็บ (ปัดเลขกลม + ลงตัวกับดาวน์/งวด) — field ราคาด้านบนคือราคาจริง ใช้ตอนบันทึก lead */
+  display: { price: number; monthlyPayment: number }
   promos: PromoCopy[]   // ถ้อยคำจาก lib/promo-copy (ชุดเดียวกับโปสเตอร์/Catalog PDF)
   isSold: boolean
 }
@@ -90,6 +93,7 @@ export function toPublicTruck(
     cashDown: n(price?.cashDown),
     monthlyPayment: n(price?.monthlyPayment),
     financeInstallments: n(price?.financeInstallments),
+    display: displaySalePrice(price ?? {}),
     promos,
     isSold,
   }
@@ -155,7 +159,7 @@ export async function loadPublicTrucks(): Promise<PublicTruck[]> {
   }
   // มีรูปขึ้นก่อน (หน้าแรกต้องดูดี) แล้วเรียงราคาต่ำ→สูง
   return out.sort((a, b) =>
-    Number(!!b.photoUrl) - Number(!!a.photoUrl) || a.totalSalePrice - b.totalSalePrice)
+    Number(!!b.photoUrl) - Number(!!a.photoUrl) || a.display.price - b.display.price)
 }
 
 export async function loadPublicTruckBySlug(slug: string): Promise<PublicTruck | null> {

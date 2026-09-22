@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         <div style={{ display: "flex", flexDirection: "column", padding: "24px 40px", gap: 8 }}>
           {/* satori: div ที่ไม่ใช่ flex ต้องมีลูกเดียว — รวมเป็น string เดียวก่อน */}
           <div style={{ fontSize: 44 }}>{`${title}${year}`}</div>
-          <div style={{ fontSize: 52, color: "#fbbf24" }}>{`฿${truck.totalSalePrice.toLocaleString("en-US")}`}</div>
+          <div style={{ fontSize: 52, color: "#fbbf24" }}>{`฿${truck.display.price.toLocaleString("en-US")}`}</div>
         </div>
       </div>
     ),

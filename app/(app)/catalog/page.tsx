@@ -8,7 +8,7 @@ import { BookImage, ExternalLink, Download, Settings2, Search, AlertTriangle, Tr
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TableSkeleton } from "@/components/ui/skeleton"
-import { formatMoney } from "@/lib/utils"
+import { displaySalePrice } from "@/lib/sale-display"
 import { hasPerm } from "@/lib/rbac"
 import type { CatalogConfig } from "@/lib/catalog-config"
 
@@ -32,6 +32,7 @@ interface Row {
   downPayment: number
 }
 
+const fmtRound = (v: number) => Math.round(v).toLocaleString("en-US")
 const posterHref = (plate: string) => `/catalog/poster?plate=${encodeURIComponent(plate)}`
 const pdfHref = (plate: string, dl = false) => `/api/catalog/${encodeURIComponent(plate)}/pdf${dl ? "?download=1" : ""}`
 
@@ -193,8 +194,12 @@ export default function CatalogPage() {
                     <p className="text-xs text-zinc-500">{[r.vehicleBrand, r.vehicleModel].filter(Boolean).join(" ") || "—"}</p>
                     {!r.photoUrl && <p className="text-[11px] text-amber-600 inline-flex items-center gap-1 mt-0.5"><AlertTriangle className="w-3 h-3" />ยังไม่มีรูป — <Link href="/vehicles" className="underline">อัปโหลดที่หน้า รถ</Link></p>}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">{r.totalSalePrice ? formatMoney(r.totalSalePrice) : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.monthlyPayment ? <>{formatMoney(r.monthlyPayment)}<span className="text-zinc-400 text-xs"> × {r.financeInstallments || "-"}</span></> : "—"}</td>
+                  {/* ราคาปัดเลข + ลงตัว ชุดเดียวกับโปสเตอร์ (ราคา = ดาวน์ + ค่างวด × งวด) — ตัวเลขจริงดูที่หน้าราคาขาย/PDF */}
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.totalSalePrice ? <p className="font-semibold">{fmtRound(displaySalePrice(r).price)}</p> : "—"}
+                    {r.totalSalePrice > 0 && r.downPayment > 0 && <p className="text-zinc-400 text-xs">ดาวน์ {fmtRound(r.downPayment)}</p>}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{r.monthlyPayment ? <>{fmtRound(displaySalePrice(r).monthlyPayment)}<span className="text-zinc-400 text-xs"> × {r.financeInstallments || "-"}</span></> : "—"}</td>
                   <td className="px-3 py-2">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
                       r.status === "contract" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
