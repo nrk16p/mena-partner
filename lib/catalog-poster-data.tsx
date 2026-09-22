@@ -35,7 +35,7 @@ export function toPosterData(v: CatalogVehicle, cfg: CatalogConfig): TruckCatalo
   const ph = v.photos ?? {}
   // รูปแรก = ด้านซ้าย (เห็นตัวรถทั้งคัน) ถ้าไม่มีค่อยถอยไปหน้า
   const year = beYear(v.registrationDate)
-  // ราคาปัดเลขกลม + ลงตัวกับแผนผ่อน (lib/sale-display — ชุดเดียวกับ /catalog และ /trucks)
+  // ราคาปัดเลขกลม (lib/sale-display — ชุดเดียวกับ /catalog และ /trucks)
   const shown = displaySalePrice(v)
   const count = v.financeInstallments ?? 0
   const down = v.downPayment ?? 0

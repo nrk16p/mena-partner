@@ -29,7 +29,7 @@ export interface TruckCatalog {
   specs: TruckSpec[]
   status: string
   price: number
-  downPayment?: number        // ดาวน์ — แสดงใต้ราคา ให้ ดาวน์ + ค่างวด × งวด = ราคา ลงตัว
+  downPayment?: number        // ดาวน์ — แสดงใต้ราคา คู่กับค่างวด × งวด
   monthlyPayment: number
   installments?: number       // จำนวนงวดผ่อน (แสดง × N งวด)
   heroImage: string

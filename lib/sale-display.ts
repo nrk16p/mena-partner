@@ -1,7 +1,8 @@
 /**
- * ตัวเลขราคา "สำหรับแสดงฝั่งขาย" — โปสเตอร์, หน้า /catalog, หน้าเว็บ /trucks (ฝ่ายขาย 2026-09-22: ปัดเลขกลม + ต้องลงตัว)
+ * ตัวเลขราคา "สำหรับแสดงฝั่งขาย" — โปสเตอร์, หน้า /catalog, หน้าเว็บ /trucks (ฝ่ายขาย 2026-09-22: ปัดเลขกลม)
  * - ค่างวด → ปัดขึ้นเต็มร้อย
- * - ราคา = ดาวน์ + ค่างวดที่ปัดแล้ว × งวด  (100,000 + 17,200 × 72 = 1,338,400 · ในระบบ 1,335,728)
+ * - ราคา = ดาวน์ + ค่างวดที่ปัดแล้ว × งวด แล้วปัดขึ้นเต็มพัน (100,000 + 17,200 × 72 = 1,338,400 → 1,339,000 · ในระบบ 1,335,728)
+ *   ราคาจึงสูงกว่าผลรวมแผนผ่อนได้ไม่เกิน 999 (ผู้ใช้สั่ง 2026-09-22 "1,338,400 should round to 9000")
  * - ไม่มีแผนผ่อน → ราคาปัดขึ้นเต็มพัน
  * ใช้แสดงผลเท่านั้น — ตัวเลขจริงยังอยู่ในระบบ/Catalog PDF/ใบเสนอราคา/สัญญา (lead จากเว็บเก็บราคาจริง)
  */
@@ -20,7 +21,7 @@ export function displaySalePrice(p: SalePriceInput): { price: number; monthlyPay
   const monthly = ceilTo(n(p.monthlyPayment), 100)
   const count = n(p.financeInstallments)
   return {
-    price: monthly > 0 && count > 0 ? n(p.downPayment) + monthly * count : ceilTo(n(p.totalSalePrice), 1_000),
+    price: ceilTo(monthly > 0 && count > 0 ? n(p.downPayment) + monthly * count : n(p.totalSalePrice), 1_000),
     monthlyPayment: monthly,
   }
 }
