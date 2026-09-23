@@ -26,35 +26,51 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     return out
   }, [trucks, brand, characteristic, maxPrice, sort])
 
-  const sel = "rounded-lg border border-zinc-300 px-3 py-2 text-sm bg-white"
+  const reset = () => { setBrand(""); setChar(""); setMaxPrice(0); setSort("recommended") }
+  const filtered = !!(brand || characteristic || maxPrice)
+  const sel = "rounded-full border border-[var(--mena-line)] bg-white px-4 py-2.5 text-sm hover:border-[var(--mena-green-soft)] focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
+
   return (
     <>
-      <div className="flex flex-wrap gap-2 items-center mb-6">
-        <select className={sel} value={brand} onChange={(e) => setBrand(e.target.value)}>
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--mena-line)] pb-5 mb-8">
+        <select className={sel} value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="ยี่ห้อ">
           <option value="">ยี่ห้อทั้งหมด</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}
         </select>
-        <select className={sel} value={characteristic} onChange={(e) => setChar(e.target.value)}>
+        <select className={sel} value={characteristic} onChange={(e) => setChar(e.target.value)} aria-label="ลักษณะรถ">
           <option value="">ลักษณะทั้งหมด</option>
           {chars.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select className={sel} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))}>
+        <select className={sel} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} aria-label="ราคาไม่เกิน">
           <option value={0}>ราคาทุกช่วง</option>
-          <option value={800000}>ไม่เกิน 800,000</option>
-          <option value={1200000}>ไม่เกิน 1,200,000</option>
-          <option value={1800000}>ไม่เกิน 1,800,000</option>
+          <option value={1_500_000}>ไม่เกิน 1.5 ล้าน</option>
+          <option value={1_800_000}>ไม่เกิน 1.8 ล้าน</option>
+          <option value={2_200_000}>ไม่เกิน 2.2 ล้าน</option>
         </select>
-        <select className={sel} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+        <select className={sel} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="เรียงลำดับ">
           <option value="recommended">แนะนำ</option>
-          <option value="price-asc">ราคาต่ำ → สูง</option>
-          <option value="year-desc">ปีใหม่ → เก่า</option>
+          <option value="price-asc">ราคาต่ำไปสูง</option>
+          <option value="year-desc">ปีใหม่ไปเก่า</option>
         </select>
-        <span className="text-sm text-zinc-500 ml-auto">{shown.length} คัน</span>
+
+        {filtered && (
+          <button type="button" onClick={reset} className="text-sm text-[var(--mena-green)] underline underline-offset-4 px-2 py-2">
+            ล้างตัวกรอง
+          </button>
+        )}
+        <p className="ml-auto text-sm text-[var(--mena-ink)]/55">{shown.length} คัน</p>
       </div>
+
       {shown.length === 0 ? (
-        <p className="text-zinc-500 py-12 text-center">ไม่พบรถตามเงื่อนไขนี้ — ลองล้างตัวกรอง</p>
+        <div className="rounded-2xl bg-[var(--mena-paper)] py-16 text-center">
+          <p className="font-medium">ไม่มีรถตรงเงื่อนไขนี้</p>
+          <p className="text-sm text-[var(--mena-ink)]/60 mt-1">ลองกว้างขึ้น หรือโทรถามฝ่ายขายว่ามีคันไหนกำลังจะว่าง</p>
+          <button type="button" onClick={reset} className="mt-4 rounded-full bg-[var(--mena-green)] text-white px-5 py-2.5 text-sm font-medium">
+            ดูรถทั้งหมด
+          </button>
+        </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((t) => <TruckCard key={t.slug} truck={t} />)}
         </div>
       )}

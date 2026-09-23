@@ -6,24 +6,45 @@ import type { PublicTruck } from "@/lib/public-trucks"
 export function TruckCard({ truck }: { truck: PublicTruck }) {
   const year = truck.registrationYear
   const title = [truck.brand, truck.model].filter(Boolean).join(" ") || "รถผสมปูนมือสอง"
+  const kind = truck.characteristic || truck.vehicleType
+
   return (
-    <Link href={`/trucks/${truck.slug}`} className="group block rounded-2xl border border-zinc-200 overflow-hidden hover:shadow-lg transition-shadow bg-white">
-      <div className="relative aspect-[4/3] bg-zinc-100">
+    <Link
+      href={`/trucks/${truck.slug}`}
+      className="group flex flex-col rounded-2xl border border-[var(--mena-line)] bg-white overflow-hidden transition-shadow hover:shadow-[0_12px_28px_-18px_rgba(2,58,30,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mena-green)]"
+    >
+      <div className="relative aspect-[4/3] bg-[var(--mena-paper)]">
         {truck.photoUrl ? (
-          <Image src={truck.photoUrl} alt={`${title}${year ? ` ปี ${year + 543}` : ""} มือสอง`} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover group-hover:scale-[1.02] transition-transform" />
+          <Image
+            src={truck.photoUrl}
+            alt={`${title}${year ? ` ปี ${year + 543}` : ""} มือสอง`}
+            fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover"
+          />
         ) : (
-          <div className="absolute inset-0 grid place-items-center text-sm text-zinc-400">รูปกำลังอัปเดต</div>
+          <div className="absolute inset-0 grid place-items-center text-sm text-[var(--mena-ink)]/40">รูปกำลังอัปเดต</div>
         )}
-        {truck.promos.length > 0 && (
-          <span className="absolute top-3 left-3 rounded-full bg-amber-500 text-white text-[11px] font-semibold px-2.5 py-1">โปรฯ ติดรถ</span>
+        {truck.isSold ? (
+          <span className="absolute top-3 left-3 rounded-full bg-[var(--mena-ink)] text-white text-xs px-3 py-1">ขายแล้ว</span>
+        ) : truck.promos.length > 0 && (
+          <span className="absolute top-3 left-3 rounded-full bg-[var(--mena-green)] text-white text-xs px-3 py-1">
+            โปรฯ {truck.promos.length} ต่อ
+          </span>
         )}
       </div>
-      <div className="p-4">
-        <p className="font-semibold leading-tight">{title}{year ? ` ปี ${year + 543}` : ""}</p>
-        <p className="text-xs text-zinc-500 mt-0.5">{[truck.characteristic, truck.vehicleType].filter(Boolean).join(" · ")}</p>
-        <p className="text-xl font-bold mt-2">฿{fmtBaht(truck.display.price)}</p>
+
+      <div className="p-5 flex flex-col flex-1">
+        <p className="font-medium leading-snug group-hover:text-[var(--mena-green)] transition-colors">
+          {title}{year ? <span className="text-[var(--mena-ink)]/50 font-normal"> ปี {year + 543}</span> : null}
+        </p>
+        {kind && <p className="text-sm text-[var(--mena-ink)]/55 mt-0.5">{kind}</p>}
+
+        <p className="mt-4 text-2xl font-semibold text-[var(--mena-green)] tabular-nums">฿{fmtBaht(truck.display.price)}</p>
         {truck.display.monthlyPayment > 0 && (
-          <p className="text-sm text-emerald-700 font-medium">ผ่อน ฿{fmtBaht(truck.display.monthlyPayment)}/เดือน</p>
+          <p className="text-sm text-[var(--mena-ink)]/70 tabular-nums">
+            ผ่อน ฿{fmtBaht(truck.display.monthlyPayment)}/เดือน
+            {truck.financeInstallments > 0 && <span className="text-[var(--mena-ink)]/45"> · {truck.financeInstallments} งวด</span>}
+          </p>
         )}
       </div>
     </Link>

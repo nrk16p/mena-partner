@@ -49,100 +49,119 @@ export default async function TruckDetailPage({ params }: Params) {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(truckJsonLd(truck)) }} />
 
-      <nav className="text-sm text-zinc-500 mb-5">
-        <Link href="/trucks" className="hover:underline">รถมือสอง</Link>
-        <span className="mx-2">›</span>
-        <span>{truck.vehicleType || "รถผสมปูน"}</span>
-        <span className="mx-2">›</span>
-        <span className="text-zinc-800">{heading}</span>
+      <nav className="text-sm text-[var(--mena-ink)]/55 mb-6">
+        <Link href="/trucks" className="hover:text-[var(--mena-green)]">รถพร้อมขาย</Link>
+        <span className="mx-2">/</span>
+        <span className="text-[var(--mena-ink)]">{heading}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-8">
-        <div>
-          <TruckGallery photos={[truck.photos.front, truck.photos.left, truck.photos.right, truck.photos.back, truck.photos.cabin]} alt={`${heading} มือสอง`} />
-        </div>
+      <div className="grid lg:grid-cols-[1.45fr_1fr] gap-10 items-start">
+        <div className="min-w-0">
+          <TruckGallery
+            photos={[truck.photos.front, truck.photos.left, truck.photos.right, truck.photos.back, truck.photos.cabin]}
+            alt={`${heading} มือสอง`}
+          />
 
-        <div>
-          {truck.isSold && (
-            <p className="mb-3 inline-block rounded-full bg-zinc-900 text-white text-xs font-semibold px-3 py-1">ขายแล้ว</p>
-          )}
-          <h1 className="text-2xl font-bold">{heading}</h1>
-          <p className="text-3xl font-bold mt-3">฿{fmtBaht(truck.display.price)}</p>
-          {truck.display.monthlyPayment > 0 && (
-            <p className="text-emerald-700 font-semibold mt-1">
-              ผ่อน ฿{fmtBaht(truck.display.monthlyPayment)}/เดือน
-              {truck.financeInstallments > 0 && ` × ${truck.financeInstallments} งวด`}
-              {truck.display.downPayment > 0 && ` · ดาวน์ ฿${fmtBaht(truck.display.downPayment)}`}
-            </p>
-          )}
-
-          <div className="flex gap-2 mt-5">
-            {cfg.contactPhone && (
-              <a href={`tel:${cfg.contactPhone}`} className="flex-1 text-center rounded-xl bg-zinc-900 text-white font-semibold py-3">โทรหาฝ่ายขาย</a>
-            )}
-            {cfg.contactLine && (
-              <a href={`https://line.me/R/ti/p/${encodeURIComponent(cfg.contactLine)}`} className="flex-1 text-center rounded-xl border border-zinc-300 font-semibold py-3">LINE</a>
-            )}
-          </div>
+          <section className="mt-10">
+            <h2 className="text-lg font-medium text-[var(--mena-green)]">ข้อมูลรถ</h2>
+            <div className="mt-3 rounded-2xl border border-[var(--mena-line)] px-5 py-2">
+              <TruckSpecTable truck={truck} />
+            </div>
+          </section>
 
           {truck.promos.length > 0 && (
-            <div className="mt-6 space-y-2.5">
-              {truck.promos.map((p) => (
-                <div key={p.badge} className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-sm">
-                  <p className="font-semibold">
-                    <span className="mr-2 rounded-full bg-amber-500 text-white text-[11px] px-2 py-0.5 align-middle">{p.badge}</span>
-                    {p.title}
-                  </p>
-                  <div className="mt-1 text-zinc-700">
-                    {p.lines.map((l, i) => (
-                      <p key={i}>
-                        {l.map((s, j) => typeof s === "string" ? s
-                          : "b" in s ? <b key={j} className="text-zinc-900">{s.b}</b>
-                          : <span key={j} className="text-base font-bold text-amber-700">{s.big}</span>)}
-                      </p>
-                    ))}
-                  </div>
-                  {p.note && <p className="mt-1.5 text-xs text-zinc-500">{p.note}</p>}
-                </div>
-              ))}
-            </div>
+            <section className="mt-10">
+              <h2 className="text-lg font-medium text-[var(--mena-green)]">โปรโมชั่นที่ติดมากับรถคันนี้</h2>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {truck.promos.map((p) => (
+                  <article key={p.badge} className="rounded-2xl border border-[var(--mena-line)] overflow-hidden bg-white">
+                    <header className="bg-[var(--mena-green)] text-white px-5 py-3 flex items-baseline gap-2">
+                      <span className="text-xs bg-white/20 rounded-full px-2 py-0.5">{p.badge}</span>
+                      <h3 className="font-medium">{p.title}</h3>
+                    </header>
+                    <div className="px-5 py-4 text-sm leading-relaxed">
+                      {p.lines.map((l, i) => (
+                        <p key={i}>
+                          {l.map((s, j) => typeof s === "string" ? s
+                            : "b" in s ? <b key={j} className="font-semibold text-[var(--mena-green)]">{s.b}</b>
+                            : <span key={j} className="block text-xl font-semibold text-[var(--mena-green)] leading-tight">{s.big}</span>)}
+                        </p>
+                      ))}
+                      {p.note && <p className="mt-2 text-xs text-[var(--mena-ink)]/50">{p.note}</p>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
           )}
 
-          <div className="mt-6 rounded-2xl border border-zinc-200 p-5">
-            <p className="text-sm font-semibold mb-3">ข้อมูลรถ</p>
-            <TruckSpecTable truck={truck} />
+          {cfg.terms.length > 0 && (
+            <section className="mt-10 text-xs text-[var(--mena-ink)]/50 space-y-1">
+              {cfg.terms.map((t) => <p key={t}>{t}</p>)}
+            </section>
+          )}
+        </div>
+
+        {/* กล่องราคา — เกาะจอไว้ ลูกค้าเห็นราคาและปุ่มติดต่อตลอดเวลาที่เลื่อนดูรูป/สเปก */}
+        <aside className="min-w-0 lg:sticky lg:top-[88px]">
+          <div className="rounded-2xl border border-[var(--mena-line)] bg-white p-6 shadow-[0_16px_40px_-28px_rgba(2,58,30,0.45)]">
+            {truck.isSold && (
+              <p className="mb-3 inline-block rounded-full bg-[var(--mena-ink)] text-white text-xs px-3 py-1">ขายแล้ว</p>
+            )}
+            <h1 className="text-2xl font-medium leading-snug">{heading}</h1>
+            {(truck.characteristic || truck.vehicleType) && (
+              <p className="text-sm text-[var(--mena-ink)]/55 mt-1">{truck.characteristic || truck.vehicleType}</p>
+            )}
+
+            <p className="mt-5 text-4xl font-semibold text-[var(--mena-green)] tabular-nums">฿{fmtBaht(truck.display.price)}</p>
+
+            {truck.display.monthlyPayment > 0 && (
+              <dl className="mt-4 divide-y divide-[var(--mena-line)] border-y border-[var(--mena-line)]">
+                {truck.display.downPayment > 0 && (
+                  <div className="flex justify-between py-2.5 text-sm">
+                    <dt className="text-[var(--mena-ink)]/55">เงินดาวน์</dt>
+                    <dd className="font-medium tabular-nums">฿{fmtBaht(truck.display.downPayment)}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between py-2.5 text-sm">
+                  <dt className="text-[var(--mena-ink)]/55">ผ่อนต่อเดือน{truck.display.downPayment > 0 ? " (หลังหักดาวน์)" : ""}</dt>
+                  <dd className="font-medium tabular-nums">฿{fmtBaht(truck.display.monthlyPayment)}</dd>
+                </div>
+                {truck.financeInstallments > 0 && (
+                  <div className="flex justify-between py-2.5 text-sm">
+                    <dt className="text-[var(--mena-ink)]/55">จำนวนงวด</dt>
+                    <dd className="font-medium tabular-nums">{truck.financeInstallments} งวด</dd>
+                  </div>
+                )}
+              </dl>
+            )}
+
+            <div className="mt-5 flex flex-col gap-2">
+              {cfg.contactPhone && (
+                <a href={`tel:${cfg.contactPhone}`} className="text-center rounded-full bg-[var(--mena-green)] text-white font-medium py-3 hover:bg-[var(--mena-green-soft)] transition-colors">
+                  โทรหาฝ่ายขาย {cfg.contactPhone}
+                </a>
+              )}
+              {cfg.contactLine && (
+                <a href={`https://line.me/R/ti/p/${encodeURIComponent(cfg.contactLine)}`} className="text-center rounded-full border border-[var(--mena-green)] text-[var(--mena-green)] font-medium py-3 hover:bg-[var(--mena-paper)] transition-colors">
+                  ทักทาง LINE
+                </a>
+              )}
+            </div>
           </div>
 
           {!truck.isSold && (
-            <div className="mt-6">
+            <div className="mt-4">
               <LeadForm slug={truck.slug} />
             </div>
           )}
-        </div>
+        </aside>
       </div>
 
-      <section className="mt-10 max-w-3xl">
-        <h2 className="text-lg font-bold">ทำไมต้องซื้อรถจากกองรถบริษัท</h2>
-        <ul className="mt-3 space-y-2 text-sm text-zinc-700">
-          {cfg.sellingPoints.map((p) => <li key={p} className="flex gap-2"><span className="text-emerald-600">✓</span>{p}</li>)}
-        </ul>
-        {cfg.terms.length > 0 && (
-          <div className="mt-6 text-xs text-zinc-500 space-y-1">
-            {cfg.terms.map((t) => <p key={t}>{t}</p>)}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10 rounded-2xl border border-zinc-200 p-5 max-w-3xl">
-        <p className="text-sm text-zinc-500">ผู้ขาย</p>
-        <p className="font-bold text-lg">บริษัท มีนา ทรานสปอร์ต จำกัด</p>
-        <p className="text-sm text-zinc-600 mt-1">{cfg.contactName}{cfg.contactPhone ? ` · ${cfg.contactPhone}` : ""}</p>
-      </section>
-
       {related.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-lg font-bold mb-4">รถคันอื่นที่น่าสนใจ</h2>
-          <div className="grid gap-5 sm:grid-cols-3">
+        <section className="mt-16">
+          <h2 className="text-2xl font-medium">รถคันอื่นที่น่าสนใจ</h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-3">
             {related.map((t) => <TruckCard key={t.slug} truck={t} />)}
           </div>
         </section>
