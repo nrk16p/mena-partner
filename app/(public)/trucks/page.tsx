@@ -32,7 +32,7 @@ export default async function TrucksPage() {
 
         <div className="relative max-w-6xl mx-auto px-4 pt-14 pb-12 sm:pt-20 sm:pb-16 text-white">
           <h1 className="text-3xl sm:text-5xl font-medium leading-tight max-w-2xl">
-            รถบรรทุกมือสอง ที่เราใช้งานเองทุกวัน
+            รถบรรทุกมือสอง
           </h1>
           <p className="mt-4 max-w-xl text-white/85 leading-relaxed">
             <ThaiText>{cfg.tagline || "เจ้าของเดียวตั้งแต่ออกจากศูนย์ ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ และมีงานวิ่งรองรับตั้งแต่วันแรก"}</ThaiText>

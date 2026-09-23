@@ -72,7 +72,7 @@ export default async function PublicLayout({ children }: { children: React.React
             </span>
             <p className="mt-5 font-medium text-white">บริษัท มีนา ทรานสปอร์ต จำกัด (มหาชน)</p>
             <p className="mt-2 max-w-xs text-sm leading-[1.9] text-balance">
-              <ThaiText>รถบรรทุกที่เราใช้งานเองทุกวัน เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์</ThaiText>
+              <ThaiText>รถบรรทุกมือสองจากบริษัท เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์</ThaiText>
             </p>
           </div>
 
