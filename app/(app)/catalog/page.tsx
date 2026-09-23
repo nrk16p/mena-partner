@@ -197,7 +197,7 @@ export default function CatalogPage() {
                   {/* ราคาปัดเลขกลม ชุดเดียวกับโปสเตอร์ (lib/sale-display) — ตัวเลขจริงดูที่หน้าราคาขาย/PDF */}
                   <td className="px-3 py-2 text-right tabular-nums">
                     {r.totalSalePrice ? <p className="font-semibold">{fmtRound(displaySalePrice(r).price)}</p> : "—"}
-                    {r.totalSalePrice > 0 && r.downPayment > 0 && <p className="text-zinc-400 text-xs">ดาวน์ {fmtRound(r.downPayment)}</p>}
+                    {r.totalSalePrice > 0 && r.downPayment > 0 && <p className="text-zinc-400 text-xs">ดาวน์ {fmtRound(displaySalePrice(r).downPayment)}</p>}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.monthlyPayment ? <>{fmtRound(displaySalePrice(r).monthlyPayment)}<span className="text-zinc-400 text-xs"> × {r.financeInstallments || "-"}</span></> : "—"}</td>
                   <td className="px-3 py-2">

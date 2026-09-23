@@ -28,8 +28,8 @@ export interface PublicTruck {
   cashDown: number
   monthlyPayment: number
   financeInstallments: number
-  /** ตัวเลขที่แสดงบนหน้าเว็บ (ปัดเลขกลม — lib/sale-display) — field ราคาด้านบนคือราคาจริง ใช้ตอนบันทึก lead */
-  display: { price: number; monthlyPayment: number }
+  /** ตัวเลขที่แสดงบนหน้าเว็บ (ปัดเลขกลม + ลงตัวกับดาวน์/งวด) — field ราคาด้านบนคือราคาจริง ใช้ตอนบันทึก lead */
+  display: { price: number; monthlyPayment: number; downPayment: number }
   promos: PromoCopy[]   // ถ้อยคำจาก lib/promo-copy (ชุดเดียวกับโปสเตอร์/Catalog PDF)
   isSold: boolean
 }

@@ -38,7 +38,7 @@ export function toPosterData(v: CatalogVehicle, cfg: CatalogConfig): TruckCatalo
   // ราคาปัดเลขกลม (lib/sale-display — ชุดเดียวกับ /catalog และ /trucks)
   const shown = displaySalePrice(v)
   const count = v.financeInstallments ?? 0
-  const down = v.downPayment ?? 0
+  const down = shown.downPayment      // ดาวน์ที่โชว์ = รับส่วนต่างจากการปัดราคา (ดูหมายเหตุใน lib/sale-display)
   return {
     brand: v.brand || "—",
     modelCode: v.truckNumber || "",

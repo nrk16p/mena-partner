@@ -75,7 +75,7 @@ export default async function TruckDetailPage({ params }: Params) {
             <p className="text-emerald-700 font-semibold mt-1">
               ผ่อน ฿{fmtBaht(truck.display.monthlyPayment)}/เดือน
               {truck.financeInstallments > 0 && ` × ${truck.financeInstallments} งวด`}
-              {truck.downPayment > 0 && ` · ดาวน์ ฿${fmtBaht(truck.downPayment)}`}
+              {truck.display.downPayment > 0 && ` · ดาวน์ ฿${fmtBaht(truck.display.downPayment)}`}
             </p>
           )}
 

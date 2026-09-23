@@ -8,7 +8,7 @@ const truck: PublicTruck = {
   engineSize: "7790 cc", photoUrl: "https://spaces/f.jpg",
   photos: { front: "https://spaces/f.jpg", back: "", left: "", right: "", cabin: "" },
   totalSalePrice: 1450000, downPayment: 200000, cashDown: 50000, monthlyPayment: 35000,
-  financeInstallments: 48, display: { price: 1450000, monthlyPayment: 35000 }, promos: [], isSold: false,
+  financeInstallments: 48, display: { price: 1450000, monthlyPayment: 35000, downPayment: 200000 }, promos: [], isSold: false,
 }
 
 describe("siteUrl", () => {
