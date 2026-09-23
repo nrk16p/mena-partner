@@ -295,12 +295,16 @@ function PriceBlock({ price, downPayment, monthlyPayment, installments }: Pick<T
         <p className="text-sm text-[var(--mt-gold-light)]">ผ่อนเพียงเดือนละ</p>
         <p className="leading-none mt-1">
           <span className={`text-4xl @3xl:text-[56px] font-black ${T.numeral} ${T.goldText}`}>{baht(monthlyPayment)}</span>
-          <span className="ml-2 text-base text-[var(--mt-gold-light)]">บาท</span>
+          <span className="ml-2 text-base text-[var(--mt-gold-light)]">บาท{!!downPayment && <span className="align-super text-sm">*</span>}</span>
         </p>
         {!!installments && (
           <p className="mt-2 text-sm @3xl:text-base text-[var(--mt-gold-light)]">
             ผ่อน <span className="font-black text-white text-lg @3xl:text-xl">{installments}</span> งวด
           </p>
+        )}
+        {/* ค่างวดคิดจากยอดหลังหักดาวน์ — ไม่งั้นลูกค้าจะคูณค่างวด × งวด แล้วงงว่าไม่เท่าราคารถ */}
+        {!!downPayment && (
+          <p className="mt-1 text-xs @3xl:text-sm text-[var(--mt-gold-light)]/80">* เป็นยอดผ่อนหลังหักเงินดาวน์แล้ว</p>
         )}
       </div>
     </div>
