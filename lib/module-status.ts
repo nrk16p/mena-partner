@@ -17,6 +17,8 @@ export const MODULE_STATUS: Record<string, ModuleStatus> = {
   "/quotations":         "testing",
   // Catalog รายคัน (PDF อัตโนมัติ) — กำลังทดสอบ
   "/catalog":            "testing",
+  // เว็บขายรถสาธารณะ (ลูกค้าเห็น) — ใช้งานจริงแล้ว
+  "/trucks":             "ready",
   // งานประจำวัน — พร้อมใช้งานแล้ว
   "/vehicle-cost":       "ready",
   "/insurance-tax":      "ready",

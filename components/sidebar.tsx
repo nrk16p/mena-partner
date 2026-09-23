@@ -6,14 +6,14 @@ import { usePathname, useSearchParams } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
   ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck, BookOpenCheck, ChevronDown,
-  UserMinus, BookImage,
+  UserMinus, BookImage, Globe,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
 import { statusOf, STATUS_META } from "@/lib/module-status"
 
 // จัดหมวดเป็น 3 ระบบหลัก: สัญญา · โปรโมชั่น · เงินเดือน (ปรับตามคำสั่ง 2026-08-05)
-const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; hint?: string; adminOnly?: boolean }[] }[] = [
+const GROUPS: { title: string | null; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; hint?: string; adminOnly?: boolean; external?: boolean }[] }[] = [
   {
     title: null,
     items: [{ href: "/", label: "หน้าหลัก · คู่มือ", icon: Home }],
@@ -33,6 +33,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     items: [
       { href: "/quotations", label: "สร้างใบเสนอราคา", icon: Receipt },
       { href: "/catalog", label: "Catalog รถ", icon: BookImage, hint: "แคตตาล็อกรายคัน PDF อัตโนมัติ" },
+      { href: "/trucks", label: "เว็บขายรถ (ลูกค้าเห็น)", icon: Globe, hint: "หน้าเว็บสาธารณะ — เปิดแท็บใหม่", external: true },
       { href: "/quotations/commission", label: "ยอดขาย & ค่าคอม", icon: HandCoins, hint: "ขายกี่คัน ได้คอมเท่าไหร่" },
       { href: "/quotations/sales-people", label: "ทีมขาย", icon: Users, hint: "ชื่อ / email / เบอร์โทร พนักงานขาย", adminOnly: true },
     ],
@@ -66,18 +67,20 @@ const ADMIN_NAV = [
   { href: "/admin/month", label: "จัดการรอบเดือน", icon: Settings },
 ]
 
-function NavLink({ href, label, icon: Icon, active, hint }: {
+function NavLink({ href, label, icon: Icon, active, hint, external }: {
   href: string
   label: string
   icon: React.ComponentType<{ className?: string }>
   active: boolean
   hint?: string
+  external?: boolean   // หน้าเว็บสาธารณะ — เปิดแท็บใหม่ ไม่ดึงพนักงานออกจากหลังบ้าน
 }) {
   const status = statusOf(href)
   const meta = STATUS_META[status]
   return (
     <Link
       href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={cn(
         "flex items-center gap-2.5 px-3 py-[8px] rounded-lg text-sm transition-colors relative",
         active
@@ -181,7 +184,7 @@ export function Sidebar() {
           const visible = g0.items.filter((it) => !it.adminOnly || isAdmin)
           // ฝ่ายขาย: เหลือเฉพาะ ราคาขาย + ใบเสนอราคา
           const g = isSales
-            ? { ...g0, items: visible.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission" || it.href === "/catalog") }
+            ? { ...g0, items: visible.filter((it) => it.href === "/price-list" || it.href === "/quotations" || it.href === "/quotations/commission" || it.href === "/catalog" || it.href === "/trucks") }
             : { ...g0, items: visible }
           if (g.title && g.items.length === 0) return null
           if (!g.title) {
