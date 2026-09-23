@@ -5,12 +5,14 @@ import { getCatalogConfig } from "@/lib/catalog-config"
 import { loadPublicTrucks } from "@/lib/public-trucks"
 import { siteUrl, fmtBaht } from "@/lib/public-seo"
 import { TruckBrowser } from "@/components/public/truck-browser"
+import { LeadForm } from "@/components/public/lead-form"
+import { ThaiText } from "@/components/public/thai-text"
 
 export const revalidate = 600
 
 export const metadata: Metadata = {
-  title: "รถผสมปูน (มิกเซอร์) มือสอง พร้อมงานวิ่ง | มีนา ทรานสปอร์ต",
-  description: "รถผสมปูนมือสองจากกองรถบริษัท เจ้าของเดียว มีประวัติซ่อมบำรุงครบ ผ่อนกับบริษัทโดยตรง พร้อมงานวิ่งรองรับ",
+  title: "รถมิกเซอร์มือสอง พร้อมงานวิ่ง ผ่อนตรงกับบริษัท | มีนา ทรานสปอร์ต",
+  description: "รถมิกเซอร์มือสองที่บริษัทใช้งานเอง เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ พร้อมงานวิ่งรองรับตั้งแต่วันแรก",
   alternates: { canonical: siteUrl("/trucks") },
 }
 
@@ -21,7 +23,7 @@ export default async function TrucksPage() {
 
   return (
     <>
-      {/* รูปกองรถจากเว็บบริษัท — ภาพที่ลูกค้ากลุ่มนี้รู้จักดีที่สุดคือรถของเราบนถนนจริง */}
+      {/* รูปขบวนรถจากเว็บบริษัท — ภาพที่ลูกค้ากลุ่มนี้รู้จักดีที่สุดคือรถของเราบนถนนจริง */}
       <section className="relative">
         <div className="absolute inset-0">
           <Image src="/brand/fleet-hero.webp" alt="" fill priority sizes="100vw" className="object-cover" />
@@ -30,10 +32,10 @@ export default async function TrucksPage() {
 
         <div className="relative max-w-6xl mx-auto px-4 pt-14 pb-12 sm:pt-20 sm:pb-16 text-white">
           <h1 className="text-3xl sm:text-5xl font-medium leading-tight max-w-2xl">
-            รถผสมปูนมือสอง จากกองรถที่เราดูแลเอง
+            รถมิกเซอร์มือสอง ที่เราใช้งานเองทุกวัน
           </h1>
           <p className="mt-4 max-w-xl text-white/85 leading-relaxed">
-            {cfg.tagline || "เจ้าของเดียวตั้งแต่ออกจากศูนย์ ประวัติซ่อมบำรุงครบทุกครั้ง ผ่อนกับบริษัทโดยตรง และมีงานวิ่งรองรับตั้งแต่วันแรก"}
+            <ThaiText>{cfg.tagline || "เจ้าของเดียวตั้งแต่ออกจากศูนย์ ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ และมีงานวิ่งรองรับตั้งแต่วันแรก"}</ThaiText>
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -62,27 +64,64 @@ export default async function TrucksPage() {
       </section>
 
       <section id="รถพร้อมขาย" className="max-w-6xl mx-auto px-4 py-12 sm:py-16 scroll-mt-20">
-        <h2 className="text-2xl font-medium">รถพร้อมขาย</h2>
-        <p className="text-[var(--mena-ink)]/60 mt-1">ราคารวมโปรโมชั่นที่ติดมากับรถ · ดูรายละเอียดรายคันได้เลย</p>
+        <h2 className="text-2xl font-medium">รถพร้อมส่งมอบ</h2>
+        <p className="text-[var(--mena-ink)]/60 mt-1">ทุกคันมีโปรโมชั่นติดรถ ดูราคาและแผนผ่อนได้ทุกคัน</p>
         <div className="mt-8">
           <TruckBrowser trucks={trucks} />
+        </div>
+      </section>
+
+      {/* ความน่าเชื่อถือของผู้ขาย — ข้อความจากเว็บบริษัท (ฝ่ายขายให้มา 2026-09-23) */}
+      <section className="bg-[var(--mena-paper)]">
+        <div className="max-w-6xl mx-auto px-4 py-14 grid gap-10 lg:grid-cols-2 items-center">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-medium text-[var(--mena-green)]">ขนส่งคอนกรีตผสมเสร็จ</h2>
+            <p className="mt-5 leading-[1.9] text-balance">
+              <ThaiText>
+                เราเชี่ยวชาญในการขนส่งคอนกรีตผสมเสร็จ โดยได้รับความไว้วางใจจากบริษัทปูนซีเมนต์และบริษัทคอนกรีตชั้นนำของประเทศ ให้บริหารจัดการรถมิกเซอร์กว่า 472 คัน ด้วยประสบการณ์กว่า 10 ปี
+              </ThaiText>
+            </p>
+            <dl className="mt-8 flex flex-wrap gap-10">
+              <div>
+                <dt className="text-sm text-[var(--mena-ink)]/55">รถมิกเซอร์ที่ดูแล</dt>
+                <dd className="text-3xl font-semibold text-[var(--mena-green)] tabular-nums">472 คัน</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-[var(--mena-ink)]/55">ประสบการณ์</dt>
+                <dd className="text-3xl font-semibold text-[var(--mena-green)] tabular-nums">กว่า 10 ปี</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="relative aspect-[7/5] rounded-2xl overflow-hidden">
+            <Image src="/brand/mixer-service.jpg" alt="รถมิกเซอร์ของมีนา ทรานสปอร์ต" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
+          </div>
         </div>
       </section>
 
       {cfg.sellingPoints.length > 0 && (
         <section className="bg-[var(--mena-paper)]">
           <div className="max-w-6xl mx-auto px-4 py-14">
-            <h2 className="text-2xl font-medium text-[var(--mena-green)]">ทำไมซื้อรถจากกองรถมีนา</h2>
+            <h2 className="text-2xl font-medium text-[var(--mena-green)]">ซื้อรถกับมีนา ได้มากกว่ารถหนึ่งคัน</h2>
+            {/* text-balance = เฉลี่ยความยาวแต่ละบรรทัด ไม่ให้เหลือคำโดดท้ายย่อหน้า (ข้อความมาจาก catalog_config แก้ได้ที่ /catalog) */}
             <ul className="mt-8 grid gap-6 sm:grid-cols-3">
               {cfg.sellingPoints.slice(0, 3).map((p) => (
-                <li key={p} className="bg-white rounded-2xl p-6 border border-[var(--mena-line)]">
-                  <p className="leading-relaxed">{p}</p>
+                <li key={p} className="bg-white rounded-2xl px-7 py-6 border border-[var(--mena-line)]">
+                  <p className="leading-[1.9] text-balance"><ThaiText>{p}</ThaiText></p>
                 </li>
               ))}
             </ul>
           </div>
         </section>
       )}
+      <section id="ติดต่อ" className="max-w-6xl mx-auto px-4 py-14 scroll-mt-24 grid gap-10 lg:grid-cols-[1fr_1.1fr] items-start">
+        <div>
+          <h2 className="text-2xl font-medium">สนใจคันไหน ให้เราโทรกลับ</h2>
+          <p className="mt-3 leading-[1.9] text-balance text-[var(--mena-ink)]/70">
+            <ThaiText>ฝากชื่อกับเบอร์ไว้ ฝ่ายขายจะโทรกลับพร้อมราคา เงื่อนไขการผ่อน และนัดเวลาเข้ามาดูรถ</ThaiText>
+          </p>
+        </div>
+        <LeadForm slug="" />
+      </section>
     </>
   )
 }

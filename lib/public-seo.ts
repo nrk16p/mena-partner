@@ -26,9 +26,9 @@ export function truckDescription(t: PublicTruck): string {
   const y = beYear(t)
   const parts = [
     `${nameOf(t)}${y ? ` ปี ${y}` : ""} ${t.characteristic}`.trim(),
-    "เจ้าของเดียว ประวัติซ่อมบำรุงครบ",
+    "เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ",
     t.display.monthlyPayment > 0 ? `ผ่อน ${t.display.monthlyPayment.toLocaleString("en-US")} บาท/เดือน` : "",
-    "ผ่อนกับบริษัทโดยตรง พร้อมงานวิ่ง",
+    "ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ พร้อมงานวิ่ง",
   ].filter(Boolean)
   return parts.join(" · ").slice(0, 160)
 }
