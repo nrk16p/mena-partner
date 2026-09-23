@@ -72,7 +72,7 @@ export default async function TrucksPage() {
       </section>
 
       {/* ความน่าเชื่อถือของผู้ขาย — ข้อความจากเว็บบริษัท (ฝ่ายขายให้มา 2026-09-23) */}
-      <section className="bg-[var(--mena-paper)]">
+      <section className="bg-white">
         <div className="max-w-6xl mx-auto px-4 py-14 grid gap-10 lg:grid-cols-2 items-center">
           <div>
             <h2 className="text-2xl sm:text-3xl font-medium text-[var(--mena-green)]">ขนส่งคอนกรีตผสมเสร็จ</h2>
@@ -99,7 +99,7 @@ export default async function TrucksPage() {
       </section>
 
       {cfg.sellingPoints.length > 0 && (
-        <section className="bg-[var(--mena-paper)]">
+        <section>
           <div className="max-w-6xl mx-auto px-4 py-14">
             <h2 className="text-2xl font-medium text-[var(--mena-green)]">ซื้อรถกับมีนา ได้มากกว่ารถหนึ่งคัน</h2>
             {/* text-balance = เฉลี่ยความยาวแต่ละบรรทัด ไม่ให้เหลือคำโดดท้ายย่อหน้า (ข้อความมาจาก catalog_config แก้ได้ที่ /catalog) */}

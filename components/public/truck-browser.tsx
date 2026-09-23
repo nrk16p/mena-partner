@@ -62,7 +62,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
       </div>
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl bg-[var(--mena-paper)] py-16 text-center">
+        <div className="rounded-2xl bg-white border border-[var(--mena-line)] py-16 text-center">
           <p className="font-medium">ไม่มีรถตรงเงื่อนไขนี้</p>
           <p className="text-sm text-[var(--mena-ink)]/60 mt-1">ลองกว้างขึ้น หรือโทรถามฝ่ายขายว่ามีคันไหนกำลังจะว่าง</p>
           <button type="button" onClick={reset} className="mt-4 rounded-full bg-[var(--mena-green)] text-white px-5 py-2.5 text-sm font-medium">

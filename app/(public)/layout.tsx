@@ -33,7 +33,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <div
       style={{ ...BRAND, colorScheme: "light" }}
-      className={`${prompt.className} min-h-screen flex flex-col bg-white text-[var(--mena-ink)]`}
+      className={`${prompt.className} min-h-screen flex flex-col bg-[var(--mena-paper)] text-[var(--mena-ink)]`}
     >
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[var(--mena-line)]">
         <div className="max-w-6xl mx-auto px-4 h-[72px] flex items-center gap-6">

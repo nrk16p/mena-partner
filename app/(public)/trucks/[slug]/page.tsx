@@ -64,7 +64,7 @@ export default async function TruckDetailPage({ params }: Params) {
 
           <section className="mt-10">
             <h2 className="text-lg font-medium text-[var(--mena-green)]">ข้อมูลรถ</h2>
-            <div className="mt-3 rounded-2xl border border-[var(--mena-line)] px-5 py-2">
+            <div className="mt-3 rounded-2xl border border-[var(--mena-line)] bg-white px-5 py-2">
               <TruckSpecTable truck={truck} />
             </div>
           </section>

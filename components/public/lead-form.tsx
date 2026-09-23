@@ -28,7 +28,7 @@ export function LeadForm({ slug }: { slug: string }) {
 
   if (state === "done") {
     return (
-      <div className="rounded-2xl border border-[var(--mena-green-soft)] bg-[var(--mena-paper)] p-6 text-sm">
+      <div className="rounded-2xl border border-[var(--mena-green-soft)] bg-white p-6 text-sm">
         <p className="font-medium text-[var(--mena-green)]">ได้รับข้อมูลแล้ว</p>
         <p className="mt-1 text-[var(--mena-ink)]/70">ฝ่ายขายจะติดต่อกลับภายในวันทำการถัดไป</p>
       </div>
@@ -37,7 +37,7 @@ export function LeadForm({ slug }: { slug: string }) {
 
   const field = "w-full rounded-xl border border-[var(--mena-line)] px-4 py-2.5 text-sm bg-white placeholder:text-[var(--mena-ink)]/40 focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
   return (
-    <form onSubmit={onSubmit} className="rounded-2xl border border-[var(--mena-line)] bg-[var(--mena-paper)] p-6 space-y-3">
+    <form onSubmit={onSubmit} className="rounded-2xl border border-[var(--mena-line)] bg-white p-6 space-y-3">
       <p className="font-medium">ให้ฝ่ายขายติดต่อกลับ</p>
       <p className="text-sm text-[var(--mena-ink)]/60 !mt-1">ฝากชื่อกับเบอร์ไว้ เราโทรกลับพร้อมรายละเอียดรถคันนี้</p>
       <input name="name" required placeholder="ชื่อ-นามสกุล" className={field} />
