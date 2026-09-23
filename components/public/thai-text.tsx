@@ -19,3 +19,6 @@ export function ThaiText({ children }: { children: string }) {
     </>
   )
 }
+
+/** ลิงก์โทร — ตัดช่องว่าง/ขีดออกจากเบอร์ ("061 961 5364" → tel:0619615364) */
+export const telHref = (phone: string) => `tel:${phone.replace(/[^0-9+]/g, "")}`

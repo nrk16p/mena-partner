@@ -4,7 +4,7 @@ import { Prompt } from "next/font/google"
 import clientPromise from "@/lib/mongo"
 import { getCatalogConfig } from "@/lib/catalog-config"
 import { ContactBar } from "@/components/public/contact-bar"
-import { ThaiText } from "@/components/public/thai-text"
+import { ThaiText, telHref } from "@/components/public/thai-text"
 
 /**
  * หน้าเว็บสาธารณะ (ขายรถ /trucks) — ไม่มี sidebar, ไม่ต้อง login, light mode คงที่
@@ -50,7 +50,7 @@ export default async function PublicLayout({ children }: { children: React.React
             <a href="https://www.menatransport.co.th" className="hidden sm:block px-2 py-1 hover:text-[var(--mena-green)]">เว็บไซต์บริษัท</a>
             {cfg.contactPhone && (
               <a
-                href={`tel:${cfg.contactPhone}`}
+                href={telHref(cfg.contactPhone)}
                 className="rounded-full bg-[var(--mena-green)] text-white px-4 sm:px-5 py-2.5 font-medium hover:bg-[var(--mena-green-soft)] transition-colors"
               >
                 โทร {cfg.contactPhone}
@@ -80,7 +80,7 @@ export default async function PublicLayout({ children }: { children: React.React
             <p className="font-medium text-white">ติดต่อฝ่ายขาย</p>
             <ul className="mt-3 space-y-2.5">
               {cfg.contactName && <li>{cfg.contactName}</li>}
-              {cfg.contactPhone && <li><a href={`tel:${cfg.contactPhone}`} className="hover:text-white">โทร {cfg.contactPhone}</a></li>}
+              {cfg.contactPhone && <li><a href={telHref(cfg.contactPhone)} className="hover:text-white">โทร {cfg.contactPhone}</a></li>}
               {cfg.contactLine && (
                 <li>
                   <a href={`https://line.me/R/ti/p/${encodeURIComponent(cfg.contactLine)}`} className="hover:text-white">

@@ -2,6 +2,8 @@
  * ปุ่มติดต่อฝ่ายขายที่ติดหน้าจอตลอด — มือถือเป็นแถบล่างจอ, จอใหญ่เป็นปุ่มลอยมุมขวาล่าง
  * ยังไม่ได้ตั้งเบอร์/LINE ใน /catalog → ปุ่มพาไปช่องฝากเบอร์ (#ติดต่อ) แทน จะได้ไม่มีปุ่มกดแล้วไม่เกิดอะไร
  */
+import { telHref } from "./thai-text"
+
 export function ContactBar({ phone, line }: { phone?: string; line?: string }) {
   const lineHref = line ? `https://line.me/R/ti/p/${encodeURIComponent(line)}` : ""
   const solid = "rounded-full bg-[var(--mena-green)] text-white font-medium px-5 py-3 text-center hover:bg-[var(--mena-green-soft)] transition-colors"
@@ -9,7 +11,7 @@ export function ContactBar({ phone, line }: { phone?: string; line?: string }) {
 
   const buttons = phone || line ? (
     <>
-      {phone && <a href={`tel:${phone}`} className={`${solid} flex-1 sm:flex-none`}>โทรหาฝ่ายขาย</a>}
+      {phone && <a href={telHref(phone)} className={`${solid} flex-1 sm:flex-none`}>โทรหาฝ่ายขาย</a>}
       {line && <a href={lineHref} className={`${ghost} flex-1 sm:flex-none`}>ทักทาง LINE</a>}
     </>
   ) : (

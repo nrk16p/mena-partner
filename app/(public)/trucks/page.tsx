@@ -6,7 +6,7 @@ import { loadPublicTrucks } from "@/lib/public-trucks"
 import { siteUrl, fmtBaht } from "@/lib/public-seo"
 import { TruckBrowser } from "@/components/public/truck-browser"
 import { LeadForm } from "@/components/public/lead-form"
-import { ThaiText } from "@/components/public/thai-text"
+import { ThaiText, telHref } from "@/components/public/thai-text"
 
 export const revalidate = 600
 
@@ -43,7 +43,7 @@ export default async function TrucksPage() {
               ดูรถพร้อมขาย {trucks.length} คัน
             </a>
             {cfg.contactPhone && (
-              <a href={`tel:${cfg.contactPhone}`} className="rounded-full border border-white/60 px-6 py-3 font-medium hover:bg-white/10 transition-colors">
+              <a href={telHref(cfg.contactPhone)} className="rounded-full border border-white/60 px-6 py-3 font-medium hover:bg-white/10 transition-colors">
                 โทรหาฝ่ายขาย {cfg.contactPhone}
               </a>
             )}

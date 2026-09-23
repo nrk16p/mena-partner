@@ -9,6 +9,7 @@ import { TruckGallery } from "@/components/public/truck-gallery"
 import { TruckSpecTable } from "@/components/public/truck-spec-table"
 import { TruckCard } from "@/components/public/truck-card"
 import { LeadForm } from "@/components/public/lead-form"
+import { telHref } from "@/components/public/thai-text"
 
 export const revalidate = 600
 
@@ -138,7 +139,7 @@ export default async function TruckDetailPage({ params }: Params) {
 
             <div className="mt-5 flex flex-col gap-2">
               {cfg.contactPhone && (
-                <a href={`tel:${cfg.contactPhone}`} className="text-center rounded-full bg-[var(--mena-green)] text-white font-medium py-3 hover:bg-[var(--mena-green-soft)] transition-colors">
+                <a href={telHref(cfg.contactPhone)} className="text-center rounded-full bg-[var(--mena-green)] text-white font-medium py-3 hover:bg-[var(--mena-green-soft)] transition-colors">
                   โทรหาฝ่ายขาย {cfg.contactPhone}
                 </a>
               )}
