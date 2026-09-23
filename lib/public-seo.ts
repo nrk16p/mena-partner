@@ -1,7 +1,7 @@
 import type { PublicTruck } from "@/lib/public-trucks"
 
 const FALLBACK_ORIGIN = "https://mena-partner.vercel.app"
-const COMPANY = "มีนา ทรานสปอร์ต"
+const COMPANY = "มีนาทรานสปอร์ต"
 
 /** เงินบนหน้าเว็บสาธารณะ = ปัดเป็นบาทเต็ม ไม่มีทศนิยม (formatMoney ของระบบภายในมี .00) */
 export const fmtBaht = (n: number) => Math.round(n).toLocaleString("en-US")
@@ -51,7 +51,7 @@ export function truckJsonLd(t: PublicTruck): Record<string, unknown> {
       price: t.display.price,
       priceCurrency: "THB",
       availability: t.isSold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: `บริษัท ${COMPANY} จำกัด` },
+      seller: { "@type": "Organization", name: `บริษัท ${COMPANY} จำกัด (มหาชน)` },
       url: siteUrl(`/trucks/${t.slug}`),
     },
   }

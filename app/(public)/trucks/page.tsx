@@ -11,7 +11,7 @@ import { ThaiText, telHref } from "@/components/public/thai-text"
 export const revalidate = 600
 
 export const metadata: Metadata = {
-  title: "รถบรรทุกมือสอง (มิกเซอร์) พร้อมงานวิ่ง ผ่อนตรงกับบริษัท | มีนา ทรานสปอร์ต",
+  title: "รถบรรทุกมือสอง (มิกเซอร์) พร้อมงานวิ่ง ผ่อนตรงกับบริษัท | มีนาทรานสปอร์ต",
   description: "รถบรรทุกมือสองที่บริษัทใช้งานเอง เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ พร้อมงานวิ่งรองรับตั้งแต่วันแรก",
   alternates: { canonical: siteUrl("/trucks") },
 }
@@ -93,7 +93,7 @@ export default async function TrucksPage() {
             </dl>
           </div>
           <div className="relative aspect-[7/5] rounded-2xl overflow-hidden">
-            <Image src="/brand/mixer-service.jpg" alt="รถมิกเซอร์ของมีนา ทรานสปอร์ต" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
+            <Image src="/brand/mixer-service.jpg" alt="รถมิกเซอร์ของมีนาทรานสปอร์ต" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
           </div>
         </div>
       </section>

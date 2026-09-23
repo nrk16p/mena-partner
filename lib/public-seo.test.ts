@@ -38,7 +38,7 @@ describe("truckTitle / truckDescription", () => {
     expect(t).toContain("HINO FM2P")
     expect(t).toContain("2561")
     expect(t).toContain("1,450,000")
-    expect(t).toContain("มีนา ทรานสปอร์ต")
+    expect(t).toContain("มีนาทรานสปอร์ต")
   })
   it("description ยาวไม่เกิน 160 ตัวอักษร", () => {
     expect(truckDescription(truck).length).toBeLessThanOrEqual(160)
