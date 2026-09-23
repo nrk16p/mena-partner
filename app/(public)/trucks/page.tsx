@@ -54,9 +54,9 @@ export default async function TrucksPage() {
               ["พร้อมขายตอนนี้", `${trucks.length} คัน`],
               ["ผ่อนเริ่มต้น", cheapest ? `฿${fmtBaht(cheapest)}/เดือน` : "สอบถามฝ่ายขาย"],
             ].map(([k, v]) => (
-              <div key={k} className="bg-[var(--mena-green-deep)]/85 px-5 py-4">
-                <dt className="text-xs text-white/70">{k}</dt>
-                <dd className="mt-1 font-medium tabular-nums">{v}</dd>
+              <div key={k} className="bg-[var(--mena-green-deep)]/85 px-6 py-5">
+                <dt className="text-sm text-white/70">{k}</dt>
+                <dd className="mt-1.5 text-2xl sm:text-3xl font-semibold tabular-nums">{v}</dd>
               </div>
             ))}
           </dl>
