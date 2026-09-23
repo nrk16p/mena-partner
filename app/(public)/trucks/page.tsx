@@ -47,14 +47,12 @@ export default async function TrucksPage() {
             )}
           </div>
 
-          <dl className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-px bg-white/20 rounded-2xl overflow-hidden max-w-2xl">
+          <dl className="mt-10 grid grid-cols-2 gap-px bg-white/20 rounded-2xl overflow-hidden max-w-md">
             {[
               ["พร้อมขายตอนนี้", `${trucks.length} คัน`],
               ["ผ่อนเริ่มต้น", cheapest ? `฿${fmtBaht(cheapest)}/เดือน` : "สอบถามฝ่ายขาย"],
-              ["ผู้ขาย", "กองรถบริษัทเอง"],
-            ].map(([k, v], i) => (
-              // จอมือถือเรียง 2 คอลัมน์ ช่องสุดท้ายกินเต็มแถว ไม่ให้เหลือช่องโหว่เห็นรูปทะลุ
-              <div key={k} className={`bg-[var(--mena-green-deep)]/85 px-5 py-4 ${i === 2 ? "col-span-2 sm:col-span-1" : ""}`}>
+            ].map(([k, v]) => (
+              <div key={k} className="bg-[var(--mena-green-deep)]/85 px-5 py-4">
                 <dt className="text-xs text-white/70">{k}</dt>
                 <dd className="mt-1 font-medium tabular-nums">{v}</dd>
               </div>
