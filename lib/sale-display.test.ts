@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest"
 import { displaySalePrice } from "@/lib/sale-display"
 
 describe("displaySalePrice — ปัดเลข + ลงตัว", () => {
-  it("สบ.70-6298: ราคาปัดขึ้นพัน ดาวน์รับส่วนต่างให้ลงตัว", () => {
+  it("สบ.70-6298: ค่างวดปัดขึ้นขั้น 250 · ดาวน์คงเดิม · ราคาลงตัวเป๊ะและเป็นหลักพัน", () => {
     const d = displaySalePrice({ totalSalePrice: 1335728, downPayment: 100000, monthlyPayment: 17163, financeInstallments: 72 })
-    expect(d).toEqual({ price: 1339000, monthlyPayment: 17200, downPayment: 100600 })
+    expect(d).toEqual({ price: 1342000, monthlyPayment: 17250, downPayment: 100000 })
     expect(d.price).toBe(d.downPayment + d.monthlyPayment * 72)
   })
 
@@ -20,16 +20,16 @@ describe("displaySalePrice — ปัดเลข + ลงตัว", () => {
     for (const r of rows) {
       const d = displaySalePrice(r)
       expect(d.price % 1000).toBe(0)
-      expect(d.monthlyPayment % 100).toBe(0)
+      expect(d.monthlyPayment % 250).toBe(0)
       expect(d.price).toBe(d.downPayment + d.monthlyPayment * r.financeInstallments)
       expect(d.price).toBeGreaterThanOrEqual(r.totalSalePrice)   // ห้ามโชว์ต่ำกว่าราคาจริงในระบบ
-      expect(d.downPayment - r.downPayment).toBeLessThan(1000)   // ดาวน์ขยับได้ไม่เกินหลักพัน
+      expect(d.downPayment).toBe(r.downPayment)                  // ดาวน์ต้องคงเดิม
     }
   })
 
-  it("ไม่มีดาวน์ → ปัดราคาขึ้นพัน แต่ไม่เสกดาวน์จากเศษ", () => {
+  it("ไม่มีดาวน์ → ราคา = ค่างวด × งวด ไม่เสกดาวน์ขึ้นมา", () => {
     expect(displaySalePrice({ downPayment: 0, monthlyPayment: 17200, financeInstallments: 72 }))
-      .toEqual({ price: 1239000, monthlyPayment: 17200, downPayment: 0 })
+      .toEqual({ price: 1242000, monthlyPayment: 17250, downPayment: 0 })
   })
 
   it("ไม่มีแผนผ่อน → ราคาปัดขึ้นเต็มพัน ดาวน์คงเดิม", () => {

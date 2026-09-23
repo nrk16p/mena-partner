@@ -15,9 +15,9 @@ describe("toPosterData — ตัวเลขบนโปสเตอร์", ()
     const d = toPosterData(vehicle({
       totalSalePrice: 1335728, downPayment: 100000, monthlyPayment: 17163, financeInstallments: 72,
     }), cfg)
-    expect(d.price).toBe(1339000)
-    expect(d.monthlyPayment).toBe(17200)
-    expect(d.downPayment).toBe(100600)
+    expect(d.price).toBe(1342000)
+    expect(d.monthlyPayment).toBe(17250)
+    expect(d.downPayment).toBe(100000)
     expect(d.price).toBe((d.downPayment ?? 0) + (d.monthlyPayment ?? 0) * (d.installments ?? 0))
   })
 
