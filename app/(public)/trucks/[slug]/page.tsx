@@ -153,7 +153,7 @@ export default async function TruckDetailPage({ params }: Params) {
 
           {!truck.isSold && (
             <div id="ติดต่อ" className="mt-4 scroll-mt-24">
-              <LeadForm slug={truck.slug} />
+              <LeadForm slug={truck.slug} phone={cfg.contactPhone} />
             </div>
           )}
         </aside>
