@@ -12,9 +12,6 @@ import { LeadForm } from "@/components/public/lead-form"
 
 export const revalidate = 600
 
-/** ทำเลใน P0 = ค่าคงที่ระดับบริษัท (vehicle_master ยังไม่มี field จังหวัด — อยู่ใน P1) */
-const LOCATION = "สระบุรี"
-
 type Params = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -113,7 +110,7 @@ export default async function TruckDetailPage({ params }: Params) {
 
           <div className="mt-6 rounded-2xl border border-zinc-200 p-5">
             <p className="text-sm font-semibold mb-3">ข้อมูลรถ</p>
-            <TruckSpecTable truck={truck} location={LOCATION} />
+            <TruckSpecTable truck={truck} />
           </div>
 
           {!truck.isSold && (

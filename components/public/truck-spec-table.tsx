@@ -1,6 +1,6 @@
 import type { PublicTruck } from "@/lib/public-trucks"
 
-export function TruckSpecTable({ truck, location }: { truck: PublicTruck; location: string }) {
+export function TruckSpecTable({ truck }: { truck: PublicTruck }) {
   const y = truck.registrationYear
   const rows: [string, string][] = [
     ["ยี่ห้อ", truck.brand],
@@ -11,7 +11,6 @@ export function TruckSpecTable({ truck, location }: { truck: PublicTruck; locati
     ["สี", truck.color],
     ["ขนาดเครื่องยนต์", truck.engineSize],
     ["เบอร์รถ", truck.truckNumber],
-    ["ทำเล", location],
   ]
   return (
     <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
