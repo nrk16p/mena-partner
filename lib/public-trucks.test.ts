@@ -85,7 +85,8 @@ describe("toPublicTruck — field allowlist", () => {
   it("display = ราคาปัดเลข + ลงตัว (ราคาจริงคงอยู่ใน totalSalePrice)", () => {
     const out = toPublicTruck(vehicle, price, [], "x", false)
     expect(out.totalSalePrice).toBe(1450000)
-    expect(out.display).toEqual({ price: 200000 + 35000 * 48, monthlyPayment: 35000 })
+    expect(out.display).toEqual({ price: 200000 + 35000 * 48, monthlyPayment: 35000, downPayment: 200000 })
+    expect(out.display.price % 1000).toBe(0)
   })
 
   it("ไม่มีแถวราคา → ตัวเลขเป็น 0 ไม่ใช่ undefined", () => {

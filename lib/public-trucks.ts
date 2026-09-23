@@ -29,7 +29,7 @@ export interface PublicTruck {
   monthlyPayment: number
   financeInstallments: number
   /** ตัวเลขที่แสดงบนหน้าเว็บ (ปัดเลขกลม + ลงตัวกับดาวน์/งวด) — field ราคาด้านบนคือราคาจริง ใช้ตอนบันทึก lead */
-  display: { price: number; monthlyPayment: number }
+  display: { price: number; monthlyPayment: number; downPayment: number }
   promos: PromoCopy[]   // ถ้อยคำจาก lib/promo-copy (ชุดเดียวกับโปสเตอร์/Catalog PDF)
   isSold: boolean
 }
