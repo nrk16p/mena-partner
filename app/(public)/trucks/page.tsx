@@ -11,8 +11,8 @@ import { ThaiText, telHref } from "@/components/public/thai-text"
 export const revalidate = 600
 
 export const metadata: Metadata = {
-  title: "รถมิกเซอร์มือสอง พร้อมงานวิ่ง ผ่อนตรงกับบริษัท | มีนา ทรานสปอร์ต",
-  description: "รถมิกเซอร์มือสองที่บริษัทใช้งานเอง เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ พร้อมงานวิ่งรองรับตั้งแต่วันแรก",
+  title: "รถบรรทุกมือสอง (มิกเซอร์) พร้อมงานวิ่ง ผ่อนตรงกับบริษัท | มีนา ทรานสปอร์ต",
+  description: "รถบรรทุกมือสองที่บริษัทใช้งานเอง เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ พร้อมงานวิ่งรองรับตั้งแต่วันแรก",
   alternates: { canonical: siteUrl("/trucks") },
 }
 
@@ -32,7 +32,7 @@ export default async function TrucksPage() {
 
         <div className="relative max-w-6xl mx-auto px-4 pt-14 pb-12 sm:pt-20 sm:pb-16 text-white">
           <h1 className="text-3xl sm:text-5xl font-medium leading-tight max-w-2xl">
-            รถมิกเซอร์มือสอง ที่เราใช้งานเองทุกวัน
+            รถบรรทุกมือสอง ที่เราใช้งานเองทุกวัน
           </h1>
           <p className="mt-4 max-w-xl text-white/85 leading-relaxed">
             <ThaiText>{cfg.tagline || "เจ้าของเดียวตั้งแต่ออกจากศูนย์ ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์ และมีงานวิ่งรองรับตั้งแต่วันแรก"}</ThaiText>

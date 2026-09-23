@@ -40,7 +40,7 @@ export default async function PublicLayout({ children }: { children: React.React
           <Link href="/trucks" className="flex items-center gap-3 shrink-0">
             <Image src="/brand/mena-logo.svg" alt="มีนา ทรานสปอร์ต" width={104} height={71} className="h-11 w-auto" priority />
             <span className="hidden sm:block leading-tight">
-              <span className="block text-[15px] font-medium text-[var(--mena-green)]">รถมิกเซอร์มือสอง</span>
+              <span className="block text-[15px] font-medium text-[var(--mena-green)]">รถบรรทุกมือสอง</span>
               <span className="block text-xs text-[var(--mena-ink)]/60">บริษัท มีนา ทรานสปอร์ต จำกัด</span>
             </span>
           </Link>
@@ -72,7 +72,7 @@ export default async function PublicLayout({ children }: { children: React.React
             </span>
             <p className="mt-5 font-medium text-white">บริษัท มีนา ทรานสปอร์ต จำกัด (มหาชน)</p>
             <p className="mt-2 max-w-xs text-sm leading-[1.9] text-balance">
-              <ThaiText>รถมิกเซอร์ที่เราใช้งานเองทุกวัน เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์</ThaiText>
+              <ThaiText>รถบรรทุกที่เราใช้งานเองทุกวัน เจ้าของเดียว ประวัติซ่อมบำรุงครบทุกระยะ ผ่อนตรงกับบริษัท ไม่ผ่านไฟแนนซ์</ThaiText>
             </p>
           </div>
 
