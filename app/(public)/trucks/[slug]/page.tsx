@@ -56,7 +56,7 @@ export default async function TruckDetailPage({ params }: Params) {
         <span className="text-[var(--mena-ink)]">{heading}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-[1.45fr_1fr] gap-10 items-start">
+      <div className="grid lg:grid-cols-[1.45fr_1fr] gap-10">
         <div className="min-w-0">
           <TruckGallery
             photos={[truck.photos.front, truck.photos.left, truck.photos.right, truck.photos.back, truck.photos.cabin]}
@@ -103,8 +103,10 @@ export default async function TruckDetailPage({ params }: Params) {
           )}
         </div>
 
-        {/* กล่องราคา — เกาะจอไว้ ลูกค้าเห็นราคาและปุ่มติดต่อตลอดเวลาที่เลื่อนดูรูป/สเปก */}
-        <aside className="min-w-0 lg:sticky lg:top-[88px]">
+        {/* กล่องราคา+ฟอร์ม — เกาะจอตลอดเหมือนตะกร้าสินค้า ลูกค้าเห็นราคาและช่องฝากเบอร์ตลอดที่เลื่อนดูรูป/สเปก
+            จอเตี้ยกว่ากล่อง → ให้เลื่อนในกล่องเองแทนที่จะหลุดหายไปกับหน้า */}
+        <aside className="min-w-0">
+          <div className="lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-104px)] lg:overflow-y-auto lg:pr-1 [scrollbar-width:thin]">
           <div className="rounded-2xl border border-[var(--mena-line)] bg-white p-6 shadow-[0_16px_40px_-28px_rgba(2,58,30,0.45)]">
             {truck.isSold && (
               <p className="mb-3 inline-block rounded-full bg-[var(--mena-ink)] text-white text-xs px-3 py-1">ขายแล้ว</p>
@@ -156,6 +158,7 @@ export default async function TruckDetailPage({ params }: Params) {
               <LeadForm slug={truck.slug} phone={cfg.contactPhone} />
             </div>
           )}
+          </div>
         </aside>
       </div>
 
