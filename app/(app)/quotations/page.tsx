@@ -120,6 +120,9 @@ function QuotationsInner() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
+        <Link href="/quotations/pipeline" className="text-xs font-semibold text-emerald-700 border border-emerald-200 rounded-full px-3 py-1 hover:bg-emerald-50">
+          แดชบอร์ดไปป์ไลน์
+        </Link>
         <div className="ml-auto flex items-center gap-1 order-last">
           <button onClick={() => setView("list")} className={`p-1.5 rounded-lg ${view === "list" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="ตาราง"><List className="w-4 h-4" /></button>
           <button onClick={() => setView("kanban")} className={`p-1.5 rounded-lg ${view === "kanban" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="กระดานดีล"><LayoutGrid className="w-4 h-4" /></button>
