@@ -11,11 +11,13 @@ import { ArrowLeft, AlertTriangle, FileDown, FileText } from "lucide-react"
 import type { Contract } from "@/types"
 import { missingDocFields } from "@/lib/contract-doc"
 import { ContractDocument, normPlate, type PromoMaster } from "@/components/contract-document"
+import { COMPANY_DEFAULT, type CompanyConfig } from "@/lib/company-config"
 
 export default function ContractDocumentPage() {
   const { id } = useParams<{ id: string }>()
   const [contract, setContract] = useState<Contract | null>(null)
   const [promo, setPromo] = useState<PromoMaster | null>(null)
+  const [company, setCompany] = useState<CompanyConfig>(COMPANY_DEFAULT)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -28,6 +30,8 @@ export default function ContractDocumentPage() {
         setContract(c)
         // browser Save-as-PDF uses the tab title as the default filename
         document.title = `สัญญาซื้อขาย-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
+        const coRes = await fetch("/api/company-config")
+        if (coRes.ok) setCompany(await coRes.json())
         const pRes = await fetch("/api/promotions/master")
         if (pRes.ok) {
           const all: PromoMaster[] = await pRes.json()
@@ -114,7 +118,7 @@ export default function ContractDocumentPage() {
         </div>
       )}
 
-      <ContractDocument contract={contract} promo={promo} />
+      <ContractDocument contract={contract} promo={promo} company={company} />
     </div>
   )
 }

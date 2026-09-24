@@ -10,6 +10,7 @@ import PizZip from "pizzip"
 import Docxtemplater from "docxtemplater"
 import clientPromise from "@/lib/mongo"
 import { withVehicleDetails } from "@/lib/contract-vehicle"
+import { getCompanyConfig } from "@/lib/company-config"
 import type { Contract } from "@/types"
 import { DOCX_TEMPLATES, normPlate, type DocxType, type PromoMasterData } from "@/lib/contract-docx"
 import { appendDocxAttachments } from "@/lib/docx-attachments"
@@ -34,7 +35,18 @@ export async function renderContractDocx(
   const promos = (await db.collection("promotion_master").find({}).toArray()) as unknown as PromoMasterData[]
   const promo = promos.find((p) => normPlate(p.licensePlate) === plate) ?? null
 
-  const data = tpl.build(contract, promo)
+  // ชื่อผู้ลงนาม/พยาน มาจาก master (/admin/company) — ไฟล์ต้นแบบใช้ {sellerSig1} {sellerSig2} {witness1} {witness2}
+  const company = await getCompanyConfig(db)
+  const data = {
+    ...tpl.build(contract, promo),
+    sellerSig1: company.sellerSignatories[0] ?? "",
+    sellerSig2: company.sellerSignatories[1] ?? "",
+    witness1: company.witnesses[0] ?? "",
+    witness2: company.witnesses[1] ?? "",
+    companyName: company.name,
+    companyRegNo: company.regNo,
+    companyAddress: company.address,
+  }
   const templatePath = path.join(process.cwd(), "templates", tpl.file)
   const content = await readFile(templatePath)
   const zip = new PizZip(content)

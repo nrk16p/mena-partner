@@ -23,16 +23,11 @@ import {
   firstInstallmentDate,
   formatNationalId,
 } from "@/lib/thai-format"
+import { COMPANY_DEFAULT, type CompanyConfig } from "@/lib/company-config"
+import { buyerFullName } from "@/lib/contract-doc"
 
 
-/* ── Company / signatory constants (edit here when signatories change) ── */
-const COMPANY = {
-  name: "บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน)",
-  regNo: "0195536000089",
-  address: "เลขที่ 280/8 หมู่ที่ 9 ตำบลทับกวาง อำเภอแก่งคอย จังหวัดสระบุรี",
-  sellerSignatories: ["นางสุวรรณา ขจรวุฒิเดช", "นางสาวพัชรีรัตน์ ขจรวุฒิเดชภัทร์"],
-  witnesses: ["นางสาวนัชภัค ขจรวุฒิเดช", "นางสาวธัญรดี ตะกิ่นนอก"],
-}
+/* ── ข้อมูลบริษัท/ผู้ลงนาม — แก้ที่หน้า master (/admin/company) ค่าด้านล่างใช้เมื่อยังโหลดไม่เสร็จ ── */
 
 export interface PromoMaster {
   licensePlate: string
@@ -118,12 +113,16 @@ function DocStyles() {
 
 function ContractDocumentImpl({
   contract,
+  company,
 }: {
   contract: Contract
   // `promo` ยังรับได้เพื่อความเข้ากันได้กับผู้เรียกเดิม แต่สัญญาหลักไม่ใช้ (ย้ายไปเอกสารแนบท้ายแล้ว)
   promo?: PromoMaster | null
+  /** ข้อมูลบริษัท/ผู้ลงนามจาก master — ไม่ส่งมา = ใช้ค่าตั้งต้น (ตอนยังโหลดไม่เสร็จ) */
+  company?: CompanyConfig
 }) {
   const c = contract
+  const COMPANY = company ?? COMPANY_DEFAULT
   const dateParts = thaiDateParts(c.contractDate)
   const age = ageFromBirthDate(c.birthDate, c.contractDate)
   const plate = normPlate(c.licensePlate) || c.licensePlate
@@ -156,7 +155,7 @@ function ContractDocumentImpl({
           “ ผู้ขาย ” ฝ่ายหนึ่ง กับ
         </p>
         <p className="indent">
-          <V w={200}>{c.buyerName}</V> อายุ <V w={34}>{age ?? undefined}</V> ปี
+          <V w={200}>{buyerFullName(c)}</V> อายุ <V w={34}>{age ?? undefined}</V> ปี
           หมายเลขประจำตัวประชาชน <V w={140}>{c.nationalId ? formatNationalId(c.nationalId) : undefined}</V>{" "}
           อยู่บ้านเลขที่ <V w={220}>{c.driverAddress}</V>{" "}
           ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ ผู้ซื้อ ” อีกฝ่ายหนึ่ง
@@ -442,7 +441,7 @@ function ContractDocumentImpl({
                 </td>
                 <td>
                   ลงชื่อ.............................................ผู้ซื้อ
-                  <br />( {c.buyerName || "................................."} )
+                  <br />( {buyerFullName(c) || "................................."} )
                 </td>
               </tr>
               <tr>
@@ -577,7 +576,7 @@ function PromotionAttachmentImpl({
                 <td />
                 <td>
                   ลงชื่อ.............................................ผู้ซื้อ
-                  <br />( {c.buyerName || "................................."} )
+                  <br />( {buyerFullName(c) || "................................."} )
                 </td>
               </tr>
             </tbody>

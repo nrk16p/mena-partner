@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
   ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck, BookOpenCheck, ChevronDown,
-  UserMinus, BookImage, Globe,
+  UserMinus, BookImage, Globe, Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
@@ -64,6 +64,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
 
 const ADMIN_NAV = [
   { href: "/import", label: "นำเข้า Excel", icon: Upload },
+  { href: "/admin/company", label: "ข้อมูลบริษัท & ผู้ลงนาม", icon: Building2 },
   { href: "/admin/month", label: "จัดการรอบเดือน", icon: Settings },
 ]
 

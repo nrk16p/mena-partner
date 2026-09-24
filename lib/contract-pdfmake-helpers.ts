@@ -10,14 +10,19 @@ import { seg, fixThaiMarks } from "@/lib/pdfmake-printer"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { COMPANY_DEFAULT, type CompanyConfig } from "@/lib/company-config"
+
 export const S = seg
 
-export const COMPANY = {
-  name: "บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน)",
-  regNo: "0195536000089",
-  address: "เลขที่ 280/8 หมู่ที่ 9 ตำบลทับกวาง อำเภอแก่งคอย จังหวัดสระบุรี",
-  sellerSignatories: ["นางสุวรรณา ขจรวุฒิเดช", "นางสาวพัชรีรัตน์ ขจรวุฒิเดชภัทร์"],
-  witnesses: ["นางสาวนัชภัค ขจรวุฒิเดช", "นางสาวธัญรดี ตะกิ่นนอก"],
+/**
+ * ข้อมูลบริษัท/ผู้ลงนามที่พิมพ์บนสัญญา — ตัวจริงมาจาก master (/admin/company)
+ * ตัวสร้าง PDF อ้างอิงออบเจ็กต์นี้จากหลายไฟล์ระดับโมดูล จึงใช้วิธี "เซ็ตค่าก่อนสร้างเอกสาร"
+ * เรียก applyCompany() ให้ติดกับการสร้าง docDef เสมอ (ห้ามมี await คั่น — ค่าจะสลับกันข้ามคำขอ)
+ */
+export const COMPANY = { ...COMPANY_DEFAULT }
+
+export function applyCompany(cfg?: Partial<CompanyConfig> | null) {
+  Object.assign(COMPANY, COMPANY_DEFAULT, cfg ?? {})
 }
 
 // ── กติกาหน้ากระดาษ (ทุกสัญญา): A4 · ขอบซ้าย 2.25cm (เผื่อเย็บเล่ม) · ขวา 2cm ──

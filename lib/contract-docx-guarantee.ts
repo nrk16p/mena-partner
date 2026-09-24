@@ -8,6 +8,7 @@
  *   buyerName
  */
 import type { Contract } from "@/types"
+import { buyerFullName } from "@/lib/contract-doc"
 import { thaiDateParts, formatNationalId } from "@/lib/thai-format"
 import { normPlate, type PromoMasterData } from "@/lib/contract-docx"
 
@@ -35,7 +36,7 @@ export function guaranteeDocxData(
       : DOTS,
     guarantorAddress: s(c.guarantorAddress),
     // ผู้ซื้อ (buyer)
-    buyerName: s(c.buyerName),
+    buyerName: s(buyerFullName(c)),
   }
 }
 

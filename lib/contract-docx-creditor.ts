@@ -4,6 +4,7 @@
  * components/vendor-doc-document.tsx เพื่อให้ตรงกับหน้า preview เป๊ะ
  */
 import type { Contract } from "@/types"
+import { buyerFullName } from "@/lib/contract-doc"
 import { thaiDate, formatNationalId } from "@/lib/thai-format"
 import { type PromoMasterData } from "@/lib/contract-docx"
 
@@ -30,7 +31,7 @@ export function creditorDocxData(
     // วันที่ (ใช้ทั้งหน้า 1 และหน้า 4)
     docDate: c.contractDate ? thaiDate(c.contractDate) : DOTS,
     // ชื่อเจ้าหนี้ / ผู้ติดต่อ / ผู้ให้ความยินยอม
-    buyerName: s(c.buyerName),
+    buyerName: s(buyerFullName(c)),
     buyerNameEn: s(c.buyerNameEn),
     nationalId: c.nationalId ? formatNationalId(c.nationalId) : DOTS,
     driverAddress: s(c.driverAddress),

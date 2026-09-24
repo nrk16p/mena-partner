@@ -6,6 +6,7 @@
  * เพื่อให้ผลลัพธ์ตรงกับหน้า preview / พิมพ์
  */
 import type { Contract } from "@/types"
+import { buyerFullName } from "@/lib/contract-doc"
 import { thaiDate, thaiDateParts, formatNationalId } from "@/lib/thai-format"
 import { normPlate, type PromoMasterData } from "@/lib/contract-docx"
 
@@ -26,7 +27,7 @@ export function hireDocxData(c: Contract, _promo: PromoMasterData | null): Recor
     contractMonth: dp ? dp.monthName : DOTS,
     contractYearBE: dp ? String(dp.yearBE) : DOTS,
     // ผู้รับจ้างที่ 1 (party)
-    buyerName: s(c.buyerName),
+    buyerName: s(buyerFullName(c)),
     nationalId: c.nationalId ? formatNationalId(c.nationalId) : DOTS,
     driverAddress: s(c.driverAddress),
     // วันที่สัญญาซื้อขาย (ข้อ (3) + ข้อ 4) — thaiDate ของ contractDate

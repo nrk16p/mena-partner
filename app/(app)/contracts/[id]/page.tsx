@@ -39,6 +39,7 @@ const TEXT_FIELDS: FieldSpec[] = [
   { key: "contractCode",  label: "รหัสสัญญา",         readOnly: true },
   { key: "contractDate",  label: "วันที่ทำสัญญา",      type: "date" },
   { key: "startDate",     label: "วันที่เริ่มต้น",      type: "date" },
+  { key: "buyerPrefix",   label: "คำนำหน้าผู้เช่าซื้อ" },
   { key: "buyerName",     label: "ชื่อผู้เช่าซื้อ" },
   { key: "driverName",    label: "ชื่อผู้ขับขี่" },
   { key: "phone",         label: "เบอร์โทร",            type: "tel" },
@@ -753,7 +754,16 @@ export default function ContractDetailPage() {
             {TEXT_FIELDS.map(({ key, label, type, readOnly }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-xs">{label}</Label>
-                {key === "buyerName" && isAdmin ? (
+                {key === "buyerPrefix" ? (
+                  <select
+                    value={String(form.buyerPrefix ?? "นาย")}
+                    disabled={!isAdmin}
+                    onChange={(e) => setForm((p) => p ? { ...p, buyerPrefix: e.target.value } : p)}
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm disabled:opacity-50 dark:border-zinc-700"
+                  >
+                    {["นาย", "นาง", "นางสาว"].map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                ) : key === "buyerName" && isAdmin ? (
                   <>
                     <SearchCombobox<Driver>
                       items={drivers}

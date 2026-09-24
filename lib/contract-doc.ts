@@ -1,5 +1,10 @@
 import type { Contract } from "@/types"
 
+/** ชื่อผู้ซื้อที่พิมพ์ในเอกสาร = คำนำหน้า + ชื่อ (ใช้ทุกเอกสาร: HTML/PDF/DOCX) */
+export function buyerFullName(c: { buyerPrefix?: string; buyerName?: string }): string {
+  return [String(c.buyerPrefix ?? "").trim(), String(c.buyerName ?? "").trim()].filter(Boolean).join(" ")
+}
+
 /**
  * Fields required for a complete printed sale contract
  * (สัญญาซื้อขายรถยนต์บรรทุก PDF) — shared by the document page and the

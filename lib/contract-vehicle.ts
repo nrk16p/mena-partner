@@ -40,13 +40,23 @@ export function mergeVehicleIntoContract<T extends Record<string, unknown>>(
   return out
 }
 
+/** คำนำหน้าผู้ซื้อ: ยึดที่กรอกในสัญญา ไม่งั้นดูจากทะเบียน พขร. รหัสสัญญาเดียวกัน สุดท้าย "นาย" */
+async function fillBuyerPrefix<T extends Record<string, unknown>>(db: Db, contract: T): Promise<T> {
+  if (String(contract.buyerPrefix ?? "").trim()) return contract
+  const code = String(contract.contractCode ?? "").trim()
+  const driver = code
+    ? await db.collection("drivers").findOne({ contractCode: code }, { projection: { prefix: 1 } })
+    : null
+  return { ...contract, buyerPrefix: String(driver?.prefix ?? "").trim() || "นาย" }
+}
+
 /** อ่านรถของสัญญา (vehicleId ก่อน ไม่งั้นเทียบทะเบียน) แล้วเติมช่องที่ว่าง */
 export async function withVehicleDetails<T extends Record<string, unknown>>(db: Db, contract: T): Promise<T> {
   const plate = normPlate(contract.licensePlate)
-  if (!plate) return contract
+  if (!plate) return fillBuyerPrefix(db, contract)
   const vehicles = await db.collection("vehicle_master")
     .find({}, { projection: { licensePlate: 1, truckNumber: 1, vehicleType: 1, characteristic: 1, brand: 1, model: 1, registrationDate: 1, color: 1, chassisNumber: 1, engineNumber: 1, engineSize: 1 } })
     .toArray()
   const match = vehicles.find((v) => normPlate(v.licensePlate) === plate)
-  return mergeVehicleIntoContract(contract, match)
+  return fillBuyerPrefix(db, mergeVehicleIntoContract(contract, match))
 }

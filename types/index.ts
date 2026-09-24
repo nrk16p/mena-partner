@@ -42,6 +42,7 @@ export interface Contract {
   contractDate: string          // ISO date string
   // Driver / personal data
   driverId?:       string       // ref to drivers._id
+  buyerPrefix?:    string   // คำนำหน้าผู้ซื้อ (นาย/นาง/นางสาว) — ตั้งต้นจากข้อมูล พขร.
   buyerName:       string
   driverName:      string
   birthDate?:      string       // YYYY-MM-DD from driver

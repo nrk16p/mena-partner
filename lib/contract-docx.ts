@@ -3,6 +3,7 @@
  * ใช้ helper ชุดเดียวกับหน้า preview (lib/thai-format) เพื่อให้ค่าออกมาตรงกันเป๊ะ
  */
 import type { Contract } from "@/types"
+import { buyerFullName } from "@/lib/contract-doc"
 import {
   bahtText,
   money,
@@ -57,7 +58,7 @@ export function saleDocxData(c: Contract, promo: PromoMasterData | null): Record
     contractMonth: dp ? dp.monthName : DOTS,
     contractYearBE: dp ? String(dp.yearBE) : DOTS,
     // parties
-    buyerName: s(c.buyerName),
+    buyerName: s(buyerFullName(c)),
     age: age != null ? String(age) : DOTS,
     nationalId: c.nationalId ? formatNationalId(c.nationalId) : DOTS,
     driverAddress: s(c.driverAddress),
