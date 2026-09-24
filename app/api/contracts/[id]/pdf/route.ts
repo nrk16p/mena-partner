@@ -7,7 +7,7 @@ import { renderPdfmake } from "@/lib/pdfmake-printer"
 import { PDFMAKE_DOCS, PDF_FILENAME, type PdfmakeType } from "@/lib/contract-pdfmake"
 import { appendContractAttachments } from "@/lib/pdf-attachments"
 import { withVehicleDetails } from "@/lib/contract-vehicle"
-import { getCompanyConfig } from "@/lib/company-config"
+import { getCompanyVersion } from "@/lib/company-config"
 import { applyCompany } from "@/lib/contract-pdfmake-helpers"
 
 export const runtime = "nodejs"
@@ -31,7 +31,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const promos = (await db.collection("promotion_master").find({}).toArray()) as unknown as PromoMasterData[]
   const promo = promos.find((p) => normPlate(p.licensePlate) === plate) ?? null
 
-  const company = await getCompanyConfig(db)
+  // ใช้ชุดข้อมูลบริษัท "เวอร์ชันที่สัญญาจำไว้ตอนสร้าง" — พิมพ์ซ้ำกี่ครั้งก็ได้ชื่อผู้ลงนามชุดเดิม
+  const company = await getCompanyVersion(db, (contract as { companyVersion?: number }).companyVersion)
   try {
     applyCompany(company)          // ต้องติดกับ builder() ไม่มี await คั่น
     const docDef = builder(contract, promo)

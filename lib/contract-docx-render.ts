@@ -10,7 +10,7 @@ import PizZip from "pizzip"
 import Docxtemplater from "docxtemplater"
 import clientPromise from "@/lib/mongo"
 import { withVehicleDetails } from "@/lib/contract-vehicle"
-import { getCompanyConfig } from "@/lib/company-config"
+import { getCompanyVersion } from "@/lib/company-config"
 import type { Contract } from "@/types"
 import { DOCX_TEMPLATES, normPlate, type DocxType, type PromoMasterData } from "@/lib/contract-docx"
 import { appendDocxAttachments } from "@/lib/docx-attachments"
@@ -36,7 +36,7 @@ export async function renderContractDocx(
   const promo = promos.find((p) => normPlate(p.licensePlate) === plate) ?? null
 
   // ชื่อผู้ลงนาม/พยาน มาจาก master (/admin/company) — ไฟล์ต้นแบบใช้ {sellerSig1} {sellerSig2} {witness1} {witness2}
-  const company = await getCompanyConfig(db)
+  const company = await getCompanyVersion(db, (contract as { companyVersion?: number }).companyVersion)
   const data = {
     ...tpl.build(contract, promo),
     sellerSig1: company.sellerSignatories[0] ?? "",

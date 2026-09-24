@@ -22,12 +22,18 @@ export default function CompanyMasterPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
+  const [versions, setVersions] = useState<CompanyConfig[]>([])
+  const [viewing, setViewing] = useState<number | null>(null)
+
+  const loadVersions = () =>
+    fetch("/api/company-config?versions=1").then((r) => (r.ok ? r.json() : [])).then(setVersions)
 
   useEffect(() => {
     fetch("/api/company-config")
       .then((r) => (r.ok ? r.json() : COMPANY_DEFAULT))
       .then(setCfg)
       .finally(() => setLoading(false))
+    loadVersions()
   }, [])
 
   const set = (k: keyof CompanyConfig, v: string) => setCfg((p) => ({ ...p, [k]: v }))
@@ -42,6 +48,8 @@ export default function CompanyMasterPage() {
       })
       if (!res.ok) { setError((await res.json()).error ?? "บันทึกไม่สำเร็จ"); return }
       setCfg(await res.json())
+      setViewing(null)
+      await loadVersions()
       setSaved(true); setTimeout(() => setSaved(false), 2500)
     } finally { setSaving(false) }
   }
@@ -96,6 +104,40 @@ export default function CompanyMasterPage() {
         ))}
       </div>
 
+      {versions.length > 0 && (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-1">ประวัติเวอร์ชัน</h2>
+          <p className="text-xs text-zinc-500 mb-3">
+            สัญญาจำเวอร์ชันที่ใช้ตอนสร้างไว้ พิมพ์เอกสารซ้ำภายหลังจะได้ชื่อผู้ลงนามชุดเดิมเสมอ
+          </p>
+          <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 text-sm">
+            {versions.map((v) => (
+              <li key={v.version} className="py-2 flex items-center gap-3">
+                <span className="font-semibold tabular-nums w-16">v{v.version}</span>
+                <span className="flex-1 min-w-0 truncate text-zinc-600 dark:text-zinc-300">
+                  {v.sellerSignatories.filter(Boolean).join(" · ")}
+                </span>
+                <span className="text-xs text-zinc-400 whitespace-nowrap">
+                  {v.updatedAt ? formatDate(v.updatedAt) : "—"} · {v.updatedBy ?? "—"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setCfg({ ...v }); setViewing(v.version ?? null) }}
+                  className="text-xs text-emerald-600 underline underline-offset-2"
+                >
+                  ดูค่าชุดนี้
+                </button>
+              </li>
+            ))}
+          </ul>
+          {viewing !== null && (
+            <p className="text-xs text-amber-600 mt-3">
+              กำลังดูค่าเวอร์ชัน {viewing} ในฟอร์มด้านบน — กดบันทึกจะกลายเป็นเวอร์ชันใหม่ล่าสุด (ของเดิมไม่หาย)
+            </p>
+          )}
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={!isAdmin || saving} className="gap-2">
@@ -105,7 +147,7 @@ export default function CompanyMasterPage() {
         {!isAdmin && <span className="text-sm text-zinc-400">ดูอย่างเดียว — ต้องเป็นผู้ดูแลระบบจึงจะแก้ได้</span>}
         {cfg.updatedAt && (
           <span className="ml-auto text-xs text-zinc-400">
-            แก้ล่าสุด {formatDate(cfg.updatedAt)} โดย {cfg.updatedBy}
+            เวอร์ชันปัจจุบัน v{cfg.version} · แก้ล่าสุด {formatDate(cfg.updatedAt)} โดย {cfg.updatedBy}
           </span>
         )}
       </div>

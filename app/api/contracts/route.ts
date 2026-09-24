@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
+import { ensureFirstVersion } from "@/lib/company-config"
 import type { Contract, Driver } from "@/types"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
@@ -53,7 +54,9 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString()
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { _id, ...rest } = body
-  const doc = { ...rest, createdAt: now, updatedAt: now }
+  // จำเวอร์ชันข้อมูลบริษัท/ผู้ลงนามที่ใช้ตอนสร้าง — พิมพ์เอกสารซ้ำภายหลังต้องได้ชื่อชุดเดิม
+  const company = await ensureFirstVersion(client.db(DB))
+  const doc = { ...rest, companyVersion: company.version, createdAt: now, updatedAt: now }
 
   const existing = await contracts.findOne({ contractCode: body.contractCode })
   if (existing) {

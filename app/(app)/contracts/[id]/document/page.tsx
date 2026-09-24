@@ -30,7 +30,8 @@ export default function ContractDocumentPage() {
         setContract(c)
         // browser Save-as-PDF uses the tab title as the default filename
         document.title = `สัญญาซื้อขาย-${c.contractCode}-${normPlate(c.licensePlate) || "รถ"}`
-        const coRes = await fetch("/api/company-config")
+        // ใช้เวอร์ชันที่สัญญาจำไว้ เพื่อให้พิมพ์ซ้ำได้เหมือนวันที่เซ็น
+        const coRes = await fetch(`/api/company-config${c.companyVersion ? `?version=${c.companyVersion}` : ""}`)
         if (coRes.ok) setCompany(await coRes.json())
         const pRes = await fetch("/api/promotions/master")
         if (pRes.ok) {

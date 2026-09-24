@@ -3,7 +3,10 @@ import type { Db } from "mongodb"
 /**
  * ข้อมูลบริษัท + ผู้ลงนาม ที่ใช้พิมพ์บนสัญญาทุกชนิด — แก้ผ่านหน้า master (/admin/company)
  * เดิมฝังตายในโค้ด 2 ที่ (หน้าพรีวิว/พิมพ์ กับตัวสร้าง PDF) เปลี่ยนคนเซ็นทีต้องแก้โค้ด+deploy
- * ค่าเริ่มต้นด้านล่าง = ค่าที่ใช้มาก่อนหน้านี้ ถ้ายังไม่เคยบันทึกใน DB จะใช้ชุดนี้
+ *
+ * **เก็บเป็นเวอร์ชัน**: ทุกครั้งที่บันทึกจะออกเวอร์ชันใหม่ (1, 2, 3…) และสัญญาจะจำเวอร์ชันที่ใช้ตอนสร้าง
+ * (contract.companyVersion) เอกสารที่พิมพ์ซ้ำภายหลังจึงได้ชื่อผู้ลงนามชุดเดิม ไม่ใช่ชุดปัจจุบัน
+ * — สัญญาเซ็นไปแล้วต้องพิมพ์ได้เหมือนวันที่เซ็นเสมอ
  */
 
 export interface CompanyConfig {
@@ -12,6 +15,7 @@ export interface CompanyConfig {
   address: string
   sellerSignatories: string[]   // ผู้ลงนามฝ่ายผู้ขาย (2 คน)
   witnesses: string[]           // พยาน (2 คน)
+  version?: number
   updatedAt?: string
   updatedBy?: string
 }
@@ -22,9 +26,11 @@ export const COMPANY_DEFAULT: CompanyConfig = {
   address: "เลขที่ 280/8 หมู่ที่ 9 ตำบลทับกวาง อำเภอแก่งคอย จังหวัดสระบุรี",
   sellerSignatories: ["นางสุวรรณา ขจรวุฒิเดช", "นางสาวพัชรีรัตน์ ขจรวุฒิเดชภัทร์"],
   witnesses: ["นางสาวนัชภัค ขจรวุฒิเดช", "นางสาวธัญรดี ตะกิ่นนอก"],
+  version: 1,
 }
 
 const COLL = "company_config"
+const VERSIONS = "company_config_versions"
 const ID = "default"
 
 const str = (v: unknown, fallback: string) => (typeof v === "string" && v.trim() ? v.trim() : fallback)
@@ -41,18 +47,52 @@ export function normalizeCompany(raw: Partial<CompanyConfig> | null | undefined)
     address: str(raw?.address, COMPANY_DEFAULT.address),
     sellerSignatories: pair(raw?.sellerSignatories, COMPANY_DEFAULT.sellerSignatories),
     witnesses: pair(raw?.witnesses, COMPANY_DEFAULT.witnesses),
+    version: Number(raw?.version ?? 0) || 1,
     updatedAt: raw?.updatedAt,
     updatedBy: raw?.updatedBy,
   }
 }
 
+/** ชุดที่ใช้อยู่ตอนนี้ (สัญญาที่สร้างใหม่จะผูกเวอร์ชันนี้) */
 export async function getCompanyConfig(db: Db): Promise<CompanyConfig> {
   const doc = await db.collection(COLL).findOne({ _id: ID as unknown as never })
   return normalizeCompany(doc as Partial<CompanyConfig> | null)
 }
 
+/** ชุดตามเวอร์ชันที่สัญญาจำไว้ — ไม่ระบุ/หาไม่เจอ = ใช้ชุดปัจจุบัน */
+export async function getCompanyVersion(db: Db, version?: number | null): Promise<CompanyConfig> {
+  if (!version) return getCompanyConfig(db)
+  const doc = await db.collection(VERSIONS).findOne({ version })
+  return doc ? normalizeCompany(doc as Partial<CompanyConfig>) : getCompanyConfig(db)
+}
+
+export async function listCompanyVersions(db: Db, limit = 50): Promise<CompanyConfig[]> {
+  const docs = await db.collection(VERSIONS).find({}).sort({ version: -1 }).limit(limit).toArray()
+  return docs.map((d) => normalizeCompany(d as Partial<CompanyConfig>))
+}
+
+/** บันทึก = ออกเวอร์ชันใหม่เสมอ (ของเดิมเก็บไว้ให้สัญญาเก่าใช้ต่อ) */
 export async function saveCompanyConfig(db: Db, raw: Partial<CompanyConfig>, by: string): Promise<CompanyConfig> {
-  const next = { ...normalizeCompany(raw), updatedAt: new Date().toISOString(), updatedBy: by }
+  const latest = await db.collection(VERSIONS).find({}).sort({ version: -1 }).limit(1).toArray()
+  const nextVersion = (Number(latest[0]?.version ?? 0) || 0) + 1
+  const next: CompanyConfig = {
+    ...normalizeCompany(raw),
+    version: nextVersion,
+    updatedAt: new Date().toISOString(),
+    updatedBy: by,
+  }
+  await db.collection(VERSIONS).insertOne({ ...next })
   await db.collection(COLL).updateOne({ _id: ID as unknown as never }, { $set: next }, { upsert: true })
   return next
+}
+
+/** ครั้งแรกสุด: ทำให้มีเวอร์ชัน 1 ในประวัติ เพื่อให้สัญญาเก่าอ้างอิงได้ */
+export async function ensureFirstVersion(db: Db, by = "system"): Promise<CompanyConfig> {
+  const any = await db.collection(VERSIONS).findOne({})
+  if (any) return getCompanyConfig(db)
+  const current = await getCompanyConfig(db)
+  const first: CompanyConfig = { ...current, version: 1, updatedAt: new Date().toISOString(), updatedBy: by }
+  await db.collection(VERSIONS).insertOne({ ...first })
+  await db.collection(COLL).updateOne({ _id: ID as unknown as never }, { $set: first }, { upsert: true })
+  return first
 }
