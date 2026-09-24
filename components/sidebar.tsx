@@ -33,7 +33,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
     items: [
       { href: "/quotations", label: "ดีล & ใบเสนอราคา", icon: Receipt },
       { href: "/catalog", label: "Catalog รถ", icon: BookImage, hint: "แคตตาล็อกรายคัน PDF อัตโนมัติ" },
-      { href: "/trucks", label: "เว็บขายรถ (ลูกค้าเห็น)", icon: Globe, hint: "หน้าเว็บสาธารณะ — เปิดแท็บใหม่", external: true },
+      { href: "/trucks", label: "เว็บขายรถ", icon: Globe, hint: "หน้าเว็บสาธารณะ — เปิดแท็บใหม่", external: true },
       { href: "/quotations/pipeline", label: "แดชบอร์ดไปป์ไลน์", icon: BarChart3, hint: "ดีลค้างขั้นไหน หลุดตรงไหน ใช้เวลาเท่าไหร่" },
       { href: "/quotations/commission", label: "ยอดขาย & ค่าคอม", icon: HandCoins, hint: "ขายกี่คัน ได้คอมเท่าไหร่" },
       { href: "/quotations/sales-people", label: "ทีมขาย", icon: Users, hint: "ชื่อ / email / เบอร์โทร พนักงานขาย", adminOnly: true },
