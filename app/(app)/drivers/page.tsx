@@ -69,10 +69,13 @@ interface FormData {
   licenseNumber:   string
   licenseType:     string
   licenseExpiry:   string
+  prefix:          string
 }
 
+const PREFIXES = ["นาย", "นาง", "นางสาว"] as const
+
 const EMPTY_FORM: FormData = {
-  firstName: "", lastName: "", birthDate: "",
+  prefix: "นาย", firstName: "", lastName: "", birthDate: "",
   nationalId: "", address: "", staffCode: "", contractCode: "", phone: "",
   bankName: "", accountNumber: "",
   isTruckOwner: false, isDriver: true,
@@ -110,6 +113,7 @@ function SlidePanel({ driver, prefill, onClose, onSaved }: SlidePanelProps) {
   useEffect(() => {
     if (driver) {
       setForm({
+        prefix:       driver.prefix       ?? "นาย",
         firstName:    driver.firstName    ?? "",
         lastName:     driver.lastName     ?? "",
         birthDate:    driver.birthDate    ?? "",
@@ -220,7 +224,7 @@ function SlidePanel({ driver, prefill, onClose, onSaved }: SlidePanelProps) {
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                {form.firstName || "ชื่อ"} {form.lastName || "นามสกุล"}
+                {form.prefix} {form.firstName || "ชื่อ"} {form.lastName || "นามสกุล"}
               </p>
               {form.staffCode && <p className="text-xs text-zinc-400 font-mono">{form.staffCode}</p>}
             </div>
@@ -228,7 +232,17 @@ function SlidePanel({ driver, prefill, onClose, onSaved }: SlidePanelProps) {
 
           <Div label="ข้อมูลส่วนตัว" />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[88px_1fr_1fr] gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">คำนำหน้า</label>
+              <select
+                value={form.prefix}
+                onChange={(e) => set("prefix", e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm dark:border-zinc-700"
+              >
+                {PREFIXES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">ชื่อ <span className="text-red-400">*</span></label>
               <Input placeholder="ชื่อ" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className="h-9 text-sm" />
@@ -678,7 +692,7 @@ export default function DriversPage() {
 
   const sort = useSort(filtered, (d, k) => {
     const r = d as unknown as Record<string, unknown>
-    if (k === "name") return (r.driverName as string) || [r.firstName, r.lastName].filter(Boolean).join(" ")
+    if (k === "name") return (r.driverName as string) || [r.prefix, r.firstName, r.lastName].filter(Boolean).join(" ")
     return r[k]
   })
   const pg = usePagination(sort.sorted, 50, [q, statusFilter, onlyMissing, sort.sortKey, sort.sortDir])
@@ -809,7 +823,7 @@ export default function DriversPage() {
                 </tr>
               ) : (
                 pg.paged.map((d) => {
-                  const fullName = `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim()
+                  const fullName = `${d.prefix ?? ""} ${d.firstName ?? ""} ${d.lastName ?? ""}`.trim()
                   const initial  = (d.firstName ?? "?")[0]?.toUpperCase() ?? "?"
                   const age      = calcAge(d.birthDate)
                   const roles    = [d.isDriver && "คนขับ", d.isTruckOwner && "เจ้าของรถ"].filter(Boolean)

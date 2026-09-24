@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as {
+    prefix?:       string
     firstName:     string
     lastName:      string
     birthDate?:    string
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const client = await clientPromise
   const result = await client.db(DB).collection(COLL).insertOne({
+    prefix:       body.prefix?.trim() || "นาย",
     firstName:    body.firstName.trim(),
     lastName:     body.lastName.trim(),
     birthDate:    body.birthDate?.trim()  ?? null,

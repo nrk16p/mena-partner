@@ -25,6 +25,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { id } = await params
   const body = await req.json() as {
+    prefix?:        string
     firstName?:     string
     lastName?:      string
     birthDate?:     string | null
@@ -60,6 +61,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   }
 
   const $set: Record<string, unknown> = { updatedAt: new Date() }
+  if (body.prefix       !== undefined) $set.prefix       = body.prefix?.trim() ?? ""
   if (body.firstName    !== undefined) $set.firstName    = body.firstName?.trim() ?? ""
   if (body.lastName     !== undefined) $set.lastName     = body.lastName?.trim() ?? ""
   if (body.birthDate    !== undefined) $set.birthDate    = body.birthDate ?? null

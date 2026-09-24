@@ -144,6 +144,7 @@ export interface Contract {
 
 export interface Driver {
   _id?: string
+  prefix?:        string   // คำนำหน้า (นาย/นาง/นางสาว) — default "นาย"
   firstName:      string
   lastName:       string
   birthDate?:     string   // YYYY-MM-DD

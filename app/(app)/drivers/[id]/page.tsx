@@ -56,6 +56,7 @@ const LICENSE_TYPE_LABEL: Record<string, string> = {
 // ─── Edit form state ──────────────────────────────────────────────────────────
 
 interface DriverForm {
+  prefix:        string
   firstName:     string
   lastName:      string
   birthDate:     string
@@ -93,6 +94,7 @@ type WH = { role: string; from: string; to: string; note: string }
 
 function toForm(d: Driver): DriverForm {
   return {
+    prefix:        d.prefix        ?? "นาย",
     firstName:     d.firstName     ?? "",
     lastName:      d.lastName      ?? "",
     birthDate:     d.birthDate     ?? "",
@@ -351,7 +353,7 @@ export default function DriverDetailPage() {
 
   async function handleDelete() {
     if (!driver) return
-    const fullName = `${driver.firstName} ${driver.lastName}`
+    const fullName = `${driver.prefix ?? ""} ${driver.firstName} ${driver.lastName}`.trim()
     if (!await confirm(`ลบข้อมูล "${fullName}" ออกถาวร?`)) return
     setDeleting(true)
     try {
@@ -368,6 +370,7 @@ export default function DriverDetailPage() {
 
   // ── view model: ระหว่างแก้ไขให้ทุกส่วน (ชื่อ, checklist, badge) อัปเดตสดจากฟอร์ม ──
   const v = editing && form ? form : {
+    prefix: driver.prefix ?? "นาย",
     firstName: driver.firstName ?? "", lastName: driver.lastName ?? "",
     birthDate: driver.birthDate ?? "", nationalId: driver.nationalId ?? "",
     address: driver.address ?? "", phone: driver.phone ?? "",
@@ -377,7 +380,7 @@ export default function DriverDetailPage() {
     photoUrl: driver.photoUrl ?? "",
   }
 
-  const fullName = `${v.firstName} ${v.lastName}`.trim()
+  const fullName = `${v.prefix ?? ""} ${v.firstName} ${v.lastName}`.trim()
   const age      = calcAge(v.birthDate)
   const initial  = (v.firstName || "?")[0]?.toUpperCase() ?? "?"
 
@@ -622,6 +625,15 @@ export default function DriverDetailPage() {
           <Card title="ข้อมูลส่วนตัว">
             {editing && form ? (
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <EditField label="คำนำหน้า">
+                  <select
+                    value={form.prefix}
+                    onChange={(e) => set("prefix", e.target.value)}
+                    className={inputCls}
+                  >
+                    {["นาย", "นาง", "นางสาว"].map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </EditField>
                 <EditField label="ชื่อ *">
                   <Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className={inputCls} placeholder="ชื่อ" />
                 </EditField>
