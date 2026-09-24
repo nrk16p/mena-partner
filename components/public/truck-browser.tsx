@@ -49,10 +49,12 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
           <option value="">ยี่ห้อทั้งหมด</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}
         </select>
-        <select className={sel} value={characteristic} onChange={(e) => setChar(e.target.value)} aria-label="ลักษณะรถ">
-          <option value="">ลักษณะทั้งหมด</option>
-          {chars.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        {chars.length > 1 && (
+          <select className={sel} value={characteristic} onChange={(e) => setChar(e.target.value)} aria-label="ลักษณะรถ">
+            <option value="">ลักษณะทั้งหมด</option>
+            {chars.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
         <select className={sel} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} aria-label="ราคาไม่เกิน">
           <option value={0}>ราคาทุกช่วง</option>
           <option value={1_500_000}>ไม่เกิน 1.5 ล้าน</option>

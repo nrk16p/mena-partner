@@ -6,7 +6,7 @@ import type { PublicTruck } from "@/lib/public-trucks"
 export function TruckCard({ truck }: { truck: PublicTruck }) {
   const year = truck.registrationYear
   const title = [truck.brand, truck.model].filter(Boolean).join(" ") || "รถผสมปูนมือสอง"
-  const kind = truck.characteristic || truck.vehicleType
+  const kind = truck.vehicleType || truck.characteristic
 
   return (
     <Link
