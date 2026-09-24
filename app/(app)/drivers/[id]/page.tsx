@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check, X, Phone, Landmark, AlertTriangle, CheckCircle2, Truck, IdCard, UserMinus } from "lucide-react"
+import { ArrowLeft, Pencil, Trash2, User, Upload, FileText, ExternalLink, Check, X, Phone, Landmark, AlertTriangle, CheckCircle2, Truck, IdCard, UserMinus, RotateCw } from "lucide-react"
+import type { DriverPhotoField } from "@/lib/driver-photo"
 import { ActivityHistory } from "@/components/activity-history"
 import { DriverExitDialog } from "@/components/driver-exit-dialog"
 import { EXIT_TYPE_LABEL } from "@/lib/driver-state"
@@ -173,13 +174,16 @@ function EditField({ label, hint, className = "", children }: {
   )
 }
 
-function DocThumb({ url, label, editing = false, busy = false, onUpload, onRemove }: {
+function DocThumb({ url, label, editing = false, busy = false, rotating = false, onUpload, onRemove, onRotate }: {
   url?: string
   label: string
   editing?: boolean
   busy?: boolean
+  rotating?: boolean
   onUpload?: (file: File) => void
   onRemove?: () => void
+  /** หมุนรูป 90° ตามเข็มแล้วเซฟถาวร — ไม่ส่งมา = ไม่มีปุ่ม (PDF / รูปที่ยังไม่ได้บันทึก) */
+  onRotate?: () => void
 }) {
   if (!url) {
     if (editing) return (
@@ -244,6 +248,19 @@ function DocThumb({ url, label, editing = false, busy = false, onUpload, onRemov
           <X className="w-3.5 h-3.5" />
         </button>
       )}
+      {!isPdf && onRotate && (
+        <button
+          type="button"
+          onClick={onRotate}
+          disabled={rotating}
+          title={`หมุน${label} 90° (บันทึกทันที)`}
+          className="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-emerald-600 hover:border-emerald-300 shadow-sm disabled:opacity-60"
+        >
+          {rotating
+            ? <span className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            : <RotateCw className="w-3.5 h-3.5" />}
+        </button>
+      )}
     </div>
   )
 }
@@ -265,6 +282,9 @@ export default function DriverDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError]       = useState("")
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null)
+  const [rotatingDoc, setRotatingDoc] = useState<string | null>(null)
+  // error ของฟอร์มโชว์เฉพาะในแถบบันทึก (โหมดแก้ไข) — การหมุนรูปทำได้ในโหมดดูด้วย จึงต้องมีที่แจ้งของตัวเอง
+  const [rotateError, setRotateError] = useState("")
 
   useEffect(() => {
     fetch(`/api/drivers/${id}`)
@@ -310,6 +330,25 @@ export default function DriverDetailPage() {
 
   function set<K extends keyof DriverForm>(k: K, v: DriverForm[K]) {
     setForm((p) => p ? { ...p, [k]: v } : p)
+  }
+
+  // หมุนรูป 90° ตามเข็ม — เซิร์ฟเวอร์เขียนไฟล์ใหม่ + อัปเดตฐานทันที (ไม่ผูกกับปุ่มบันทึกของฟอร์ม)
+  async function rotatePhoto(field: DriverPhotoField) {
+    setRotatingDoc(field); setRotateError("")
+    try {
+      const res = await fetch(`/api/drivers/${id}/rotate-photo`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field, deg: 90 }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d?.error ?? "หมุนรูปไม่สำเร็จ")
+      setDriver((prev) => prev ? { ...prev, [field]: d.url } : prev)
+      setForm((prev) => prev ? { ...prev, [field]: d.url } : prev)
+    } catch (err) {
+      setRotateError(err instanceof Error ? err.message : "หมุนรูปไม่สำเร็จ")
+    } finally {
+      setRotatingDoc(null)
+    }
   }
 
   async function uploadDoc(field: "idCardUrl" | "licenseUrl" | "houseRegUrl" | "bankBookUrl" | "tax50BisUrl" | "photoUrl", file: File) {
@@ -438,7 +477,22 @@ export default function DriverDetailPage() {
                     {initial}
                   </div>
                 )
-                if (!editing) return avatar
+                if (!editing) return photo ? (
+                  <div className="relative">
+                    {avatar}
+                    <button
+                      type="button"
+                      onClick={() => rotatePhoto("photoUrl")}
+                      disabled={rotatingDoc === "photoUrl"}
+                      title="หมุนรูปโปรไฟล์ 90° (บันทึกทันที)"
+                      className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-emerald-600 hover:border-emerald-300 shadow-sm disabled:opacity-60"
+                    >
+                      {rotatingDoc === "photoUrl"
+                        ? <span className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                        : <RotateCw className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                ) : avatar
                 return (
                   <label className="relative cursor-pointer group" title="อัปโหลด/เปลี่ยนรูปโปรไฟล์">
                     {avatar}
@@ -906,8 +960,12 @@ export default function DriverDetailPage() {
                   label={label}
                   editing={editing}
                   busy={uploadingDoc === field}
+                  rotating={rotatingDoc === field}
                   onUpload={(f) => uploadDoc(field, f)}
                   onRemove={() => set(field, "")}
+                  onRotate={driver[field] && (!editing || form?.[field] === driver[field])
+                    ? () => rotatePhoto(field)
+                    : undefined}
                 />
               ))}
             </div>
@@ -916,6 +974,16 @@ export default function DriverDetailPage() {
           <Tax50Card driver={driver} isAdmin={isAdmin} onSaved={reload} />
         </div>
       </div>
+
+      {/* หมุนรูปไม่สำเร็จ — ต้องเห็นได้ทั้งโหมดดูและโหมดแก้ไข (แถบบันทึกโชว์เฉพาะตอนแก้ไข) */}
+      {rotateError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-xs text-red-600 shadow-lg dark:border-red-900/50 dark:bg-zinc-900">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{rotateError}</span>
+          <button type="button" onClick={() => setRotateError("")} title="ปิด"
+            className="ml-1 text-red-300 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
 
       {/* ── Sticky save bar (edit mode) ── */}
       {editing && form && (
