@@ -10,7 +10,7 @@ const day = (iso: string) => `${iso}T00:00:00.000Z`
 
 const deals: MetricDeal[] = [
   { _id: "1", quotationNo: "A", stage: "QUOTED", salesName: "แอน", sourceChannel: "เฟซบุ๊ก", createdAt: day("2026-08-01") },
-  { _id: "2", quotationNo: "B", stage: "ON_HOLD", stageBeforeHold: "QUOTED", nextFollowUpDate: "2026-09-10", salesName: "แอน", createdAt: day("2026-08-05") },
+  { _id: "2", quotationNo: "B", stage: "ON_HOLD", stageBeforeHold: "QUOTED", nextFollowUpDate: "2026-09-10", holdReason: "รอเงินดาวน์จากญาติ", salesName: "แอน", createdAt: day("2026-08-05") },
   { _id: "3", quotationNo: "C", stage: "ON_HOLD", stageBeforeHold: "TRAINING", nextFollowUpDate: "2026-12-01", salesName: "บี", createdAt: day("2026-08-06") },
   { _id: "4", quotationNo: "D", stage: "CLOSED_LOST", lostAtStage: "TRAINING", lossReasonLabel: "งานหนักกว่าที่คาด", lostAt: day("2026-09-02"), trainingResult: "FAILED", salesName: "บี", createdAt: day("2026-07-01") },
   { _id: "5", quotationNo: "E", stage: "CLOSED_LOST", lostAtStage: "QUOTED", lossReasonLabel: "ราคาสูงเกิน", lostAt: day("2026-09-05"), salesName: "แอน", createdAt: day("2026-07-02") },
@@ -109,5 +109,6 @@ describe("funnel และการติดตาม", () => {
     const rows = followUpOverdue(deals, NOW)
     expect(rows.map((r) => r.quotationNo)).toEqual(["B"])
     expect(rows[0].overdueDays).toBe(14)
+    expect(rows[0].holdReason).toBe("รอเงินดาวน์จากญาติ")   // ใช้โชว์ในแดชบอร์ดว่าค้างเพราะอะไร
   })
 })

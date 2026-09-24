@@ -1,13 +1,15 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Filter } from "lucide-react"
+import { List, Filter } from "lucide-react"
 import { StatsSkeleton } from "@/components/ui/skeleton"
+import { PHASES, PHASE_COLOR, STAGES } from "@/lib/deal-stage"
 
 /**
- * แดชบอร์ดไปป์ไลน์ขายรถร่วม — 8 มุมมองตามสเปก
- * ตัวเลขคำนวณที่ lib/deal-metrics (มีเทสต์) หน้านี้แค่แสดงผล
+ * แดชบอร์ดไปป์ไลน์ขายรถร่วม — ตัวเลขคำนวณที่ lib/deal-metrics (มีเทสต์) หน้านี้แค่แสดงผล
+ * หัวใจของหน้าคือตาราง "ภาพรวมทีละขั้น" — รวม funnel / ค้าง / เวลาเฉลี่ย / หลุด ไว้แถวเดียวกัน
+ * จะได้อ่านเทียบกันได้ว่าขั้นไหนคือคอขวด
  */
 
 interface Dash {
@@ -19,7 +21,7 @@ interface Dash {
   trainingToDelivered: { passed: number; delivered: number; rate: number }
   signedToCompleted: { eligible: number; completed: number; rate: number }
   funnel: { stage: string; label: string; count: number; rateFromPrev: number }[]
-  followUpOverdue: { id: string; quotationNo: string; salesName: string; nextFollowUpDate: string; overdueDays: number }[]
+  followUpOverdue: { id: string; quotationNo: string; salesName: string; holdReason?: string; nextFollowUpDate: string; overdueDays: number }[]
   salesPeople: string[]
   sourceChannels: string[]
 }
@@ -27,12 +29,33 @@ interface Dash {
 const THM = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
 const monthLabel = (m: string) => { const [y, mo] = m.split("-").map(Number); return `${THM[mo] ?? mo} ${String((y + 543) % 100).padStart(2, "0")}` }
 const pct = (n: number) => `${Math.round(n * 100)}%`
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+const thDate = (s: string) => s ? new Date(`${s}T00:00:00`).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "—"
+
+/** ช่วงเวลาสำเร็จรูป — ค่าตั้งต้นคือไตรมาสนี้ */
+function presetRange(key: string): { from: string; to: string } {
+  const now = new Date()
+  const to = iso(now)
+  if (key === "30d") { const d = new Date(now); d.setDate(d.getDate() - 29); return { from: iso(d), to } }
+  if (key === "month") return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to }
+  if (key === "quarter") return { from: iso(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)), to }
+  return { from: iso(new Date(now.getFullYear(), 0, 1)), to }
+}
+const PRESETS = [
+  { key: "30d", label: "30 วัน" },
+  { key: "month", label: "เดือนนี้" },
+  { key: "quarter", label: "ไตรมาสนี้" },
+  { key: "year", label: "ปีนี้" },
+]
+
+const phaseOfStage = (stage: string) => PHASES.find((p) => (p.stages as string[]).includes(stage))
 
 export default function PipelineDashboardPage() {
   const [d, setD] = useState<Dash | null>(null)
   const [loading, setLoading] = useState(true)
-  const [from, setFrom] = useState("")
-  const [to, setTo] = useState("")
+  const init = presetRange("quarter")
+  const [from, setFrom] = useState(init.from)
+  const [to, setTo] = useState(init.to)
   const [sales, setSales] = useState("")
   const [source, setSource] = useState("")
 
@@ -52,167 +75,311 @@ export default function PipelineDashboardPage() {
   }, [from, to, sales, source])
   useEffect(() => { load() }, [load])
 
-  const input = "h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-sm"
-  const maxOpen = Math.max(1, ...(d?.openByStage.map((r) => r.active + r.onHold) ?? [1]))
-  const maxLost = Math.max(1, ...(d?.lostByStage.map((r) => r.count) ?? [1]))
-  const maxDays = Math.max(1, ...(d?.avgDaysPerStage.map((r) => r.days) ?? [1]))
-  const maxFunnel = Math.max(1, ...(d?.funnel.map((r) => r.count) ?? [1]))
+  const activePreset = PRESETS.find((p) => { const r = presetRange(p.key); return r.from === from && r.to === to })?.key ?? ""
+  const pickPreset = (key: string) => { const r = presetRange(key); setFrom(r.from); setTo(r.to) }
+
+  // ─── ตารางภาพรวมทีละขั้น ───
+  const rows = useMemo(() => {
+    if (!d) return []
+    return STAGES.map((stage) => {
+      const f = d.funnel.find((x) => x.stage === stage)
+      const open = d.openByStage.find((x) => x.stage === stage)
+      const avg = d.avgDaysPerStage.find((x) => x.stage === stage)
+      const lost = d.lostByStage.find((x) => x.stage === stage)
+      return {
+        stage, label: f?.label ?? stage,
+        reached: f?.count ?? 0,
+        rate: f?.rateFromPrev ?? 1,
+        active: open?.active ?? 0, onHold: open?.onHold ?? 0,
+        days: avg?.days ?? null, samples: avg?.samples ?? 0,
+        lost: lost?.count ?? 0,
+      }
+    })
+  }, [d])
+
+  const max = {
+    reached: Math.max(1, ...rows.map((r) => r.reached)),
+    open: Math.max(1, ...rows.map((r) => r.active + r.onHold)),
+    days: Math.max(1, ...rows.map((r) => r.days ?? 0)),
+    lost: Math.max(1, ...rows.map((r) => r.lost)),
+  }
+
+  // คอขวด = ขั้นที่อัตราผ่านจากขั้นก่อนต่ำสุด (ไม่นับขั้นแรกที่ไม่มีขั้นก่อน)
+  const bottleneck = useMemo(() => {
+    const cand = rows.slice(1).filter((r) => r.reached > 0 || r.rate < 1)
+    if (!cand.length || !d) return null
+    const worst = cand.reduce((a, b) => (b.rate < a.rate ? b : a))
+    if (worst.rate >= 1) return null
+    const prev = rows[STAGES.indexOf(worst.stage as never) - 1]
+    const topReason = d.lossReasonByMonth[0]?.reasons[0]
+    return { worst, prev, lostAtPrev: prev?.lost ?? 0, topReason }
+  }, [rows, d])
+
+  // ตารางความร้อน: 3 เดือนล่าสุด (เก่า → ใหม่) × เหตุผล เรียงตามยอดรวม
+  const heat = useMemo(() => {
+    if (!d) return null
+    const months = d.lossReasonByMonth.slice(0, 3).reverse()
+    if (!months.length) return null
+    const totals = new Map<string, number>()
+    for (const m of months) for (const r of m.reasons) totals.set(r.label, (totals.get(r.label) ?? 0) + r.count)
+    const labels = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([l]) => l)
+    return {
+      months,
+      rows: labels.map((label) => ({
+        label,
+        cells: months.map((m) => m.reasons.find((r) => r.label === label)?.count ?? 0),
+        total: totals.get(label) ?? 0,
+      })),
+    }
+  }, [d])
+
+  const input = "h-9 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-[13px]"
+  const rangeLabel = `${thDate(from)} – ${thDate(to)}`
+  const openTotal = rows.reduce((s, r) => s + r.active + r.onHold, 0)
+  const holdTotal = rows.reduce((s, r) => s + r.onHold, 0)
+  const lead = d?.funnel[0]?.count ?? 0
+  const delivered = d?.funnel.find((f) => f.stage === "DELIVERED")?.count ?? 0
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-4 space-y-5">
-      <div className="flex items-center gap-3">
-        <Link href="/quotations" className="text-zinc-400 hover:text-zinc-600"><ArrowLeft className="w-5 h-5" /></Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">แดชบอร์ดไปป์ไลน์ขาย</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">ดีลทั้งหมดในช่วงที่เลือก {d ? `${d.total} ใบ` : ""}</p>
+    <div className="space-y-4">
+      <header className="flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <p className="text-xs font-semibold text-zinc-500 tracking-wider">ระบบขาย</p>
+          <h1 className="text-[26px] leading-tight font-bold mt-0.5">แดชบอร์ดไปป์ไลน์ขาย</h1>
+          <p className="text-[13px] text-zinc-500 mt-0.5">
+            ดีลที่สร้างในช่วง <span className="font-semibold text-zinc-900 dark:text-zinc-100">{rangeLabel}</span>
+            {d ? ` · ${d.total} ใบ` : ""}
+          </p>
         </div>
-      </div>
+        <Link href="/quotations" className="h-10 px-4 flex items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-semibold">
+          <List className="w-4 h-4" /> ไปหน้ารายการดีล
+        </Link>
+      </header>
 
       {/* ตัวกรอง */}
-      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-3">
-        <Filter className="w-4 h-4 text-zinc-400" />
-        <label className="text-xs text-zinc-500">ตั้งแต่ <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="text-xs text-zinc-500">ถึง <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} /></label>
-        <select className={input} value={sales} onChange={(e) => setSales(e.target.value)}>
-          <option value="">เซลล์ทุกคน</option>
-          {d?.salesPeople.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        {(d?.sourceChannels.length ?? 0) > 0 && (
-          <select className={input} value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value="">ทุกช่องทาง</option>
-            {d?.sourceChannels.map((s) => <option key={s} value={s}>{s}</option>)}
+      <div className="flex flex-wrap items-center gap-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5">
+        <Filter className="w-4 h-4 text-zinc-500 shrink-0" />
+        <div role="group" aria-label="ช่วงเวลา" className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+          {PRESETS.map((p) => (
+            <button key={p.key} onClick={() => pickPreset(p.key)} aria-pressed={activePreset === p.key}
+              className={`h-9 px-3 text-[13px] ${activePreset === p.key ? "bg-[#031B14] text-white font-semibold" : "bg-white dark:bg-zinc-900"}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">ตั้งแต่
+          <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">ถึง
+          <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <span className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+        <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">เซลล์
+          <select className={input} value={sales} onChange={(e) => setSales(e.target.value)}>
+            <option value="">ทุกคน</option>
+            {d?.salesPeople.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+        </label>
+        {(d?.sourceChannels.length ?? 0) > 0 && (
+          <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">ช่องทาง
+            <select className={input} value={source} onChange={(e) => setSource(e.target.value)}>
+              <option value="">ทุกช่องทาง</option>
+              {d?.sourceChannels.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
         )}
-        {(from || to || sales || source) && (
-          <button onClick={() => { setFrom(""); setTo(""); setSales(""); setSource("") }} className="text-xs text-emerald-600 underline underline-offset-2">ล้างตัวกรอง</button>
-        )}
+        <button onClick={() => { const r = presetRange("quarter"); setFrom(r.from); setTo(r.to); setSales(""); setSource("") }}
+          className="ml-auto h-9 px-3 text-[13px] font-semibold text-[#7A5C14] dark:text-[#E7C86E]">ล้างตัวกรอง</button>
       </div>
 
       {loading || !d ? <StatsSkeleton /> : (
         <>
-          {/* อัตราสำคัญ 2 ตัว */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Card title="ผ่านฝึกงาน → รับรถจริง"
-              hint={`ผ่านฝึก ${d.trainingToDelivered.passed} ใบ · รับรถแล้ว ${d.trainingToDelivered.delivered} ใบ`}>
-              <p className="text-3xl font-bold text-emerald-600 tabular-nums">{pct(d.trainingToDelivered.rate)}</p>
-            </Card>
-            <Card title="เซ็นสัญญา → อยู่ครบ 90 วัน"
-              hint={`นับเฉพาะที่เซ็นมาแล้วเกิน 90 วัน ${d.signedToCompleted.eligible} ใบ · ครบแล้ว ${d.signedToCompleted.completed} ใบ`}>
-              <p className="text-3xl font-bold text-emerald-600 tabular-nums">{pct(d.signedToCompleted.rate)}</p>
-            </Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Kpi title="ผู้สนใจ → ส่งมอบรถ" value={pct(lead ? delivered / lead : 0)} hint={`ส่งมอบ ${delivered} จากผู้สนใจ ${lead} ใบ`} />
+            <Kpi title="ดีลที่ยังเดินอยู่" value={String(openTotal)} hint={`ในนั้นพักติดตาม ${holdTotal} ใบ`} />
+            <Kpi title="ผ่านฝึกงาน → รับรถจริง" value={pct(d.trainingToDelivered.rate)} good
+              hint={`ผ่านฝึก ${d.trainingToDelivered.passed} · รับรถแล้ว ${d.trainingToDelivered.delivered} ใบ`} />
+            <Kpi title="เซ็นสัญญา → อยู่ครบ 90 วัน" value={pct(d.signedToCompleted.rate)} good
+              hint={`นับที่เซ็นเกิน 90 วัน ${d.signedToCompleted.eligible} · ครบ ${d.signedToCompleted.completed} ใบ`} />
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-4">
-            <Card title="ดีลค้างแต่ละขั้น" hint="แถบจาง = พักติดตาม (นับตามขั้นเดิม)">
-              <div className="space-y-2">
-                {d.openByStage.map((r) => (
-                  <div key={r.stage} className="flex items-center gap-2 text-xs">
-                    <span className="w-36 shrink-0 text-zinc-500 truncate">{r.label}</span>
-                    <div className="flex-1 flex h-5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                      <div className="bg-emerald-500" style={{ width: `${(r.active / maxOpen) * 100}%` }} />
-                      <div className="bg-amber-300" style={{ width: `${(r.onHold / maxOpen) * 100}%` }} />
+          {bottleneck && (
+            <div role="note" className="flex items-center gap-3.5 flex-wrap px-4 py-3.5 bg-[#031B14] text-white rounded-xl">
+              <span className="w-9 h-9 shrink-0 rounded-[10px] bg-[#E7C86E]/15 text-[#E7C86E] flex items-center justify-center"><Filter className="w-[18px] h-[18px]" /></span>
+              <div className="flex-1 min-w-[260px]">
+                <div className="text-xs font-bold tracking-wider text-[#E7C86E]">คอขวดของช่วงนี้</div>
+                <div className="text-[15px] mt-0.5">
+                  <b>{bottleneck.prev?.label} → {bottleneck.worst.label}</b> ผ่านแค่ <b className="tabular-nums">{pct(bottleneck.worst.rate)}</b> (ต่ำสุด)
+                  {bottleneck.lostAtPrev > 0 && <> และดีลหลุดที่ขั้น{bottleneck.prev?.label} <b className="tabular-nums">{bottleneck.lostAtPrev}</b> ใบ</>}
+                  {bottleneck.topReason && <> — เหตุผลหลัก &ldquo;{bottleneck.topReason.label}&rdquo;</>}
+                </div>
+              </div>
+              <Link href={`/quotations?stage=${bottleneck.prev?.stage ?? ""}`}
+                className="h-9 px-3.5 flex items-center rounded-lg gold-grad text-[#3F3000] text-[13px] font-semibold whitespace-nowrap">
+                ดูดีลที่{bottleneck.prev?.label} {bottleneck.prev ? bottleneck.prev.active + bottleneck.prev.onHold : 0} ใบ
+              </Link>
+            </div>
+          )}
+
+          {/* ภาพรวมทีละขั้น — แทนการ์ดกราฟแท่ง 4 ใบเดิม */}
+          <section aria-labelledby="stage-h" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <div className="flex items-end justify-between gap-4 flex-wrap px-4 pt-4 pb-3">
+              <div>
+                <h2 id="stage-h" className="text-base font-semibold">ภาพรวมทีละขั้น</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">รวม 4 มุมมองเดิม (funnel · ค้าง · เวลาเฉลี่ย · หลุด) ในตารางเดียว อ่านเทียบกันได้ในแถวเดียว</p>
+              </div>
+              <div className="flex gap-3.5 text-xs text-zinc-500">
+                <Legend color="#165443">กำลังเดิน</Legend>
+                <Legend color="#D4A72C">พักติดตาม</Legend>
+                <Legend color="#CF222E">อัตราผ่าน &lt; 70%</Legend>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <div className="min-w-[860px]">
+                <div className="grid grid-cols-[196px_minmax(0,1.3fr)_104px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-y border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500">
+                  <div>ขั้น</div><div>เคยถึงขั้นนี้</div><div className="text-right">ผ่านจากขั้นก่อน</div>
+                  <div>ค้างอยู่ตอนนี้</div><div>เวลาเฉลี่ยในขั้น</div><div>หลุดที่ขั้นนี้</div>
+                </div>
+                {rows.map((r, i) => {
+                  const phase = phaseOfStage(r.stage)!
+                  const isPhaseHead = phase.stages[0] === r.stage
+                  const worst = bottleneck?.worst.stage === r.stage
+                  const noDays = r.stage === "DELIVERED" || r.stage === "COMPLETED_90D" || r.samples === 0
+                  return (
+                    <div key={r.stage}>
+                      {isPhaseHead && (
+                        <div className="flex items-center gap-2 px-4 pt-2.5 pb-1 text-xs font-bold text-zinc-500">
+                          <span className="w-2 h-2 rounded-sm" style={{ background: PHASE_COLOR[phase.no] }} />
+                          {phase.no} {phase.label}
+                        </div>
+                      )}
+                      <div className={`grid grid-cols-[196px_minmax(0,1.3fr)_104px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 items-center px-4 py-2 ${
+                        worst ? "bg-[#FFF5F4] dark:bg-red-950/20" : ""}`}>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <span className="w-5 text-xs text-zinc-500 tabular-nums">{i + 1}</span>{r.label}
+                        </div>
+                        <Bar value={r.reached} max={max.reached} color={PHASE_COLOR[phase.no]} text={String(r.reached)} w="w-8" />
+                        <div className={`text-right text-[13px] tabular-nums ${r.rate < 0.7 ? "text-[#CF222E] dark:text-red-400 font-bold" : ""}`}>
+                          {i === 0 ? "—" : pct(r.rate)}
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex-1 flex h-3.5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                            <div style={{ width: `${(r.active / max.open) * 100}%`, background: "#165443" }} />
+                            <div style={{ width: `${(r.onHold / max.open) * 100}%`, background: "#D4A72C" }} />
+                          </div>
+                          <span className="w-11 text-right text-[13px] tabular-nums">{r.active}{r.onHold ? ` +${r.onHold}` : ""}</span>
+                        </div>
+                        {noDays ? (
+                          <div className="text-[13px] text-zinc-500">—</div>
+                        ) : (
+                          <Bar value={r.days ?? 0} max={max.days} color={(r.days ?? 0) > 10 ? "#9A6700" : "#8C959F"} text={`${r.days} วัน`} w="w-14" />
+                        )}
+                        <Bar value={r.lost} max={max.lost} color="#8C959F" text={String(r.lost)} w="w-7" />
+                      </div>
                     </div>
-                    <span className="w-16 text-right tabular-nums">{r.active}{r.onHold ? ` +${r.onHold}` : ""}</span>
-                  </div>
-                ))}
+                  )
+                })}
+                <div className="h-2" />
               </div>
-            </Card>
+            </div>
+          </section>
 
-            <Card title="ดีลหลุดที่ขั้นไหน" hint={d.lostByStage.length ? "" : "ยังไม่มีดีลที่ปิดไม่สำเร็จในช่วงนี้"}>
-              <div className="space-y-2">
-                {d.lostByStage.map((r) => (
-                  <div key={r.stage} className="flex items-center gap-2 text-xs">
-                    <span className="w-36 shrink-0 text-zinc-500 truncate">{r.label}</span>
-                    <div className="flex-1 h-5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                      <div className="h-full bg-zinc-500" style={{ width: `${(r.count / maxLost) * 100}%` }} />
+          <div className="grid lg:grid-cols-2 gap-4 items-start">
+            <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+              <div className="px-4 pt-4 pb-2.5">
+                <h2 className="flex items-center gap-2 text-base font-semibold">
+                  ดีลพักติดตามที่เลยวันนัด
+                  <span className="px-2 rounded-full bg-[#FFEBE9] dark:bg-red-950/40 text-[#A40E26] dark:text-red-300 text-xs font-bold tabular-nums">{d.followUpOverdue.length}</span>
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">เรียงค้างนานสุดก่อน · กดเลขที่เพื่อเปิดดีล</p>
+              </div>
+              {d.followUpOverdue.length === 0 ? (
+                <p className="px-4 pb-4 text-sm text-zinc-500">ไม่มีดีลที่เลยวันติดตาม</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[520px]">
+                    <div className="grid grid-cols-[124px_minmax(0,1fr)_96px_90px_72px] gap-3 px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500">
+                      <div>เลขที่</div><div>เหตุผลที่พัก</div><div>เซลล์</div><div>นัดไว้</div><div className="text-right">เลยมา</div>
                     </div>
-                    <span className="w-10 text-right tabular-nums">{r.count}</span>
+                    {d.followUpOverdue.map((r) => (
+                      <div key={r.id} className="grid grid-cols-[124px_minmax(0,1fr)_96px_90px_72px] gap-3 items-center px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 text-[13px]">
+                        <Link href={`/quotations/${r.id}`} className="font-mono font-semibold text-[#7A5C14] dark:text-[#E7C86E] hover:underline">{r.quotationNo}</Link>
+                        <span className="truncate">{r.holdReason || "—"}</span>
+                        <span className="text-zinc-500 truncate">{r.salesName}</span>
+                        <span className="text-zinc-500 tabular-nums">{thDate(r.nextFollowUpDate)}</span>
+                        <span className={`text-right tabular-nums font-semibold ${r.overdueDays > 14 ? "text-[#CF222E] dark:text-red-400" : "text-[#9A6700] dark:text-amber-400"}`}>
+                          {r.overdueDays} วัน
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </Card>
+                </div>
+              )}
+            </section>
 
-            <Card title="เวลาเฉลี่ยที่ค้างแต่ละขั้น" hint="วัน · คิดจากประวัติการเปลี่ยนขั้น">
-              <div className="space-y-2">
-                {d.avgDaysPerStage.map((r) => (
-                  <div key={r.stage} className="flex items-center gap-2 text-xs">
-                    <span className="w-36 shrink-0 text-zinc-500 truncate">{r.label}</span>
-                    <div className="flex-1 h-5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                      <div className="h-full bg-sky-500" style={{ width: `${(r.days / maxDays) * 100}%` }} />
+            <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+              <div className="px-4 pt-4 pb-2.5">
+                <h2 className="text-base font-semibold">เหตุผลที่ดีลหลุด รายเดือน</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">สีเข้ม = หลุดมาก · อ่านแนวนอนเพื่อดูว่าเหตุผลไหนเพิ่มขึ้น</p>
+              </div>
+              {!heat ? (
+                <p className="px-4 pb-4 text-sm text-zinc-500">ยังไม่มีดีลที่ปิดไม่สำเร็จในช่วงนี้</p>
+              ) : (
+                <>
+                  <div className="grid gap-1.5 px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500"
+                    style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${heat.months.length}, 64px) 56px` }}>
+                    <div>เหตุผล</div>
+                    {heat.months.map((m) => <div key={m.month} className="text-center">{monthLabel(m.month)}</div>)}
+                    <div className="text-right">รวม</div>
+                  </div>
+                  {heat.rows.map((r) => (
+                    <div key={r.label} className="grid gap-1.5 items-center px-4 py-1.5 border-t border-zinc-100 dark:border-zinc-800 text-[13px]"
+                      style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${heat.months.length}, 64px) 56px` }}>
+                      <span className="truncate" title={r.label}>{r.label}</span>
+                      {r.cells.map((c, i) => <span key={i} className={`py-1 text-center rounded tabular-nums ${heatClass(c)}`}>{c || ""}</span>)}
+                      <span className="text-right font-bold tabular-nums">{r.total}</span>
                     </div>
-                    <span className="w-20 text-right tabular-nums">{r.days} วัน</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card title="อัตราผ่านแต่ละขั้น (funnel)" hint="เคยถึงขั้นนั้นกี่ใบ · % เทียบขั้นก่อนหน้า">
-              <div className="space-y-1.5">
-                {d.funnel.map((r) => (
-                  <div key={r.stage} className="flex items-center gap-2 text-xs">
-                    <span className="w-36 shrink-0 text-zinc-500 truncate">{r.label}</span>
-                    <div className="flex-1 h-5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                      <div className="h-full bg-emerald-400" style={{ width: `${(r.count / maxFunnel) * 100}%` }} />
-                    </div>
-                    <span className="w-8 text-right tabular-nums">{r.count}</span>
-                    <span className="w-12 text-right tabular-nums text-zinc-400">{pct(r.rateFromPrev)}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          <Card title="เหตุผลที่ดีลหลุด รายเดือน">
-            {d.lossReasonByMonth.length === 0 ? <p className="text-sm text-zinc-400">ยังไม่มีข้อมูล</p> : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {d.lossReasonByMonth.slice(0, 6).map((m) => (
-                  <div key={m.month}>
-                    <p className="text-xs font-semibold text-zinc-500 mb-1">{monthLabel(m.month)}</p>
-                    <ul className="space-y-1">
-                      {m.reasons.map((r) => (
-                        <li key={r.label} className="flex justify-between text-sm">
-                          <span className="truncate pr-2">{r.label}</span>
-                          <span className="tabular-nums text-zinc-500">{r.count}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card title="ดีลพักติดตามที่เลยวันนัดแล้ว" hint="เรียงค้างนานสุดก่อน">
-            {d.followUpOverdue.length === 0 ? <p className="text-sm text-zinc-400">ไม่มีดีลที่เลยวันติดตาม</p> : (
-              <table className="w-full text-sm">
-                <thead><tr className="text-xs text-zinc-400 text-left">
-                  <th className="py-1">เลขที่</th><th>เซลล์</th><th>นัดติดตาม</th><th className="text-right">เลยมา</th>
-                </tr></thead>
-                <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                  {d.followUpOverdue.map((r) => (
-                    <tr key={r.id}>
-                      <td className="py-1.5"><Link href={`/quotations/${r.id}`} className="font-mono text-[#8C6B1F] hover:underline">{r.quotationNo}</Link></td>
-                      <td className="text-zinc-500">{r.salesName}</td>
-                      <td className="text-zinc-500 tabular-nums">{r.nextFollowUpDate}</td>
-                      <td className="text-right tabular-nums text-amber-600 font-semibold">{r.overdueDays} วัน</td>
-                    </tr>
                   ))}
-                </tbody>
-              </table>
-            )}
-          </Card>
+                </>
+              )}
+            </section>
+          </div>
         </>
       )}
     </div>
   )
 }
 
-function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+/** ระดับสีของตารางความร้อน — ไล่ตามจำนวนดีลที่หลุดด้วยเหตุผลนั้นในเดือนนั้น */
+function heatClass(n: number) {
+  if (n === 0) return "bg-zinc-50 dark:bg-zinc-800/40 text-zinc-400"
+  if (n <= 2) return "bg-[#E8F3EE] dark:bg-[#12362B] text-[#165443] dark:text-emerald-300"
+  if (n <= 4) return "bg-[#B9D9CB] dark:bg-[#1B5140] text-[#0E3A2C] dark:text-emerald-100"
+  if (n <= 6) return "bg-[#4E8F77] text-white"
+  return "bg-[#165443] text-white"
+}
+
+function Legend({ color, children }: { color: string; children: React.ReactNode }) {
+  return <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />{children}</span>
+}
+
+function Bar({ value, max, color, text, w }: { value: number; max: number; color: string; text: string; w: string }) {
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4">
-      <p className="text-sm font-semibold">{title}</p>
-      {hint && <p className="text-xs text-zinc-400 mt-0.5 mb-3">{hint}</p>}
-      <div className={hint ? "" : "mt-3"}>{children}</div>
+    <div className="flex items-center gap-2.5">
+      <div className="flex-1 h-3.5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+        <div className="h-full" style={{ width: `${Math.min(100, (value / max) * 100)}%`, background: color }} />
+      </div>
+      <span className={`${w} text-right text-[13px] tabular-nums font-medium`}>{text}</span>
+    </div>
+  )
+}
+
+function Kpi({ title, value, hint, good }: { title: string; value: string; hint: string; good?: boolean }) {
+  return (
+    <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+      <div className="text-[13px] font-semibold text-zinc-500">{title}</div>
+      <div className={`text-[30px] leading-none font-bold mt-1.5 tabular-nums ${good ? "text-[#165443] dark:text-emerald-300" : ""}`}>{value}</div>
+      <div className="text-xs text-zinc-500 mt-1 tabular-nums">{hint}</div>
     </div>
   )
 }

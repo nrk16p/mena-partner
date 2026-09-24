@@ -17,6 +17,7 @@ export interface MetricDeal {
   trainingResult?: string
   deliveredAt?: string
   nextFollowUpDate?: string
+  holdReason?: string
   salesName?: string
   sourceChannel?: string
   createdAt?: string
@@ -160,6 +161,7 @@ export function followUpOverdue(deals: MetricDeal[], now = new Date()) {
     .filter((d) => d.stage === "ON_HOLD" && d.nextFollowUpDate && String(d.nextFollowUpDate) <= today)
     .map((d) => ({
       id: String(d._id ?? ""), quotationNo: d.quotationNo ?? "", salesName: d.salesName ?? "ไม่ระบุ",
+      holdReason: d.holdReason ?? "",
       nextFollowUpDate: String(d.nextFollowUpDate),
       overdueDays: Math.floor((now.getTime() - new Date(String(d.nextFollowUpDate)).getTime()) / 86400000),
     }))

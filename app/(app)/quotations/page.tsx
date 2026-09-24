@@ -12,7 +12,7 @@ import { usePagination, PaginationBar } from "@/components/pagination"
 import { STATUS_LABEL } from "@/lib/deal-stage"
 import {
   PHASE_BUCKETS, SIDE_BUCKETS, BADGE_CLASS, DOT_COLOR, FOLLOW_CLASS,
-  badgeKind, bucketStats, daysIn, filterDeals, followTone, kpis,
+  badgeKind, bucketOf, bucketStats, daysIn, filterDeals, followTone, kpis,
   progressSegments, sortDeals, stuckClass, type Quick,
 } from "@/lib/deal-list"
 
@@ -56,7 +56,8 @@ function QuotationsInner() {
   const { data: session } = useSession()
   const [rows, setRows] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
-  const [bucket, setBucket] = useState("")          // ด่านที่เลือก ("" = ทุกด่าน)
+  // ?stage=<ขั้น> — ลิงก์จากแบนเนอร์คอขวดในแดชบอร์ด เปิดมาพร้อมกรองด่านนั้นไว้แล้ว
+  const [bucket, setBucket] = useState(() => bucketOf(sp.get("stage") ?? ""))
   const [quick, setQuick] = useState<Quick>("")     // ตัวกรองด่วนจากการ์ด KPI
   const [mine, setMine] = useState(false)
   const [q, setQ] = useState("")
