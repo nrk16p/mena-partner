@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
-import { moveStage, holdDeal, resumeDeal, closeLost, attachFile, getDeal, type Actor } from "@/lib/deal-actions"
+import { moveStage, holdDeal, resumeDeal, closeLost, attachFile, saveFields, getDeal, type Actor } from "@/lib/deal-actions"
 import { checkAdvance, screeningChecklist, type DealFields } from "@/lib/deal-stage"
 import { listLossReasons, reasonsForStage } from "@/lib/loss-reason"
 
@@ -73,6 +73,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       break
     case "close":
       result = await closeLost(db, id, actor, String(b.lossReasonId ?? ""), b.lossNote)
+      break
+    case "fields":
+      result = await saveFields(db, id, actor, (b.fields ?? {}) as Record<string, unknown>)
       break
     case "attach":
       result = await attachFile(db, id, actor, String(b.type ?? ""), String(b.url ?? ""), b.label)

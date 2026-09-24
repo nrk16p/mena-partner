@@ -9,19 +9,29 @@ import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePagination, PaginationBar } from "@/components/pagination"
+import { PHASES, STATUS_LABEL, isOpen } from "@/lib/deal-stage"
 
-type Status = "lead" | "quoted" | "booked" | "won" | "lost"
-const STATUS: { key: Status; label: string; cls: string }[] = [
-  { key: "lead",   label: "สนใจ",         cls: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300" },
-  { key: "quoted", label: "เสนอราคาแล้ว", cls: "bg-amber-100 text-amber-700" },
-  { key: "booked", label: "วางจอง",       cls: "bg-sky-100 text-sky-700" },
-  { key: "won",    label: "ปิดการขาย",     cls: "bg-emerald-100 text-emerald-700" },
-  { key: "lost",   label: "ยกเลิก",        cls: "bg-red-100 text-red-600" },
+/** ไปป์ไลน์ 10 สถานะ — กระดานจัดเป็น 5 ด่าน + 2 ช่องพิเศษ (พักติดตาม / ปิดไม่สำเร็จ) */
+const COLUMNS: { key: string; label: string; stages: string[]; cls: string }[] = [
+  ...PHASES.map((p) => ({
+    key: `phase${p.no}`, label: `${p.no}. ${p.label}`, stages: p.stages as string[],
+    cls: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  })),
+  { key: "ON_HOLD", label: "พักติดตาม", stages: ["ON_HOLD"], cls: "bg-amber-100 text-amber-800" },
+  { key: "CLOSED_LOST", label: "ปิด–ไม่สำเร็จ", stages: ["CLOSED_LOST"], cls: "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300" },
 ]
-const stMeta = (s: string) => STATUS.find((x) => x.key === s) ?? STATUS[1]
+const stageLabel = (s?: string) => STATUS_LABEL[(s ?? "LEAD") as keyof typeof STATUS_LABEL] ?? s ?? "—"
+const stageCls = (s?: string) =>
+  s === "CLOSED_LOST" ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
+  : s === "ON_HOLD" ? "bg-amber-100 text-amber-800"
+  : s === "COMPLETED_90D" ? "bg-emerald-100 text-emerald-700"
+  : "bg-sky-100 text-sky-700"
+/** ค้างขั้นนี้มากี่วัน */
+const daysIn = (iso?: string) => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null
 
 interface Quote {
-  _id: string; quotationNo: string; status: Status
+  _id: string; quotationNo: string; status: string
+  stage?: string; stageEnteredAt?: string; nextFollowUpDate?: string; lossReasonLabel?: string
   customerName: string; customerPhone?: string
   licensePlate: string; vehicleBrand?: string; vehicleModel?: string
   totalSalePrice: number; monthlyPayment: number; depositAmount?: number
@@ -44,7 +54,7 @@ function QuotationsInner() {
   const isAdmin = role === "admin" || role === "superadmin"
   const [rows, setRows] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<Status | "">("")
+  const [filter, setFilter] = useState<string>("")
   const [q, setQ] = useState("")
   const [formMode, setFormMode] = useState<"lead" | "quote" | null>(null)
   const [view, setView] = useState<"list" | "kanban">("list")
@@ -52,7 +62,8 @@ function QuotationsInner() {
   const load = useCallback(() => {
     setLoading(true)
     const p = new URLSearchParams()
-    if (filter) p.set("status", filter)
+    const col = COLUMNS.find((c) => c.key === filter)
+    if (col) p.set("stages", col.stages.join(","))
     if (q) p.set("q", q)
     fetch(`/api/quotations?${p}`).then((r) => r.ok ? r.json() : []).then((d) => setRows(Array.isArray(d) ? d : [])).finally(() => setLoading(false))
   }, [filter, q])
@@ -64,7 +75,10 @@ function QuotationsInner() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {}
-    rows.forEach((r) => { c[r.status] = (c[r.status] ?? 0) + 1 })
+    rows.forEach((r) => {
+      const col = COLUMNS.find((x) => x.stages.includes(r.stage ?? ""))
+      if (col) c[col.key] = (c[col.key] ?? 0) + 1
+    })
     return c
   }, [rows])
 
@@ -100,9 +114,9 @@ function QuotationsInner() {
       {/* Dashboard ยอดขาย */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="ดีลทั้งหมด" value={String(rows.length)} />
-        <Stat label="มูลค่า pipeline (ยังไม่ปิด)" value={formatMoney(rows.filter((r) => r.status !== "won" && r.status !== "lost").reduce((s, r) => s + r.totalSalePrice, 0))} />
-        <Stat label="ปิดการขายแล้ว" value={`${counts.won ?? 0} ดีล`} tone="good" />
-        <Stat label="มูลค่าปิดได้" value={formatMoney(rows.filter((r) => r.status === "won").reduce((s, r) => s + r.totalSalePrice, 0))} tone="good" />
+        <Stat label="มูลค่า pipeline (ยังไม่ปิด)" value={formatMoney(rows.filter((r) => isOpen(r.stage ?? "")).reduce((s, r) => s + r.totalSalePrice, 0))} />
+        <Stat label="ส่งมอบ/ครบ 90 วัน" value={`${rows.filter((r) => r.stage === "DELIVERED" || r.stage === "COMPLETED_90D").length} ดีล`} tone="good" />
+        <Stat label="พักติดตาม / ปิดไม่สำเร็จ" value={`${counts.ON_HOLD ?? 0} / ${counts.CLOSED_LOST ?? 0}`} />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -117,7 +131,7 @@ function QuotationsInner() {
         </div>
         <span className="w-px h-5 bg-zinc-200 mx-1" />
         <button onClick={() => setFilter("")} className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === "" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>ทั้งหมด ({rows.length})</button>
-        {STATUS.map((s) => (
+        {COLUMNS.map((s) => (
           <button key={s.key} onClick={() => setFilter(filter === s.key ? "" : s.key)}
             className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === s.key ? "bg-zinc-900 dark:bg-zinc-100 text-white" : s.cls}`}>
             {s.label} ({counts[s.key] ?? 0})
@@ -126,20 +140,27 @@ function QuotationsInner() {
       </div>
 
       {view === "kanban" ? (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {STATUS.map((col) => (
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          {COLUMNS.map((col) => (
             <div key={col.key} className="bg-zinc-50 dark:bg-zinc-900/40 rounded-xl p-2 min-h-[120px]">
               <div className={`text-[11px] font-semibold px-2 py-1 rounded-lg mb-2 ${col.cls}`}>{col.label} ({counts[col.key] ?? 0})</div>
               <div className="space-y-2">
-                {rows.filter((r) => r.status === col.key).map((r) => (
-                  <Link key={r._id} href={`/quotations/${r._id}`} className="block bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-2 hover:shadow-sm">
-                    <div className="font-mono text-[10px] text-[#8C6B1F] font-semibold">{r.quotationNo}</div>
-                    <div className="text-xs font-medium mt-0.5 truncate">{r.customerName}</div>
-                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{r.licensePlate} · {r.vehicleBrand}</div>
-                    <div className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300 mt-1">{formatMoney(r.totalSalePrice)}</div>
-                    <div className="text-[9px] text-zinc-300 mt-0.5">{r.salesName}</div>
-                  </Link>
-                ))}
+                {rows.filter((r) => col.stages.includes(r.stage ?? "")).map((r) => {
+                  const days = daysIn(r.stageEnteredAt)
+                  return (
+                    <Link key={r._id} href={`/quotations/${r._id}`} className="block bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-2 hover:shadow-sm">
+                      <div className="font-mono text-[10px] text-[#8C6B1F] font-semibold">{r.quotationNo}</div>
+                      <div className="text-xs font-medium mt-0.5 truncate">{r.customerName}</div>
+                      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{r.licensePlate} · {r.vehicleBrand}</div>
+                      <div className={`inline-block mt-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${stageCls(r.stage)}`}>{stageLabel(r.stage)}</div>
+                      <div className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300 mt-1">{formatMoney(r.totalSalePrice)}</div>
+                      <div className="flex items-center justify-between text-[9px] text-zinc-400 mt-0.5">
+                        <span className="truncate">{r.salesName}</span>
+                        {days !== null && <span className={days > 30 ? "text-amber-600 font-semibold" : ""}>ค้าง {days} วัน</span>}
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           ))}
@@ -162,7 +183,14 @@ function QuotationsInner() {
                   <td className="px-3 py-2 text-xs">{r.licensePlate} <span className="text-zinc-400 dark:text-zinc-500">{r.vehicleBrand}</span></td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.totalSalePrice)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-zinc-500 dark:text-zinc-400">{formatMoney(r.monthlyPayment)}</td>
-                  <td className="px-3 py-2"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${stMeta(r.status).cls}`}>{stMeta(r.status).label}</span></td>
+                  <td className="px-3 py-2">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${stageCls(r.stage)}`}>{stageLabel(r.stage)}</span>
+                    {daysIn(r.stageEnteredAt) !== null && (
+                      <span className={`ml-1.5 text-[10px] ${(daysIn(r.stageEnteredAt) ?? 0) > 30 ? "text-amber-600 font-semibold" : "text-zinc-400"}`}>
+                        ค้าง {daysIn(r.stageEnteredAt)} วัน
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">{r.salesName}</td>
                   <td className="px-3 py-2">
                     <a href={`/api/quotations/${r._id}/pdf`} target="_blank" rel="noreferrer" className="text-[#C9A227] hover:underline text-xs inline-flex items-center gap-1">

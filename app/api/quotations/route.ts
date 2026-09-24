@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: any = {}
   if (status) filter.status = status
+  // กรองตามขั้นใน pipeline ใหม่ (หน้าเว็บส่งมาเป็นรายการขั้นของด่านนั้น)
+  const stages = (sp.get("stages") ?? "").split(",").map((x) => x.trim()).filter(Boolean)
+  if (stages.length) filter.stage = { $in: stages }
   if (q) filter.$or = [
     { quotationNo: { $regex: q, $options: "i" } },
     { customerName: { $regex: q, $options: "i" } },
@@ -48,6 +51,10 @@ export async function POST(req: NextRequest) {
   const doc = {
     quotationNo,
     status: (b.status as QuoteStatus) ?? "quoted",
+    // ดีลใหม่เข้าไปป์ไลน์ทันที: ลีด = ผู้สนใจ, สร้างจากใบเสนอราคา = เสนอราคาแล้ว
+    stage: isLead ? "LEAD" : "QUOTED",
+    stageEnteredAt: now,
+    lastActivityAt: now,
     customerId: b.customerId ? String(b.customerId) : undefined,
     customerName: String(b.customerName).trim(),
     customerPhone: (b.customerPhone ?? "").trim(),

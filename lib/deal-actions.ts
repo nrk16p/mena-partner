@@ -130,6 +130,34 @@ export async function closeLost(
   return { ok: true }
 }
 
+/** ข้อมูลรายขั้นที่แก้ได้จากแผงไปป์ไลน์ — จำกัดรายชื่อไว้ กัน client ยัด field อื่น */
+const FIELD_KEYS = [
+  "sourceChannel", "experienceLevel", "preferredArea", "motivation", "interestedVehicle",
+  "quotationSentAt", "viewingDate", "reservationAmount",
+  "trainingStartDate", "trainingResult", "contractDate", "deliveryDate", "deliveredAt",
+] as const
+const SCREENING_KEYS = [
+  "birthDate", "licenseIssueDate", "licenseType",
+  "noCriminalRecord", "notBlacklisted", "downPaymentReady", "canDriveMixer", "hasGuarantor",
+] as const
+
+export async function saveFields(db: Db, id: string, actor: Actor, fields: Record<string, unknown>): Promise<ActionResult> {
+  const deal = await getDeal(db, id)
+  if (!deal) return { ok: false, error: "ไม่พบดีล" }
+
+  const $set: Record<string, unknown> = { lastActivityAt: now(), updatedAt: now() }
+  for (const k of FIELD_KEYS) if (fields[k] !== undefined) $set[k] = fields[k]
+  const sc = (fields.screening ?? {}) as Record<string, unknown>
+  for (const k of SCREENING_KEYS) if (sc[k] !== undefined) $set[`screening.${k}`] = sc[k]
+  if (Object.keys($set).length === 2) return { ok: false, error: "ไม่มีข้อมูลที่จะบันทึก" }
+
+  await update(db, id, {
+    $set,
+    $push: { timeline: { $each: [{ at: now(), by: actor.email, action: "บันทึกข้อมูลขั้นตอน" }] } },
+  })
+  return { ok: true }
+}
+
 /** แนบไฟล์ประกอบขั้น (ใบเสนอราคา/สลิปจอง/สัญญาลงนาม/รูปส่งมอบ) */
 export async function attachFile(db: Db, id: string, actor: Actor, type: string, url: string, label?: string): Promise<ActionResult> {
   const deal = await getDeal(db, id)

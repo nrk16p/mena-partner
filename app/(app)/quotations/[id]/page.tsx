@@ -5,23 +5,21 @@ import { prompt } from "@/components/ui/confirm"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, FileText, Upload, CheckCircle2, ChevronRight, Search, Pencil, Copy } from "lucide-react"
+import { ArrowLeft, FileText, Upload, CheckCircle2, Search, Pencil, Copy } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { COMPANY_BANK } from "@/lib/company-bank"
+import { DealPipelinePanel, type DealForPanel } from "@/components/deal-pipeline-panel"
+import { STATUS_LABEL } from "@/lib/deal-stage"
 
 type Status = "lead" | "quoted" | "booked" | "won" | "lost"
-const FLOW: Status[] = ["lead", "quoted", "booked", "won"]
-const META: Record<Status, { label: string; cls: string }> = {
-  lead: { label: "สนใจ", cls: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300" },
-  quoted: { label: "เสนอราคาแล้ว", cls: "bg-amber-100 text-amber-700" },
-  booked: { label: "วางจอง", cls: "bg-sky-100 text-sky-700" },
-  won: { label: "ปิดการขาย", cls: "bg-emerald-100 text-emerald-700" },
-  lost: { label: "ยกเลิก", cls: "bg-red-100 text-red-600" },
-}
-
 interface Quote {
   _id: string; quotationNo: string; status: Status
+  stage?: string; stageBeforeHold?: string; holdReason?: string; nextFollowUpDate?: string
+  lossReasonLabel?: string; lossNote?: string; lostAtStage?: string
+  screening?: Record<string, unknown>; attachments?: { type: string; url: string; label?: string }[]
+  quotationSentAt?: string; viewingDate?: string; reservationAmount?: number
+  trainingStartDate?: string; trainingResult?: string; contractDate?: string; deliveryDate?: string; deliveredAt?: string
   customerName: string; customerPhone?: string
   licensePlate: string; vehicleBrand?: string; vehicleModel?: string; truckNumber?: string; vehiclePhotoUrl?: string
   vehiclePhotos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
@@ -215,7 +213,6 @@ export default function DealPage() {
   }
 
   if (!q) return <div className="p-8 text-sm text-zinc-400 dark:text-zinc-500">กำลังโหลด...</div>
-  const stepIdx = FLOW.indexOf(q.status)
   // ดาวน์ที่ต้องชำระเลย หักด้วยเงินจองที่วางไว้ + เงินสะสม พจส. ที่ยกมาใช้
   // ระหว่างเปิด editor ใช้ค่าที่กำลังพิมพ์ (eCash) ไม่ใช่ค่าที่บันทึกไว้ ยอดจะได้ตรงกับที่เห็นด้านบน
   const cashDownNow = editing ? eCash : (q.cashDown ?? 0)
@@ -230,7 +227,7 @@ export default function DealPage() {
         <div className="flex-1">
           <h1 className="text-xl font-bold flex items-center gap-2 flex-wrap">
             <span className="font-mono text-[#8C6B1F]">{q.quotationNo}</span>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${META[q.status].cls}`}>{META[q.status].label}</span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">{STATUS_LABEL[(q.stage ?? "LEAD") as keyof typeof STATUS_LABEL] ?? q.stage}</span>
           </h1>
           <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 flex items-center gap-1 flex-wrap">
             <span>{q.customerName}</span>
@@ -244,46 +241,23 @@ export default function DealPage() {
         </a>
       </div>
 
-      {/* Stepper */}
-      <div className="flex items-center gap-1 text-[11px] overflow-x-auto pb-1">
-        {FLOW.map((st, i) => (
-          <div key={st} className="flex items-center gap-1 shrink-0">
-            {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />}
-            <span className={`px-2.5 py-1 rounded-full border ${i <= stepIdx && q.status !== "lost" ? META[st].cls + " font-semibold border-transparent" : "bg-white dark:bg-zinc-900 text-zinc-300 border-zinc-100 dark:border-zinc-800"}`}>
-              {i < stepIdx ? "✓ " : ""}{META[st].label}
-            </span>
-          </div>
-        ))}
-        {q.status === "lost" && <span className="ml-2 text-red-500 font-semibold">· ยกเลิกแล้ว</span>}
-      </div>
+      {/* ไปป์ไลน์ 10 สถานะ — กติกาทั้งหมดอยู่ที่ lib/deal-stage และตรวจซ้ำฝั่ง server */}
+      <DealPipelinePanel deal={q as unknown as DealForPanel} onChanged={load} />
 
       {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{err}</div>}
 
-      {/* Pipeline actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        {q.status !== "won" && q.status !== "lost" && stepIdx < FLOW.length - 1 && (
-          <button onClick={() => patch({ status: FLOW[stepIdx + 1] })} disabled={busy}
-            className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
-            <CheckCircle2 className="w-4 h-4" /> เลื่อนเป็น &quot;{META[FLOW[stepIdx + 1]].label}&quot;
-          </button>
-        )}
-        {q.status === "won" && (
-          <>
-            <Link href={`/contracts/new?plate=${encodeURIComponent(q.licensePlate)}`}
-              className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">
-              สร้างสัญญาจากดีลนี้ →
-            </Link>
-            <Link href={`/drivers?new=1&name=${encodeURIComponent(q.customerName ?? "")}&phone=${encodeURIComponent(q.customerPhone ?? "")}`}
-              className="flex items-center gap-2 border border-blue-300 text-blue-700 hover:bg-blue-50 text-sm font-semibold px-4 py-2 rounded-lg">
-              สร้างข้อมูลคนขับ →
-            </Link>
-          </>
-        )}
-        {q.status !== "lost" && q.status !== "won" && (
-          <button onClick={async () => { const n = await prompt("เหตุผลที่ยกเลิกดีล:"); if (n) patch({ status: "lost", note: n }) }} disabled={busy}
-            className="text-sm text-red-500 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg">ยกเลิกดีล</button>
-        )}
-      </div>
+      {(q.stage === "CONTRACT_SCHEDULED" || q.stage === "CONTRACT_SIGNED" || q.stage === "DELIVERED" || q.stage === "COMPLETED_90D") && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/contracts/new?plate=${encodeURIComponent(q.licensePlate)}`}
+            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+            สร้างสัญญาจากดีลนี้ →
+          </Link>
+          <Link href={`/drivers?new=1&name=${encodeURIComponent(q.customerName ?? "")}&phone=${encodeURIComponent(q.customerPhone ?? "")}`}
+            className="flex items-center gap-2 border border-blue-300 text-blue-700 hover:bg-blue-50 text-sm font-semibold px-4 py-2 rounded-lg">
+            สร้างข้อมูลคนขับ →
+          </Link>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-5">
         {/* รถ + ราคา (แก้ไข/ออกใบเสนอได้) */}
