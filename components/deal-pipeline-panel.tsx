@@ -219,15 +219,20 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
   const form = STAGE_FORM[active]
   const isLead = active === "LEAD"
 
-  // รายการที่ต้องมีก่อนขยับขั้น (ขั้นผู้สนใจใช้เช็กลิสต์คัดกรอง 7 ข้อแทน)
+  // รายการที่ต้องมีก่อนขยับขั้น
+  //   ขั้นผู้สนใจ = เช็กลิสต์คัดกรอง 7 ข้อ · ขั้นที่มีฟอร์ม = ฟิลด์ + ไฟล์แนบ
+  //   ขั้นที่ไม่มีฟอร์ม (เช่น ส่งมอบแล้ว ต้องรอครบ 90 วัน) = เงื่อนไขที่ server บอกว่ายังขาด
   const reqs = isLead
     ? info.screening.map((c) => ({ ok: c.pass }))
-    : [...(form?.fields ?? []).map((f) => ({ ok: fieldDone(deal, f) })),
-       ...(form?.attach ? [{ ok: attachDone(deal, form.attach) }] : [])]
+    : form
+      ? [...form.fields.map((f) => ({ ok: fieldDone(deal, f) })),
+         ...(form.attach ? [{ ok: attachDone(deal, form.attach) }] : [])]
+      : info.advance.missing.map(() => ({ ok: false }))
   const total = reqs.length
   const done = reqs.filter((r) => r.ok).length
   const canAdvance = info.advance.ok && !onHold && !closed
   const nextLabel = info.advance.to ? STAGE_LABEL[info.advance.to] : ""
+  const finished = active === "COMPLETED_90D"
 
   const input = "h-[38px] w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm"
 
@@ -250,7 +255,9 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
       <section aria-labelledby="next-h" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-[#031B14] text-white">
           <h2 id="next-h" className="text-[15px] font-semibold">
-            {info.advance.to ? `ขั้นถัดไป → ${nextLabel} · ต้องมีข้อมูลครบก่อนขยับ` : "ขั้นสุดท้ายของไปป์ไลน์"}
+            {onHold ? `พักติดตามอยู่ · กลับมาต่อที่ขั้น ${STAGE_LABEL[active as Stage]}`
+              : info.advance.to ? `ขั้นถัดไป → ${nextLabel} · ต้องมีข้อมูลครบก่อนขยับ`
+              : "ขั้นสุดท้ายของไปป์ไลน์"}
           </h2>
           {total > 0 && <span className="text-xs font-semibold text-[#E7C86E] tabular-nums shrink-0">{done}/{total} รายการครบ</span>}
         </div>
@@ -349,6 +356,15 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                   </li>
                 )}
               </ul>
+            ) : info.advance.missing.length > 0 ? (
+              /* ขั้นที่ไม่มีฟอร์มให้กรอก แต่ยังขยับไม่ได้ (เช่น ต้องรอครบ 90 วัน) — บอกให้เห็นว่าติดอะไร */
+              <ul className="px-4 py-1">
+                {info.advance.missing.map((m) => (
+                  <li key={m} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 items-center py-3">
+                    <ReqIcon ok={false} /><span className="text-sm">{m}</span>
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p className="px-4 py-3 text-sm text-zinc-500">
                 {info.advance.to ? "ขั้นนี้ไม่ต้องกรอกข้อมูลเพิ่ม — กดขยับได้เลย" : (info.advance.error ?? "ดีลนี้เดินครบทุกขั้นแล้ว")}
@@ -375,18 +391,21 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                   </span>
                 </>
               )}
-              <div className="ml-auto flex gap-2">
-                {!onHold && (
-                  <button onClick={() => setDialog("hold")} disabled={busy}
-                    className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-[#D4A72C] text-[#7A4E00] dark:text-amber-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
-                    <PauseCircle className="w-[15px] h-[15px]" /> พักติดตาม
+              {/* ดีลที่เดินครบ 90 วันแล้วถือว่าจบ — ไม่ควรกดพัก/ปิดว่าไม่สำเร็จได้อีก */}
+              {!finished && (
+                <div className="ml-auto flex gap-2">
+                  {!onHold && (
+                    <button onClick={() => setDialog("hold")} disabled={busy}
+                      className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-[#D4A72C] text-[#7A4E00] dark:text-amber-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
+                      <PauseCircle className="w-[15px] h-[15px]" /> พักติดตาม
+                    </button>
+                  )}
+                  <button onClick={() => setDialog("close")} disabled={busy}
+                    className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
+                    <XCircle className="w-[15px] h-[15px]" /> ปิดดีล–ไม่สำเร็จ
                   </button>
-                )}
-                <button onClick={() => setDialog("close")} disabled={busy}
-                  className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
-                  <XCircle className="w-[15px] h-[15px]" /> ปิดดีล–ไม่สำเร็จ
-                </button>
-              </div>
+                </div>
+              )}
             </div>
         </>
       </section>
