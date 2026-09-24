@@ -12,7 +12,7 @@ import { usePagination, PaginationBar } from "@/components/pagination"
 import { STATUS_LABEL } from "@/lib/deal-stage"
 import {
   PHASE_BUCKETS, SIDE_BUCKETS, BADGE_CLASS, DOT_COLOR, FOLLOW_CLASS,
-  badgeKind, bucketOf, bucketStats, daysIn, filterDeals, followTone, kpis,
+  badgeKind, bucketOf, bucketStats, stageCounts, daysIn, filterDeals, followTone, kpis,
   progressSegments, sortDeals, stuckClass, type Quick,
 } from "@/lib/deal-list"
 
@@ -87,6 +87,7 @@ function QuotationsInner() {
   // ฐานของตัวนับ = ทุกดีลที่โหลดมา (กรองเฉพาะ "ดีลของฉัน") — ไม่ผูกกับด่านที่เลือก
   const base = useMemo(() => filterDeals(rows, { mine, me }), [rows, mine, me])
   const stats = useMemo(() => bucketStats(base), [base])
+  const byStage = useMemo(() => stageCounts(base), [base])
   const k = useMemo(() => kpis(rows), [rows])
   const shown = useMemo(() => sortDeals(filterDeals(base, { bucket, quick })), [base, bucket, quick])
 
@@ -142,12 +143,11 @@ function QuotationsInner() {
       <div className="flex flex-col xl:flex-row items-stretch gap-3">
         <div role="group" aria-label="กรองตามด่าน"
           className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-          <PhaseTab label="ทั้งหมด" sub="ทุกด่าน" count={base.length} sum={base.reduce((s, r) => s + (r.totalSalePrice ?? 0), 0)}
-            on={bucket === ""} onClick={() => setBucket("")} />
+          <PhaseTab label="ทั้งหมด" parts={[]} count={base.length} on={bucket === ""} onClick={() => setBucket("")} />
           {PHASE_BUCKETS.map((b) => (
             <PhaseTab key={b.key} color={b.color} label={b.label}
-              sub={b.stages.map((s) => stageLabel(s)).join(" · ")}
-              count={stats[b.key].count} sum={stats[b.key].value}
+              parts={b.stages.map((s) => ({ label: stageLabel(s), count: byStage[s] ?? 0 }))}
+              count={stats[b.key].count}
               on={bucket === b.key} onClick={() => setBucket(bucket === b.key ? "" : b.key)} />
           ))}
         </div>
@@ -257,8 +257,8 @@ export default function QuotationsPage() {
   )
 }
 
-function PhaseTab({ color, label, sub, count, sum, on, onClick }: {
-  color?: string; label: string; sub: string; count: number; sum: number; on: boolean; onClick: () => void
+function PhaseTab({ color, label, parts, count, on, onClick }: {
+  color?: string; label: string; parts: { label: string; count: number }[]; count: number; on: boolean; onClick: () => void
 }) {
   return (
     <button onClick={onClick} aria-pressed={on}
@@ -267,11 +267,16 @@ function PhaseTab({ color, label, sub, count, sum, on, onClick }: {
       <span className={`flex items-center gap-1.5 text-xs font-semibold ${on ? "text-[#E7C86E]" : "text-zinc-500"}`}>
         {color && <span className="w-2 h-2 rounded-sm" style={{ background: color }} />}{label}
       </span>
-      <span className="flex items-baseline gap-1.5">
-        <span className="text-lg font-bold tabular-nums">{count}</span>
-        <span className={`text-xs tabular-nums ${on ? "text-white/70" : "text-zinc-500"}`}>{millions(sum)}</span>
+      <span className="text-lg font-bold tabular-nums">{count}</span>
+      {/* ขั้นย่อยของด่าน — บรรทัดละขั้น ตัวเลขชิดขวา อ่านง่ายกว่าเอามาต่อกันแล้วโดนตัด */}
+      <span className={`w-full flex flex-col gap-px text-[11px] ${on ? "text-white/70" : "text-zinc-500"}`}>
+        {parts.length === 0 ? "ทุกด่าน" : parts.map((p) => (
+          <span key={p.label} className="flex justify-between gap-2">
+            <span className="truncate">{p.label}</span>
+            <span className={`shrink-0 tabular-nums font-semibold ${p.count === 0 ? "" : on ? "text-white" : "text-zinc-900 dark:text-zinc-100"}`}>{p.count}</span>
+          </span>
+        ))}
       </span>
-      <span className={`text-[11px] truncate max-w-full ${on ? "text-white/70" : "text-zinc-500"}`}>{sub}</span>
     </button>
   )
 }

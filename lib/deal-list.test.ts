@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { bucketOf, bucketStats, filterDeals, kpis, sortDeals, daysIn, type ListDeal } from "@/lib/deal-list"
+import { bucketOf, bucketStats, stageCounts, filterDeals, kpis, sortDeals, daysIn, type ListDeal } from "@/lib/deal-list"
 
 const NOW = new Date("2026-09-24T00:00:00Z")
 const ago = (days: number) => new Date(NOW.getTime() - days * 86400000).toISOString()
@@ -24,6 +24,13 @@ describe("จัดดีลเข้าด่าน", () => {
 })
 
 describe("ตัวนับด่าน", () => {
+  it("นับจำนวนแยกรายขั้นย่อย", () => {
+    const c = stageCounts(rows)
+    expect(c.QUOTED).toBe(1)
+    expect(c.VIEWING_SCHEDULED).toBeUndefined()   // ไม่มีดีลในขั้นนี้ = ไม่มีคีย์ (หน้าเว็บแทนด้วย 0)
+    expect(Object.values(c).reduce((a, b) => a + b, 0)).toBe(rows.length)
+  })
+
   it("นับจำนวนและมูลค่าตามด่าน", () => {
     const s = bucketStats(rows)
     expect(s.phase1).toEqual({ count: 1, value: 1_000_000 })

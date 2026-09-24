@@ -89,6 +89,13 @@ export function bucketStats(rows: ListDeal[]) {
   return stats
 }
 
+/** จำนวนดีลแยกตามขั้นย่อย (ใช้โชว์ใต้ชื่อด่านว่าอยู่ขั้นไหนกี่ใบ) */
+export function stageCounts(rows: ListDeal[]) {
+  const c: Record<string, number> = {}
+  for (const d of rows) { const k = d.stage ?? ""; if (k) c[k] = (c[k] ?? 0) + 1 }
+  return c
+}
+
 export function kpis(rows: ListDeal[], now: Date = new Date()) {
   const t = today(now)
   const withFollowUp = rows.filter((d) => !!d.nextFollowUpDate)
