@@ -147,6 +147,14 @@ export async function saveFields(db: Db, id: string, actor: Actor, fields: Recor
 
   const $set: Record<string, unknown> = { lastActivityAt: now(), updatedAt: now() }
   for (const k of FIELD_KEYS) if (fields[k] !== undefined) $set[k] = fields[k]
+  // เงินจองมีสองชื่อในระบบ (reservationAmount ของไปป์ไลน์ / depositAmount ของการ์ดการเงิน)
+  // เขียนพร้อมกันเสมอ ไม่งั้นกติกาขยับขั้นกับยอดที่เซลล์เห็นจะไม่ตรงกัน
+  if (fields.reservationAmount !== undefined) {
+    const amt = Number(fields.reservationAmount) || 0
+    $set.reservationAmount = amt
+    $set.depositAmount = amt
+    if (amt > 0 && !deal.depositPaidAt) $set.depositPaidAt = now().slice(0, 10)
+  }
   const sc = (fields.screening ?? {}) as Record<string, unknown>
   for (const k of SCREENING_KEYS) if (sc[k] !== undefined) $set[`screening.${k}`] = sc[k]
   if (Object.keys($set).length === 2) return { ok: false, error: "ไม่มีข้อมูลที่จะบันทึก" }
@@ -163,11 +171,14 @@ export async function attachFile(db: Db, id: string, actor: Actor, type: string,
   const deal = await getDeal(db, id)
   if (!deal) return { ok: false, error: "ไม่พบดีล" }
   if (!url.trim()) return { ok: false, error: "ไม่มีไฟล์" }
+  // สลิปเงินจองไปโผล่ในการ์ดการเงินด้วย (depositSlips) — สลิปชุดเดียว ไม่ให้แนบซ้ำสองที่
+  const alsoSlip = type === "RESERVATION_SLIP" && !(deal.depositSlips ?? []).includes(url)
   await update(db, id, {
     $set: { lastActivityAt: now(), updatedAt: now() },
     $push: {
       attachments: { $each: [{ type, url, label: label ?? "", uploadedBy: actor.email, uploadedAt: now() }] },
       timeline: { $each: [{ at: now(), by: actor.email, action: `แนบไฟล์ ${label || type}` }] },
+      ...(alsoSlip ? { depositSlips: { $each: [url], $slice: -10 } } : {}),
     },
   })
   return { ok: true }

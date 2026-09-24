@@ -31,7 +31,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
   {
     title: "ระบบขาย",
     items: [
-      { href: "/quotations", label: "สร้างใบเสนอราคา", icon: Receipt },
+      { href: "/quotations", label: "ดีล & ใบเสนอราคา", icon: Receipt },
       { href: "/catalog", label: "Catalog รถ", icon: BookImage, hint: "แคตตาล็อกรายคัน PDF อัตโนมัติ" },
       { href: "/trucks", label: "เว็บขายรถ (ลูกค้าเห็น)", icon: Globe, hint: "หน้าเว็บสาธารณะ — เปิดแท็บใหม่", external: true },
       { href: "/quotations/pipeline", label: "แดชบอร์ดไปป์ไลน์", icon: BarChart3, hint: "ดีลค้างขั้นไหน หลุดตรงไหน ใช้เวลาเท่าไหร่" },

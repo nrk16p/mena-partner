@@ -58,7 +58,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const P = b.vehiclePhotos as Record<string, unknown>
     $set.vehiclePhotos = Object.fromEntries(["front", "back", "left", "right", "cabin"].map((k) => [k, typeof P[k] === "string" ? P[k] : ""]))
   }
-  if (b.depositAmount !== undefined) events.push({ at: now, by: email, action: `บันทึกเงินจอง ${Number(b.depositAmount).toLocaleString()} บาท` })
+  // เงินจองก้อนเดียว สองชื่อ — กติกาขยับขั้นอ่าน reservationAmount จึงต้องเขียนคู่กันเสมอ
+  if (b.depositAmount !== undefined) {
+    $set.reservationAmount = Number(b.depositAmount) || 0
+    events.push({ at: now, by: email, action: `บันทึกเงินจอง ${Number(b.depositAmount).toLocaleString()} บาท` })
+  }
   if (b.note && b.status === undefined && b.depositAmount === undefined) events.push({ at: now, by: email, action: "บันทึกกิจกรรม", note: b.note })
 
   const client = await clientPromise

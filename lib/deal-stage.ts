@@ -40,6 +40,15 @@ export const PHASES: { no: number; label: string; stages: Stage[] }[] = [
   { no: 5, label: "ส่งมอบ", stages: ["DELIVERED", "COMPLETED_90D"] },
 ]
 
+/** สีประจำด่าน ไล่เข้มขึ้นตามความใกล้ปิดดีล (ด่าน 5 = ทอง) — ใช้ร่วมกันทุกหน้าจอ */
+export const PHASE_COLOR: Record<number, string> = {
+  1: "#8FB3A5", 2: "#4E8F77", 3: "#2A6E56", 4: "#165443", 5: "#C9A227",
+}
+export const phaseColorOf = (stage?: string) => {
+  const p = PHASES.find((x) => x.stages.includes(stage as Stage))
+  return p ? PHASE_COLOR[p.no] : "#D1D9E0"
+}
+
 export const phaseOf = (stage: Stage) => PHASES.find((p) => p.stages.includes(stage))!
 export const stageIndex = (stage: string) => STAGES.indexOf(stage as Stage)
 export const isStage = (v: unknown): v is Stage => STAGES.includes(v as Stage)
@@ -65,8 +74,12 @@ export interface DealFields {
   screening?: DealScreening
   quotationSentAt?: string
   viewingDate?: string
+  // เงินจอง = ก้อนเดียวกัน แค่มีสองชื่อในระบบ (ชื่อเดิม depositAmount) — ฝั่งเขียนต้องเซ็ตให้ตรงกันทั้งคู่
   reservationAmount?: number
-  depositAmount?: number        // ชื่อเดิมในระบบ ใช้แทนกันได้
+  depositAmount?: number
+  // สลิปเงินจองก็ก้อนเดียวกัน: แนบผ่านไปป์ไลน์ = attachments(RESERVATION_SLIP) · แนบจากการ์ดการเงินเดิม = depositSlips
+  depositSlips?: string[]
+  depositSlipUrl?: string
   trainingStartDate?: string
   trainingResult?: "PASSED" | "FAILED" | ""
   contractDate?: string
@@ -80,6 +93,14 @@ export type AttachmentType = (typeof ATTACHMENT_TYPES)[number]
 
 const hasFile = (d: DealFields, type: AttachmentType) =>
   (d.attachments ?? []).some((a) => a.type === type && String(a.url ?? "").trim())
+
+/** เงินจองที่วางไว้ (สองชื่อ ความจริงเดียว) */
+export const reservationAmountOf = (d: DealFields) => Number(d.reservationAmount ?? d.depositAmount ?? 0) || 0
+/** หลักฐานโอนเงินจอง — นับทั้งไฟล์ที่แนบผ่านไปป์ไลน์และสลิปในการ์ดการเงิน */
+export const hasReservationSlip = (d: DealFields) =>
+  hasFile(d, "RESERVATION_SLIP")
+  || (d.depositSlips ?? []).some((u) => String(u ?? "").trim())
+  || !!String(d.depositSlipUrl ?? "").trim()
 
 /** อายุ ณ วันนี้ จากวันเกิด (ปี ค.ศ. ISO) */
 export function ageFrom(birthDate?: string, now = new Date()): number | null {
@@ -129,7 +150,7 @@ export function screeningChecklist(d: DealFields, now = new Date()) {
 /** สิ่งที่ยังขาดก่อนขยับจากขั้นปัจจุบันไปขั้นถัดไป — ว่าง = ขยับได้ */
 export function missingToAdvance(d: DealFields, from: Stage, now = new Date()): string[] {
   const miss: string[] = []
-  const amount = Number(d.reservationAmount ?? d.depositAmount ?? 0) || 0
+  const amount = reservationAmountOf(d)
   switch (from) {
     case "LEAD": {
       const failed = screeningChecklist(d, now).filter((c) => !c.pass)
@@ -144,7 +165,7 @@ export function missingToAdvance(d: DealFields, from: Stage, now = new Date()): 
       if (!d.viewingDate) miss.push("วันนัดดูรถ")
       break
     case "VIEWING_SCHEDULED":
-      if (!hasFile(d, "RESERVATION_SLIP")) miss.push("หลักฐานการโอนเงินจอง")
+      if (!hasReservationSlip(d)) miss.push("หลักฐานการโอนเงินจอง")
       if (amount <= 0) miss.push("จำนวนเงินจอง")
       break
     case "RESERVED":

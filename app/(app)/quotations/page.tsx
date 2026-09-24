@@ -4,38 +4,40 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { FileText, Plus, Search, X, ExternalLink, LayoutGrid, List, TrendingUp, Users } from "lucide-react"
+import { Plus, Search, X, LayoutGrid, List, Phone, Clock, FileDown, UserPlus } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePagination, PaginationBar } from "@/components/pagination"
-import { PHASES, STATUS_LABEL, isOpen } from "@/lib/deal-stage"
+import { STATUS_LABEL } from "@/lib/deal-stage"
+import {
+  PHASE_BUCKETS, SIDE_BUCKETS, BADGE_CLASS, DOT_COLOR, FOLLOW_CLASS,
+  badgeKind, bucketStats, daysIn, filterDeals, followTone, kpis,
+  progressSegments, sortDeals, stuckClass, type Quick,
+} from "@/lib/deal-list"
 
-/** ไปป์ไลน์ 10 สถานะ — กระดานจัดเป็น 5 ด่าน + 2 ช่องพิเศษ (พักติดตาม / ปิดไม่สำเร็จ) */
-const COLUMNS: { key: string; label: string; stages: string[]; cls: string }[] = [
-  ...PHASES.map((p) => ({
-    key: `phase${p.no}`, label: `${p.no}. ${p.label}`, stages: p.stages as string[],
-    cls: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  })),
-  { key: "ON_HOLD", label: "พักติดตาม", stages: ["ON_HOLD"], cls: "bg-amber-100 text-amber-800" },
-  { key: "CLOSED_LOST", label: "ปิด–ไม่สำเร็จ", stages: ["CLOSED_LOST"], cls: "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300" },
-]
 const stageLabel = (s?: string) => STATUS_LABEL[(s ?? "LEAD") as keyof typeof STATUS_LABEL] ?? s ?? "—"
-const stageCls = (s?: string) =>
-  s === "CLOSED_LOST" ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
-  : s === "ON_HOLD" ? "bg-amber-100 text-amber-800"
-  : s === "COMPLETED_90D" ? "bg-emerald-100 text-emerald-700"
-  : "bg-sky-100 text-sky-700"
-/** ค้างขั้นนี้มากี่วัน */
-const daysIn = (iso?: string) => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null
+const millions = (v: number) => `฿${(v / 1e6).toFixed(2)}M`
+const shortDate = (iso?: string) =>
+  iso ? new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : ""
+const initials = (name?: string) => (name ?? "").trim().slice(0, 2) || "—"
 
 interface Quote {
   _id: string; quotationNo: string; status: string
   stage?: string; stageEnteredAt?: string; nextFollowUpDate?: string; lossReasonLabel?: string
+  holdReason?: string; timeline?: { at: string; action: string; note?: string }[]
   customerName: string; customerPhone?: string
-  licensePlate: string; vehicleBrand?: string; vehicleModel?: string
-  totalSalePrice: number; monthlyPayment: number; depositAmount?: number
-  salesName: string; createdAt: string
+  licensePlate: string; vehicleBrand?: string; vehicleModel?: string; truckNumber?: string
+  totalSalePrice: number; monthlyPayment: number; financeInstallments?: number; depositAmount?: number
+  salesName: string; salesEmail?: string; createdAt: string
+}
+
+/** บรรทัดล่างของช่องติดตาม — เหตุผลที่พัก หรือบันทึกล่าสุด */
+const lastNote = (r: Quote) => {
+  if (r.stage === "ON_HOLD" && r.holdReason) return r.holdReason
+  if (r.stage === "CLOSED_LOST") return r.lossReasonLabel ?? ""
+  const last = [...(r.timeline ?? [])].reverse().find((t) => t.note)
+  return last?.note ?? ""
 }
 interface PriceRow {
   licensePlate: string; status: string; saleStatus: string | null
@@ -47,167 +49,197 @@ interface PriceRow {
 }
 interface Customer { _id: string; name: string; phone?: string }
 
+const COLS = "grid-cols-[112px_minmax(150px,1fr)_minmax(150px,1fr)_128px_184px_148px_88px_36px]"
+
 function QuotationsInner() {
   const sp = useSearchParams()
   const { data: session } = useSession()
-  const role = (session?.user as { role?: string } | undefined)?.role
-  const isAdmin = role === "admin" || role === "superadmin"
   const [rows, setRows] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<string>("")
+  const [bucket, setBucket] = useState("")          // ด่านที่เลือก ("" = ทุกด่าน)
+  const [quick, setQuick] = useState<Quick>("")     // ตัวกรองด่วนจากการ์ด KPI
+  const [mine, setMine] = useState(false)
   const [q, setQ] = useState("")
+  const [qSent, setQSent] = useState("")
   const [formMode, setFormMode] = useState<"lead" | "quote" | null>(null)
-  const [view, setView] = useState<"list" | "kanban">("list")
+  const [view, setView] = useState<"list" | "board">("list")
+
+  // ค้นหาเท่านั้นที่ส่งให้ server (หน่วง 250ms) — ด่าน/ตัวกรองด่วนทำฝั่งนี้ ตัวเลขจะได้ไม่เพี้ยน
+  useEffect(() => {
+    const t = setTimeout(() => setQSent(q.trim()), 250)
+    return () => clearTimeout(t)
+  }, [q])
 
   const load = useCallback(() => {
     setLoading(true)
     const p = new URLSearchParams()
-    const col = COLUMNS.find((c) => c.key === filter)
-    if (col) p.set("stages", col.stages.join(","))
-    if (q) p.set("q", q)
+    if (qSent) p.set("q", qSent)
     fetch(`/api/quotations?${p}`).then((r) => r.ok ? r.json() : []).then((d) => setRows(Array.isArray(d) ? d : [])).finally(() => setLoading(false))
-  }, [filter, q])
+  }, [qSent])
   useEffect(load, [load])
 
   // deep-link จาก price-list: /quotations?vehicle=<ทะเบียน> → เปิดฟอร์มพร้อมรถ
   const presetPlate = sp.get("vehicle") ?? ""
   useEffect(() => { if (presetPlate) setFormMode("quote") }, [presetPlate])
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {}
-    rows.forEach((r) => {
-      const col = COLUMNS.find((x) => x.stages.includes(r.stage ?? ""))
-      if (col) c[col.key] = (c[col.key] ?? 0) + 1
-    })
-    return c
-  }, [rows])
+  const me = useMemo(() => ({ email: session?.user?.email, name: session?.user?.name }), [session])
+  // ฐานของตัวนับ = ทุกดีลที่โหลดมา (กรองเฉพาะ "ดีลของฉัน") — ไม่ผูกกับด่านที่เลือก
+  const base = useMemo(() => filterDeals(rows, { mine, me }), [rows, mine, me])
+  const stats = useMemo(() => bucketStats(base), [base])
+  const k = useMemo(() => kpis(rows), [rows])
+  const shown = useMemo(() => sortDeals(filterDeals(base, { bucket, quick })), [base, bucket, quick])
 
-  // แบ่งหน้าเฉพาะ view ตาราง — สถิติ/ตัวนับสถานะ/kanban ยังคิดจาก rows ทั้งหมด
-  const pg = usePagination(rows, 50, [q, filter, view])
+  const pg = usePagination(shown, 50, [qSent, bucket, quick, mine, view])
+  const quickLabel = quick === "followup" ? "ต้องติดตามวันนี้" : "ค้างขั้นเกิน 30 วัน"
+  const toggle = (next: Quick) => setQuick((cur) => (cur === next ? "" : next))
 
   return (
-    <div className="max-w-6xl mx-auto py-6 px-4 space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-4">
+      <header className="flex items-end justify-between flex-wrap gap-4">
         <div>
-          <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">ระบบขาย</p>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="w-6 h-6 text-[#C9A227]" /> ระบบขาย</h1>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">คนขายเลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีล (ทั้งทีมเห็นทุกดีล)</p>
+          <p className="text-xs font-semibold text-zinc-500 tracking-wider">ระบบขาย</p>
+          <h1 className="text-[26px] leading-tight font-bold mt-0.5">ดีล &amp; ใบเสนอราคา</h1>
+          <p className="text-[13px] text-zinc-500 mt-0.5">เลือกรถพร้อมขาย → ออกใบเสนอราคา → ติดตามดีลจนส่งมอบครบ 90 วัน · ทั้งทีมเห็นทุกดีล</p>
         </div>
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Link href="/quotations/sales-people" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-              <Users className="w-4 h-4 text-[#C9A227]" /> ทีมขาย
-            </Link>
-          )}
-          <Link href="/quotations/dashboard" className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-            <TrendingUp className="w-4 h-4 text-[#C9A227]" /> แดชบอร์ด
-          </Link>
-          <button onClick={() => setFormMode("lead")} className="flex items-center gap-2 border border-zinc-300 text-zinc-700 dark:text-zinc-200 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-            <Plus className="w-4 h-4" /> ลูกค้าสนใจ (Lead)
+        <div className="flex items-center gap-2.5">
+          <button onClick={() => setFormMode("lead")} className="h-10 flex items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm font-semibold px-4 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+            <UserPlus className="w-4 h-4" /> ลูกค้าสนใจ (Lead)
           </button>
-          <button onClick={() => setFormMode("quote")} className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+          <button onClick={() => setFormMode("quote")} className="h-10 flex items-center gap-2 gold-grad text-[#3F3000] text-sm font-semibold px-[18px] rounded-lg">
             <Plus className="w-4 h-4" /> สร้างใบเสนอราคา
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Dashboard ยอดขาย */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="ดีลทั้งหมด" value={String(rows.length)} />
-        <Stat label="มูลค่า pipeline (ยังไม่ปิด)" value={formatMoney(rows.filter((r) => isOpen(r.stage ?? "")).reduce((s, r) => s + r.totalSalePrice, 0))} />
-        <Stat label="ส่งมอบ/ครบ 90 วัน" value={`${rows.filter((r) => r.stage === "DELIVERED" || r.stage === "COMPLETED_90D").length} ดีล`} tone="good" />
-        <Stat label="พักติดตาม / ปิดไม่สำเร็จ" value={`${counts.ON_HOLD ?? 0} / ${counts.CLOSED_LOST ?? 0}`} />
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <Link href="/quotations/pipeline" className="text-xs font-semibold text-emerald-700 border border-emerald-200 rounded-full px-3 py-1 hover:bg-emerald-50">
-          แดชบอร์ดไปป์ไลน์
-        </Link>
-        <div className="ml-auto flex items-center gap-1 order-last">
-          <button onClick={() => setView("list")} className={`p-1.5 rounded-lg ${view === "list" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="ตาราง"><List className="w-4 h-4" /></button>
-          <button onClick={() => setView("kanban")} className={`p-1.5 rounded-lg ${view === "kanban" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="กระดานดีล"><LayoutGrid className="w-4 h-4" /></button>
+      {/* KPI — คิดจากดีลทั้งหมด สองใบแรกกดเพื่อกรองได้ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button onClick={() => toggle("followup")} aria-pressed={quick === "followup"}
+          className={`flex flex-col items-start gap-1 px-4 py-3.5 rounded-xl text-left bg-[#FFFCEB] dark:bg-amber-950/20 ${quick === "followup" ? "border-2 border-[#031B14] dark:border-amber-300" : "border border-[#EAC54F]"}`}>
+          <span className="flex items-center gap-2 text-[13px] font-semibold text-[#7A4E00] dark:text-amber-300"><Phone className="w-4 h-4" /> ต้องติดตามวันนี้</span>
+          <span className="text-[26px] leading-none font-bold tabular-nums">{k.followUpToday}</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">รวมเลยกำหนด {k.followUpOverdue} ดีล · กดเพื่อกรอง</span>
+        </button>
+        <button onClick={() => toggle("stuck")} aria-pressed={quick === "stuck"}
+          className={`flex flex-col items-start gap-1 px-4 py-3.5 rounded-xl text-left bg-[#FFF5F4] dark:bg-red-950/20 ${quick === "stuck" ? "border-2 border-[#031B14] dark:border-red-300" : "border border-[#FFCECB]"}`}>
+          <span className="flex items-center gap-2 text-[13px] font-semibold text-[#A40E26] dark:text-red-300"><Clock className="w-4 h-4" /> ค้างขั้นเกิน 30 วัน</span>
+          <span className="text-[26px] leading-none font-bold tabular-nums">{k.stuck}</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">ควรขยับ พัก หรือปิดดีล · กดเพื่อกรอง</span>
+        </button>
+        <div className="flex flex-col gap-1 px-4 py-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <span className="text-[13px] font-semibold text-zinc-500">มูลค่า pipeline (ยังไม่ปิด)</span>
+          <span className="text-[26px] leading-none font-bold tabular-nums">฿{Math.round(k.openValue).toLocaleString("en-US")}</span>
+          <span className="text-xs text-zinc-500">{k.openCount} ดีลที่ยังเดินอยู่</span>
         </div>
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหา เลขที่/ลูกค้า/ทะเบียน/เซลล์"
-            className="h-8 w-64 text-sm pl-8 pr-3 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900" />
+        <div className="flex flex-col gap-1 px-4 py-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <span className="text-[13px] font-semibold text-zinc-500">ส่งมอบ / ครบ 90 วัน</span>
+          <span className="text-[26px] leading-none font-bold tabular-nums text-[#165443] dark:text-emerald-300">{k.delivered + k.completed} ดีล</span>
+          <Link href="/quotations/pipeline" className="text-xs font-semibold text-[#7A5C14] dark:text-[#E7C86E] hover:underline">ดูแดชบอร์ดไปป์ไลน์ →</Link>
         </div>
-        <span className="w-px h-5 bg-zinc-200 mx-1" />
-        <button onClick={() => setFilter("")} className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === "" ? "bg-zinc-900 dark:bg-zinc-100 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>ทั้งหมด ({rows.length})</button>
-        {COLUMNS.map((s) => (
-          <button key={s.key} onClick={() => setFilter(filter === s.key ? "" : s.key)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${filter === s.key ? "bg-zinc-900 dark:bg-zinc-100 text-white" : s.cls}`}>
-            {s.label} ({counts[s.key] ?? 0})
-          </button>
-        ))}
       </div>
 
-      {view === "kanban" ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-          {COLUMNS.map((col) => (
-            <div key={col.key} className="bg-zinc-50 dark:bg-zinc-900/40 rounded-xl p-2 min-h-[120px]">
-              <div className={`text-[11px] font-semibold px-2 py-1 rounded-lg mb-2 ${col.cls}`}>{col.label} ({counts[col.key] ?? 0})</div>
-              <div className="space-y-2">
-                {rows.filter((r) => col.stages.includes(r.stage ?? "")).map((r) => {
-                  const days = daysIn(r.stageEnteredAt)
-                  return (
-                    <Link key={r._id} href={`/quotations/${r._id}`} className="block bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-2 hover:shadow-sm">
-                      <div className="font-mono text-[10px] text-[#8C6B1F] font-semibold">{r.quotationNo}</div>
-                      <div className="text-xs font-medium mt-0.5 truncate">{r.customerName}</div>
-                      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{r.licensePlate} · {r.vehicleBrand}</div>
-                      <div className={`inline-block mt-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${stageCls(r.stage)}`}>{stageLabel(r.stage)}</div>
-                      <div className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300 mt-1">{formatMoney(r.totalSalePrice)}</div>
-                      <div className="flex items-center justify-between text-[9px] text-zinc-400 mt-0.5">
-                        <span className="truncate">{r.salesName}</span>
-                        {days !== null && <span className={days > 30 ? "text-amber-600 font-semibold" : ""}>ค้าง {days} วัน</span>}
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
+      {/* แถบด่าน — ตัวเลขคิดจาก base เสมอ เลือกด่านหนึ่งแล้วด่านอื่นไม่เปลี่ยน */}
+      <div className="flex flex-col xl:flex-row items-stretch gap-3">
+        <div role="group" aria-label="กรองตามด่าน"
+          className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+          <PhaseTab label="ทั้งหมด" sub="ทุกด่าน" count={base.length} sum={base.reduce((s, r) => s + (r.totalSalePrice ?? 0), 0)}
+            on={bucket === ""} onClick={() => setBucket("")} />
+          {PHASE_BUCKETS.map((b) => (
+            <PhaseTab key={b.key} color={b.color} label={b.label}
+              sub={b.stages.map((s) => stageLabel(s)).join(" · ")}
+              count={stats[b.key].count} sum={stats[b.key].value}
+              on={bucket === b.key} onClick={() => setBucket(bucket === b.key ? "" : b.key)} />
           ))}
         </div>
-      ) : (
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden">
-      <div className="overflow-auto max-h-[65vh]">
-        <table className="w-full text-sm whitespace-nowrap">
-          <thead className="sticky top-0 z-10"><tr className="text-zinc-400 dark:text-zinc-500">
-            {["เลขที่", "ลูกค้า", "รถ", "ราคาขาย", "ค่างวด/ด.", "สถานะ", "เซลล์", ""].map((h) => (
-              <th key={h} className="text-left px-3 py-2 font-medium bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-100 dark:border-zinc-800">{h}</th>))}
-          </tr></thead>
-          <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-            {loading ? Array.from({ length: 6 }).map((_, i) => (<tr key={`sk${i}`}>{Array.from({ length: 8 }).map((_, c) => (<td key={c} className="px-3 py-2"><Skeleton className="h-4" /></td>))}</tr>))
-              : rows.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีใบเสนอราคา — กด &quot;สร้างใบเสนอราคา&quot;</td></tr>
-              : pg.paged.map((r) => (
-                <tr key={r._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-3 py-2 font-mono text-xs font-semibold text-[#8C6B1F]"><Link href={`/quotations/${r._id}`} className="hover:underline">{r.quotationNo}</Link></td>
-                  <td className="px-3 py-2">{r.customerName}<span className="text-zinc-400 dark:text-zinc-500 text-xs">{r.customerPhone ? ` · ${r.customerPhone}` : ""}</span></td>
-                  <td className="px-3 py-2 text-xs">{r.licensePlate} <span className="text-zinc-400 dark:text-zinc-500">{r.vehicleBrand}</span></td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.totalSalePrice)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-zinc-500 dark:text-zinc-400">{formatMoney(r.monthlyPayment)}</td>
-                  <td className="px-3 py-2">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${stageCls(r.stage)}`}>{stageLabel(r.stage)}</span>
-                    {daysIn(r.stageEnteredAt) !== null && (
-                      <span className={`ml-1.5 text-[10px] ${(daysIn(r.stageEnteredAt) ?? 0) > 30 ? "text-amber-600 font-semibold" : "text-zinc-400"}`}>
-                        ค้าง {daysIn(r.stageEnteredAt)} วัน
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">{r.salesName}</td>
-                  <td className="px-3 py-2">
-                    <a href={`/api/quotations/${r._id}/pdf`} target="_blank" rel="noreferrer" className="text-[#C9A227] hover:underline text-xs inline-flex items-center gap-1">
-                      <ExternalLink className="w-3 h-3" /> PDF
-                    </a>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+        <div className="flex xl:flex-col gap-2 xl:w-[170px]">
+          {SIDE_BUCKETS.map((b) => (
+            <button key={b.key} onClick={() => setBucket(bucket === b.key ? "" : b.key)} aria-pressed={bucket === b.key}
+              className={`flex-1 flex items-center gap-2 h-9 xl:h-auto px-3 rounded-[10px] text-[13px] font-semibold border ${
+                bucket === b.key ? "bg-[#031B14] text-white border-[#031B14]" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"}`}>
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: b.color }} />
+              {b.label}
+              <span className="ml-auto tabular-nums">{stats[b.key].count}</span>
+            </button>
+          ))}
+        </div>
       </div>
-      {!loading && <PaginationBar {...pg} unit="ดีล" />}
+
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+        {/* แถบเครื่องมือ */}
+        <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+          <label className="relative flex items-center">
+            <Search className="w-4 h-4 absolute left-3 text-zinc-500" />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาดีล"
+              placeholder="ค้นหา เลขที่ / ลูกค้า / ทะเบียน / เซลล์"
+              className="w-full sm:w-[300px] h-[38px] text-sm pl-9 pr-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50" />
+          </label>
+          <div role="group" aria-label="เจ้าของดีล" className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+            {[{ v: false, t: "ทุกคน" }, { v: true, t: "ดีลของฉัน" }].map((o) => (
+              <button key={o.t} onClick={() => setMine(o.v)} aria-pressed={mine === o.v}
+                className={`h-9 px-3 text-[13px] ${mine === o.v ? "bg-[#031B14] text-white font-semibold" : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200"}`}>
+                {o.t}
+              </button>
+            ))}
+          </div>
+          {quick && (
+            <button onClick={() => setQuick("")} className="h-8 px-2.5 flex items-center gap-1.5 rounded-full border border-[#D4A72C] bg-[#FFF8C5] text-[#7A4E00] text-xs font-semibold">
+              {quickLabel} <X className="w-3 h-3" />
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-[13px] text-zinc-500 hidden sm:inline">เรียง: ติดตามถัดไป</span>
+            <div role="group" aria-label="มุมมอง" className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+              <button onClick={() => setView("list")} aria-label="มุมมองตาราง" aria-pressed={view === "list"}
+                className={`w-[38px] h-9 flex items-center justify-center ${view === "list" ? "bg-[#031B14] text-white" : "bg-white dark:bg-zinc-900 text-zinc-500"}`}><List className="w-4 h-4" /></button>
+              <button onClick={() => setView("board")} aria-label="มุมมองกระดานดีล" aria-pressed={view === "board"}
+                className={`w-[38px] h-9 flex items-center justify-center ${view === "board" ? "bg-[#031B14] text-white" : "bg-white dark:bg-zinc-900 text-zinc-500"}`}><LayoutGrid className="w-4 h-4" /></button>
+            </div>
+          </div>
+        </div>
+
+        {view === "list" ? (
+          <>
+            <div className="overflow-x-auto">
+              <div className="min-w-[1040px]">
+                <div className={`grid ${COLS} gap-3 items-center px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500`}>
+                  <div>เลขที่</div><div>ลูกค้า</div><div>รถ</div><div className="text-right">ราคาขาย / ค่างวด</div>
+                  <div>ขั้นของดีล</div><div>ติดตามถัดไป</div><div>เซลล์</div><div />
+                </div>
+                {loading ? Array.from({ length: 6 }).map((_, i) => (
+                  <div key={`sk${i}`} className={`grid ${COLS} gap-3 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800`}>
+                    {Array.from({ length: 8 }).map((_, c) => <Skeleton key={c} className="h-5" />)}
+                  </div>
+                )) : pg.paged.map((r) => <DealRow key={r._id} r={r} />)}
+                {!loading && shown.length === 0 && (
+                  <p className="py-14 text-center text-sm text-zinc-500">ไม่พบดีลที่ตรงเงื่อนไข — ลองล้างตัวกรอง หรือกด &quot;สร้างใบเสนอราคา&quot;</p>
+                )}
+              </div>
+            </div>
+            {!loading && shown.length > 0 && <PaginationBar {...pg} unit="ดีล" />}
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 p-4 bg-zinc-50 dark:bg-zinc-900/40">
+              {PHASE_BUCKETS.map((b) => {
+                const cards = shown.filter((r) => b.stages.includes(r.stage ?? ""))
+                return (
+                  <div key={b.key} className="flex flex-col gap-2.5 min-w-0">
+                    <div className="pb-2 px-1 border-b-2" style={{ borderColor: b.color }}>
+                      <div className="flex items-center gap-2 text-[13px] font-bold">
+                        {b.label}<span className="ml-auto font-semibold text-zinc-500 tabular-nums">{cards.length}</span>
+                      </div>
+                      <div className="text-xs text-zinc-500 tabular-nums">{millions(cards.reduce((s, r) => s + (r.totalSalePrice ?? 0), 0))}</div>
+                    </div>
+                    {cards.map((r) => <BoardCard key={r._id} r={r} />)}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 text-xs text-zinc-500">
+              ขยับขั้นทำได้จากหน้าดีลเท่านั้น (ต้องมีข้อมูลบังคับครบ) · ดีลพักติดตามและปิดไม่สำเร็จ ดูได้จากปุ่มด้านขวาของแถบด่าน
+            </p>
+          </>
+        )}
       </div>
-      )}
 
       {formMode && (
         <QuoteForm mode={formMode} presetPlate={presetPlate} onClose={() => setFormMode(null)} onSaved={() => { setFormMode(null); load() }} />
@@ -224,12 +256,123 @@ export default function QuotationsPage() {
   )
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" }) {
+function PhaseTab({ color, label, sub, count, sum, on, onClick }: {
+  color?: string; label: string; sub: string; count: number; sum: number; on: boolean; onClick: () => void
+}) {
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3">
-      <p className="text-[10px] text-zinc-400 dark:text-zinc-500">{label}</p>
-      <p className={`text-lg font-bold mt-0.5 tabular-nums ${tone === "good" ? "text-emerald-600" : ""}`}>{value}</p>
+    <button onClick={onClick} aria-pressed={on}
+      className={`flex flex-col items-start gap-0.5 min-w-0 px-3.5 py-2.5 text-left border-r border-zinc-100 dark:border-zinc-800 last:border-r-0 ${
+        on ? "bg-[#031B14] text-white shadow-[inset_0_-3px_0_#C9A227]" : "bg-white dark:bg-zinc-900"}`}>
+      <span className={`flex items-center gap-1.5 text-xs font-semibold ${on ? "text-[#E7C86E]" : "text-zinc-500"}`}>
+        {color && <span className="w-2 h-2 rounded-sm" style={{ background: color }} />}{label}
+      </span>
+      <span className="flex items-baseline gap-1.5">
+        <span className="text-lg font-bold tabular-nums">{count}</span>
+        <span className={`text-xs tabular-nums ${on ? "text-white/70" : "text-zinc-500"}`}>{millions(sum)}</span>
+      </span>
+      <span className={`text-[11px] truncate max-w-full ${on ? "text-white/70" : "text-zinc-500"}`}>{sub}</span>
+    </button>
+  )
+}
+
+function StageBadge({ stage }: { stage?: string }) {
+  const kind = badgeKind(stage)
+  const dot = DOT_COLOR[kind] || PHASE_BUCKETS.find((b) => b.stages.includes(stage ?? ""))?.color || "#8C959F"
+  return (
+    <span className={`inline-flex self-start items-center gap-1.5 pl-2 pr-2.5 py-0.5 rounded-full text-xs font-semibold ${BADGE_CLASS[kind]}`}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />{stageLabel(stage)}
+    </span>
+  )
+}
+
+function StageProgress({ r }: { r: Quote }) {
+  const days = daysIn(r.stageEnteredAt)
+  return (
+    <div className="flex items-center gap-2">
+      <div aria-hidden className="flex gap-0.5">
+        {progressSegments(r.stage).map((c, i) => (
+          <span key={i} className="w-[9px] h-1.5 rounded-sm" style={{ background: c }} />
+        ))}
+      </div>
+      <span className={`text-[11px] ${stuckClass(days)}`}>
+        {r.stage === "CLOSED_LOST" ? "ปิดแล้ว" : days === null ? "" : `ค้าง ${days} วัน`}
+      </span>
     </div>
+  )
+}
+
+function DealRow({ r }: { r: Quote }) {
+  const tone = followTone(r.nextFollowUpDate)
+  return (
+    <div className={`grid ${COLS} gap-3 items-center px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/40`}>
+      <div>
+        <Link href={`/quotations/${r._id}`} className="font-mono text-[13px] font-semibold text-[#7A5C14] dark:text-[#E7C86E] hover:underline">{r.quotationNo}</Link>
+        <div className="text-xs text-zinc-500">{shortDate(r.createdAt)}</div>
+      </div>
+      <div className="min-w-0">
+        <div className="font-medium truncate">{r.customerName}</div>
+        <div className="text-xs text-zinc-500 tabular-nums">{r.customerPhone ?? ""}</div>
+      </div>
+      <div className="min-w-0">
+        <div className={r.licensePlate ? "font-medium truncate" : "italic text-zinc-500"}>{r.licensePlate || "ยังไม่เลือกรถ"}</div>
+        <div className="text-xs text-zinc-500 truncate">
+          {[r.vehicleBrand, r.truckNumber ? `เบอร์รถ ${r.truckNumber}` : ""].filter(Boolean).join(" · ")}
+        </div>
+      </div>
+      <div className="text-right tabular-nums">
+        <div className="font-semibold">{r.totalSalePrice ? formatMoney(r.totalSalePrice) : "—"}</div>
+        <div className="text-xs text-zinc-500">
+          {r.monthlyPayment ? `${formatMoney(r.monthlyPayment)} × ${r.financeInstallments ?? 0}` : "ยังไม่ออกใบเสนอ"}
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5 min-w-0">
+        <StageBadge stage={r.stage} />
+        <StageProgress r={r} />
+      </div>
+      <div className="min-w-0">
+        <div className={`text-[13px] ${FOLLOW_CLASS[tone]}`}>
+          {tone === "none" ? "—" : tone === "today" ? "วันนี้" : tone === "overdue"
+            ? `เลยกำหนด ${daysIn(`${r.nextFollowUpDate}T00:00:00`)} วัน` : shortDate(r.nextFollowUpDate)}
+        </div>
+        <div className="text-xs text-zinc-500 truncate">{lastNote(r)}</div>
+      </div>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="w-6 h-6 shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-[#165443] dark:text-emerald-300 flex items-center justify-center">{initials(r.salesName)}</span>
+        <span className="text-xs text-zinc-500 truncate">{r.salesName}</span>
+      </div>
+      <a href={`/api/quotations/${r._id}/pdf`} target="_blank" rel="noreferrer" aria-label={`เปิดใบเสนอ PDF ${r.quotationNo}`} title="ใบเสนอ PDF"
+        className="w-9 h-9 flex items-center justify-center rounded-lg text-[#7A5C14] dark:text-[#E7C86E] hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <FileDown className="w-[17px] h-[17px]" />
+      </a>
+    </div>
+  )
+}
+
+function BoardCard({ r }: { r: Quote }) {
+  const days = daysIn(r.stageEnteredAt)
+  const tone = followTone(r.nextFollowUpDate)
+  return (
+    <Link href={`/quotations/${r._id}`} className="block p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[10px] hover:shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-xs font-semibold text-[#7A5C14] dark:text-[#E7C86E]">{r.quotationNo}</span>
+        <span className={`text-[11px] ${stuckClass(days)}`}>{days === null ? "" : `ค้าง ${days} วัน`}</span>
+      </div>
+      <div className="text-sm font-semibold mt-1">{r.customerName}</div>
+      <div className="text-xs text-zinc-500 truncate">{[r.licensePlate, r.vehicleBrand].filter(Boolean).join(" · ") || "ยังไม่เลือกรถ"}</div>
+      <div className="mt-2"><StageBadge stage={r.stage} /></div>
+      <div className="flex items-center justify-between gap-2 mt-2 text-xs">
+        <span className="text-sm font-bold tabular-nums shrink-0">{r.totalSalePrice ? formatMoney(r.totalSalePrice) : "—"}</span>
+        <span className="text-zinc-500 truncate min-w-0">{r.salesName}</span>
+      </div>
+      {r.nextFollowUpDate && (
+        <div className={`mt-2 px-2 py-0.5 rounded-md text-[11px] font-semibold inline-block ${
+          tone === "overdue" ? "bg-[#FFEBE9] text-[#A40E26] dark:bg-red-950/40 dark:text-red-300"
+            : tone === "today" ? "bg-[#FFF8C5] text-[#7A4E00] dark:bg-amber-950/40 dark:text-amber-300"
+            : "bg-zinc-50 dark:bg-zinc-800 text-zinc-500"}`}>
+          {tone === "today" ? "ติดตามวันนี้" : `ติดตาม ${shortDate(r.nextFollowUpDate)}`}
+        </div>
+      )}
+    </Link>
   )
 }
 

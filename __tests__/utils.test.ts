@@ -20,15 +20,16 @@ describe("formatMoney", () => {
   })
 })
 
+// ระบบแสดงปีคู่ ค.ศ./พ.ศ. ทุกจุด (commit d3925a3) — เทสต์ชุดนี้ค้างรูปแบบเดิมไว้
 describe("formatMonth", () => {
   it("converts YYYY-MM to Thai month label", () => {
-    expect(formatMonth("2026-06")).toBe("มิ.ย. 2569")
+    expect(formatMonth("2026-06")).toBe("มิ.ย. 2026/2569")
   })
   it("converts Jan", () => {
-    expect(formatMonth("2026-01")).toBe("ม.ค. 2569")
+    expect(formatMonth("2026-01")).toBe("ม.ค. 2026/2569")
   })
   it("converts December", () => {
-    expect(formatMonth("2025-12")).toBe("ธ.ค. 2568")
+    expect(formatMonth("2025-12")).toBe("ธ.ค. 2025/2568")
   })
   it("converts all 12 months", () => {
     const expected = [
@@ -41,26 +42,26 @@ describe("formatMonth", () => {
     }
   })
   it("adds 543 to year for Buddhist era", () => {
-    expect(formatMonth("2000-01")).toBe("ม.ค. 2543")
+    expect(formatMonth("2000-01")).toBe("ม.ค. 2000/2543")
   })
 })
 
 describe("formatDate", () => {
   it("formats ISO date to Thai DD/MM/BBBB", () => {
-    expect(formatDate("2026-06-30")).toBe("30/06/2569")
+    expect(formatDate("2026-06-30")).toBe("30/06/2026 (2569)")
   })
   it("returns - for null/undefined", () => {
     expect(formatDate(null)).toBe("-")
     expect(formatDate(undefined)).toBe("-")
   })
   it("handles January correctly", () => {
-    expect(formatDate("2026-01-01")).toBe("01/01/2569")
+    expect(formatDate("2026-01-01")).toBe("01/01/2026 (2569)")
   })
   it("handles December 31", () => {
-    expect(formatDate("2025-12-31")).toBe("31/12/2568")
+    expect(formatDate("2025-12-31")).toBe("31/12/2025 (2568)")
   })
   it("pads single-digit day and month", () => {
-    expect(formatDate("2026-03-05")).toBe("05/03/2569")
+    expect(formatDate("2026-03-05")).toBe("05/03/2026 (2569)")
   })
   it("returns - for empty string", () => {
     expect(formatDate("")).toBe("-")
