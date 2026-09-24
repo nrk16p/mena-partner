@@ -9,6 +9,7 @@ import path from "path"
 import PizZip from "pizzip"
 import Docxtemplater from "docxtemplater"
 import clientPromise from "@/lib/mongo"
+import { withVehicleDetails } from "@/lib/contract-vehicle"
 import type { Contract } from "@/types"
 import { DOCX_TEMPLATES, normPlate, type DocxType, type PromoMasterData } from "@/lib/contract-docx"
 import { appendDocxAttachments } from "@/lib/docx-attachments"
@@ -24,8 +25,10 @@ export async function renderContractDocx(
 
   const client = await clientPromise
   const db = client.db(DB)
-  const contract = (await db.collection("contracts").findOne({ _id: new ObjectId(id) })) as Contract | null
-  if (!contract) return null
+  const found = (await db.collection("contracts").findOne({ _id: new ObjectId(id) })) as Contract | null
+  if (!found) return null
+  // ช่องข้อมูลรถที่ว่างในสัญญา → เติมจากทะเบียนรถ (ดู lib/contract-vehicle)
+  const contract = await withVehicleDetails(db, found as unknown as Record<string, unknown>) as unknown as Contract
 
   const plate = normPlate(contract.licensePlate)
   const promos = (await db.collection("promotion_master").find({}).toArray()) as unknown as PromoMasterData[]

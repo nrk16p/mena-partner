@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
 import { hasPerm } from "@/lib/rbac"
+import { withVehicleDetails } from "@/lib/contract-vehicle"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "contracts"
@@ -26,7 +27,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const col    = client.db(DB).collection(COLL)
   const item   = await col.findOne({ _id: new ObjectId(id) })
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  return NextResponse.json(item)
+  // ช่องข้อมูลรถที่ว่างในสัญญา → เติมจากทะเบียนรถ เอกสารจะได้ไม่พิมพ์เป็นเส้นประว่าง
+  return NextResponse.json(await withVehicleDetails(client.db(DB), item))
 }
 
 export async function PUT(req: NextRequest, { params }: Ctx) {

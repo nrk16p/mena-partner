@@ -6,6 +6,7 @@ import { normPlate, type PromoMasterData } from "@/lib/contract-docx"
 import { renderPdfmake } from "@/lib/pdfmake-printer"
 import { PDFMAKE_DOCS, PDF_FILENAME, type PdfmakeType } from "@/lib/contract-pdfmake"
 import { appendContractAttachments } from "@/lib/pdf-attachments"
+import { withVehicleDetails } from "@/lib/contract-vehicle"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -20,8 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const client = await clientPromise
   const db = client.db(DB)
-  const contract = (await db.collection("contracts").findOne({ _id: new ObjectId(id) })) as Contract | null
-  if (!contract) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const found = (await db.collection("contracts").findOne({ _id: new ObjectId(id) })) as Contract | null
+  if (!found) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const contract = await withVehicleDetails(db, found as unknown as Record<string, unknown>) as unknown as Contract
 
   const plate = normPlate(contract.licensePlate)
   const promos = (await db.collection("promotion_master").find({}).toArray()) as unknown as PromoMasterData[]
