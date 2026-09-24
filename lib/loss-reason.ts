@@ -73,6 +73,8 @@ export const reasonsForStage = (all: LossReason[], stage: string) =>
     (r.applicableStages.includes("ALL") || r.applicableStages.includes(stage as Stage)))
 
 export async function listLossReasons(db: Db): Promise<LossReason[]> {
+  // ตารางว่าง = ยังไม่เคย seed → เติมให้ก่อน ไม่งั้นปิดดีลไม่ได้เพราะไม่มีเหตุผลให้เลือก
+  if (!(await db.collection(LOSS_COLL).findOne({}))) await seedLossReasons(db)
   const rows = await db.collection(LOSS_COLL).find({}).sort({ group: 1, label: 1 }).toArray()
   return rows.map((r) => ({ ...r, _id: String(r._id) })) as unknown as LossReason[]
 }
