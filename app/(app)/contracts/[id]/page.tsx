@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { computeMoney, DERIVED_KEYS } from "@/lib/contract-money"
 import { useSession } from "next-auth/react"
 import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2, Upload, X, Clock } from "lucide-react"
 import { SearchCombobox } from "@/components/search-combobox"
@@ -418,7 +419,8 @@ export default function ContractDetailPage() {
       const res = await fetch(`/api/contracts/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // ช่องที่คำนวณได้ให้ยึดสูตรเสมอ (form อาจถือค่าเก่าที่ไม่ตรงสูตรอยู่)
+        body: JSON.stringify({ ...form, ...computeMoney(form) }),
       })
       if (!res.ok) { const d = await res.json(); setError(d.error ?? "เกิดข้อผิดพลาด"); return }
       // อยู่หน้าเดิมหลังบันทึก — โชว์สถานะ "บันทึกแล้ว" ชั่วครู่แทนการเด้งกลับหน้ารายการ
@@ -905,13 +907,37 @@ export default function ContractDetailPage() {
         {step === 1 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5">
           <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-4">ข้อมูลการเงิน</h2>
+          <p className="text-xs text-zinc-500 mb-4">
+            กรอกได้เฉพาะ <b>เงินดาวน์ชำระแล้ว</b> · ช่องที่เหลือคำนวณให้อัตโนมัติ
+            ส่วนราคาขาย/เงินดาวน์รวม/จำนวนงวด แก้ที่หน้า <Link href="/price-list" className="underline">ราคาขาย</Link> แล้วกดดึงราคาใหม่
+          </p>
           <div className="grid grid-cols-2 gap-4">
-            {NUM_FIELDS.map(({ key, label }) => (
-              <div key={key} className="space-y-1">
-                <Label className="text-xs">{label}</Label>
-                <Input {...numField(key)} />
-              </div>
-            ))}
+            {NUM_FIELDS.map(({ key, label }) => {
+              const derived = (DERIVED_KEYS as readonly string[]).includes(key)
+              const calc = computeMoney(form)[key as keyof ReturnType<typeof computeMoney>]
+              const stored = Number(form[key] ?? 0) || 0
+              const changed = derived && Math.abs(calc - stored) > 1
+              return (
+                <div key={key} className="space-y-1">
+                  <Label className="text-xs">
+                    {label}
+                    {derived && <span className="ml-1 text-[10px] text-zinc-400">คำนวณอัตโนมัติ</span>}
+                  </Label>
+                  {key === "cashDown"
+                    ? <Input {...numField(key)} />
+                    : <Input
+                        value={derived ? String(calc) : String(form[key] ?? 0)}
+                        readOnly disabled type="number"
+                        className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-300"
+                      />}
+                  {changed && (
+                    <p className="text-[11px] text-amber-600">
+                      ค่าเดิมในสัญญา {formatMoney(stored)} — กดบันทึกแล้วจะเปลี่ยนเป็น {formatMoney(calc)}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
         )}
