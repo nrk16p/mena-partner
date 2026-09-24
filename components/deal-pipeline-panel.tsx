@@ -1,15 +1,18 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { CheckCircle2, PauseCircle, PlayCircle, XCircle, Upload, AlertTriangle } from "lucide-react"
-import { PHASES, STAGE_LABEL, STATUS_LABEL, type Stage } from "@/lib/deal-stage"
+import { ArrowRight, PauseCircle, PlayCircle, XCircle, Upload, Check } from "lucide-react"
+import { PHASES, STAGES, STAGE_LABEL, STATUS_LABEL, PHASE_COLOR, type Stage } from "@/lib/deal-stage"
 
 /**
- * แผงไปป์ไลน์บนหน้าดีล — stepper 10 ขั้น + ข้อมูลบังคับของขั้นปัจจุบัน + ปุ่มขยับ/พัก/ปิดดีล
- * กติกาทั้งหมดถามจาก API (/api/quotations/[id]/stage) ฝั่งนี้แค่แสดงและส่งคำสั่ง — server ตรวจซ้ำเสมอ
+ * ไปป์ไลน์บนหน้าดีล — แยกเป็น 3 ส่วนให้หน้าเว็บจัดวางเองได้
+ *   useDealStage()  โหลดสถานะ/กติกาจาก API + สั่งงาน
+ *   <DealStepper>   แถบ 10 ขั้น จัดกลุ่ม 5 ด่าน (เต็มความกว้าง)
+ *   <DealNextStep>  การ์ด "ขั้นถัดไป" — ข้อมูลที่ยังขาด + ปุ่มขยับ/พัก/ปิดดีล
+ * กติกาทั้งหมดถามจาก server เสมอ ฝั่งนี้แค่แสดงและส่งคำสั่ง (server ตรวจซ้ำทุกครั้ง)
  */
 
-interface StageInfo {
+export interface StageInfo {
   stage: string
   advance: { ok: boolean; to: Stage | null; missing: string[]; error?: string }
   screening: { key: string; label: string; pass: boolean; auto: boolean; detail?: string }[]
@@ -30,6 +33,8 @@ export interface DealForPanel {
   viewingDate?: string
   reservationAmount?: number
   depositAmount?: number
+  depositSlips?: string[]
+  depositSlipUrl?: string
   trainingStartDate?: string
   trainingResult?: string
   contractDate?: string
@@ -40,47 +45,89 @@ export interface DealForPanel {
 
 const ATTACH_LABEL: Record<string, string> = {
   QUOTATION: "ใบเสนอราคา",
-  RESERVATION_SLIP: "หลักฐานโอนเงินจอง",
+  RESERVATION_SLIP: "หลักฐานการโอนเงินจอง",
   SIGNED_CONTRACT: "สัญญาที่ลงนามแล้ว",
   DELIVERY_PHOTO: "รูปลูกค้าคู่กับรถตอนส่งมอบ",
 }
-
-/** ข้อมูล + ไฟล์ที่ต้องกรอกในแต่ละขั้น (ตรงกับกติกาใน lib/deal-stage) */
-const STAGE_FORM: Record<string, { fields: { key: string; label: string; type: "date" | "number" | "select" }[]; attach?: string }> = {
-  QUALIFIED: { fields: [{ key: "quotationSentAt", label: "วันที่ส่งใบเสนอราคา", type: "date" }], attach: "QUOTATION" },
-  QUOTED: { fields: [{ key: "viewingDate", label: "วันนัดดูรถ", type: "date" }] },
-  VIEWING_SCHEDULED: { fields: [{ key: "reservationAmount", label: "จำนวนเงินจอง (บาท)", type: "number" }], attach: "RESERVATION_SLIP" },
-  RESERVED: { fields: [{ key: "trainingStartDate", label: "วันเริ่มฝึกงาน", type: "date" }] },
-  TRAINING: { fields: [
-    { key: "trainingResult", label: "ผลฝึกงาน", type: "select" },
-    { key: "contractDate", label: "วันนัดเซ็นสัญญา", type: "date" },
-  ] },
-  CONTRACT_SCHEDULED: { fields: [{ key: "deliveryDate", label: "วันนัดรับรถ", type: "date" }], attach: "SIGNED_CONTRACT" },
-  CONTRACT_SIGNED: { fields: [{ key: "deliveredAt", label: "วันที่ส่งมอบจริง", type: "date" }], attach: "DELIVERY_PHOTO" },
+const ATTACH_HELP: Record<string, string> = {
+  QUOTATION: "ไฟล์ใบเสนอราคาที่ส่งให้ลูกค้า — รูปหรือ PDF",
+  RESERVATION_SLIP: "รูปหรือ PDF · สลิปนี้ไปแสดงในส่วนการเงินด้วย",
+  SIGNED_CONTRACT: "สแกนสัญญาที่ลงนามครบทุกฝ่ายแล้ว",
+  DELIVERY_PHOTO: "ถ่ายตอนลูกค้ารับรถ ใช้เป็นหลักฐานส่งมอบ",
 }
 
-export function DealPipelinePanel({ deal, onChanged }: { deal: DealForPanel; onChanged: () => void }) {
-  const id = deal._id
+type FieldType = "date" | "number" | "select"
+interface StageField { key: string; label: string; type: FieldType; help: string }
+
+/** ข้อมูล + ไฟล์ที่ต้องมีในแต่ละขั้น (ตรงกับกติกาใน lib/deal-stage) */
+const STAGE_FORM: Record<string, { fields: StageField[]; attach?: string }> = {
+  QUALIFIED: {
+    fields: [{ key: "quotationSentAt", label: "วันที่ส่งใบเสนอราคา", type: "date", help: "วันที่ส่งให้ลูกค้าจริง" }],
+    attach: "QUOTATION",
+  },
+  QUOTED: {
+    fields: [{ key: "viewingDate", label: "วันนัดดูรถ", type: "date", help: "นัดแล้วระบบจะเตือนในการ์ดนัดถัดไป" }],
+  },
+  VIEWING_SCHEDULED: {
+    fields: [{ key: "reservationAmount", label: "จำนวนเงินจอง (บาท)", type: "number", help: "ใช้ยอดเดียวกับส่วน “การเงิน” ด้านล่าง — กรอกที่เดียว" }],
+    attach: "RESERVATION_SLIP",
+  },
+  RESERVED: {
+    fields: [{ key: "trainingStartDate", label: "วันเริ่มฝึกงาน", type: "date", help: "วันที่ลูกค้าเริ่มฝึกกับทีมปฏิบัติการ" }],
+  },
+  TRAINING: {
+    fields: [
+      { key: "trainingResult", label: "ผลฝึกงาน", type: "select", help: "ถ้าไม่ผ่าน ให้ปิดดีลพร้อมเหตุผลแทนการขยับขั้น" },
+      { key: "contractDate", label: "วันนัดเซ็นสัญญา", type: "date", help: "นัดหลังฝึกผ่านแล้ว" },
+    ],
+  },
+  CONTRACT_SCHEDULED: {
+    fields: [{ key: "deliveryDate", label: "วันนัดรับรถ", type: "date", help: "วันที่นัดลูกค้ามารับรถ" }],
+    attach: "SIGNED_CONTRACT",
+  },
+  CONTRACT_SIGNED: {
+    fields: [{ key: "deliveredAt", label: "วันที่ส่งมอบจริง", type: "date", help: "นับ 90 วันแรกจากวันนี้" }],
+    attach: "DELIVERY_PHOTO",
+  },
+}
+
+export const hasSlip = (d: DealForPanel) =>
+  (d.attachments ?? []).some((a) => a.type === "RESERVATION_SLIP" && a.url)
+  || (d.depositSlips ?? []).some(Boolean) || !!d.depositSlipUrl
+
+const fieldValue = (d: DealForPanel, key: string) =>
+  key === "reservationAmount" ? (d.reservationAmount ?? d.depositAmount ?? "") : (d as unknown as Record<string, unknown>)[key] ?? ""
+
+const fieldDone = (d: DealForPanel, f: StageField) =>
+  f.key === "reservationAmount" ? Number(d.reservationAmount ?? d.depositAmount ?? 0) > 0
+  : f.key === "trainingResult" ? d.trainingResult === "PASSED"
+  : !!fieldValue(d, f.key)
+
+const attachDone = (d: DealForPanel, type: string) =>
+  type === "RESERVATION_SLIP" ? hasSlip(d) : (d.attachments ?? []).some((a) => a.type === type && a.url)
+
+/** ขั้นที่กำลังทำอยู่จริง (ถ้าพักติดตามอยู่ ให้ดูขั้นก่อนพัก) */
+export const activeStageOf = (d: DealForPanel) =>
+  d.stage === "ON_HOLD" ? String(d.stageBeforeHold ?? "LEAD") : String(d.stage ?? "LEAD")
+
+// ─── hook: สถานะ + คำสั่ง ────────────────────────────────────────────────────
+
+export function useDealStage(id: string, onChanged: () => void) {
   const [info, setInfo] = useState<StageInfo | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
-  const [dialog, setDialog] = useState<"" | "hold" | "close">("")
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [attachType, setAttachType] = useState("")
 
   const load = useCallback(() => {
-    // โหลดสถานะ/กติกาจาก server เสมอ (ไม่คำนวณเองฝั่ง client จะได้ไม่มีสองความจริง)
     let alive = true
     fetch(`/api/quotations/${id}/stage`)
       .then((r) => (r.ok ? r.json() : null))
-      // โหลดข้อมูลจาก API ตอน mount — ไม่ใช่ cascading render (กฎนี้จับ setState ในเอฟเฟกต์แบบซิงโครนัส)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // โหลดจาก API ตอน mount — setState อยู่ใน callback ของ fetch ไม่ใช่ cascading render
       .then((d) => { if (alive) setInfo(d) })
     return () => { alive = false }
   }, [id])
   useEffect(() => load(), [load])
 
-  async function act(body: Record<string, unknown>) {
+  const act = useCallback(async (body: Record<string, unknown>) => {
     setBusy(true); setErr("")
     try {
       const res = await fetch(`/api/quotations/${id}/stage`, {
@@ -88,205 +135,285 @@ export function DealPipelinePanel({ deal, onChanged }: { deal: DealForPanel; onC
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setErr(data.error ?? "ทำรายการไม่ได้"); return false }
-      setDialog(""); load(); onChanged()
+      load(); onChanged()
       return true
     } finally { setBusy(false) }
-  }
+  }, [id, load, onChanged])
 
-  async function upload(file: File) {
-    if (!attachType) return
+  const attach = useCallback(async (type: string, file: File) => {
     setBusy(true); setErr("")
     try {
       const fd = new FormData(); fd.append("file", file); fd.append("folder", "quotations")
       const res = await fetch("/api/upload", { method: "POST", body: fd })
-      if (!res.ok) { setErr("อัปโหลดไฟล์ไม่สำเร็จ"); return }
+      if (!res.ok) { setErr("อัปโหลดไฟล์ไม่สำเร็จ"); return false }
       const { url } = await res.json()
-      await act({ action: "attach", type: attachType, url, label: ATTACH_LABEL[attachType] })
-    } finally { setBusy(false); setAttachType("") }
-  }
+      return await act({ action: "attach", type, url, label: ATTACH_LABEL[type] })
+    } finally { setBusy(false) }
+  }, [act])
 
-  if (!info) return <div className="text-sm text-zinc-400">กำลังโหลดสถานะ…</div>
+  return { info, busy, err, setErr, act, attach, reload: load }
+}
 
-  const stage = info.stage
-  const onHold = stage === "ON_HOLD"
-  const closed = stage === "CLOSED_LOST"
-  const activeStage = onHold ? String(deal.stageBeforeHold ?? "LEAD") : stage
-  const form = STAGE_FORM[activeStage]
-  const files = deal.attachments ?? []
+// ─── stepper 10 ขั้น ─────────────────────────────────────────────────────────
 
-  const stageInput = "h-9 w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm"
-
+export function DealStepper({ deal }: { deal: DealForPanel }) {
+  const active = activeStageOf(deal)
+  const cur = STAGES.indexOf(active as Stage)
+  const closed = deal.stage === "CLOSED_LOST"
   return (
-    <div className="space-y-4">
-      {/* stepper 10 ขั้น จัดกลุ่มตามด่าน */}
-      <div className="flex items-start gap-3 overflow-x-auto pb-1">
-        {PHASES.map((p) => (
-          <div key={p.no} className="shrink-0">
-            <div className="text-[10px] text-zinc-400 mb-1">{p.no}. {p.label}</div>
-            <div className="flex items-center gap-1">
-              {p.stages.map((st) => {
-                const idx = PHASES.flatMap((x) => x.stages).indexOf(st)
-                const cur = PHASES.flatMap((x) => x.stages).indexOf(activeStage as Stage)
-                const done = idx < cur, here = st === activeStage
+    <ol aria-label="ขั้นของดีล 10 ขั้น"
+      className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 list-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3.5">
+      {PHASES.map((p) => {
+        const idxs = p.stages.map((s) => STAGES.indexOf(s))
+        const here = !closed && idxs.includes(cur)
+        const done = idxs[1] < cur
+        return (
+          <li key={p.no} className="flex flex-col gap-2 min-w-0">
+            <div className={`text-xs font-bold pb-1.5 border-b-[3px] ${here || done ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-500"}`}
+              style={{ borderColor: here ? "#C9A227" : done ? PHASE_COLOR[4] : "#E6EDF3" }}>
+              {p.no} {p.label}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {p.stages.map((s) => {
+                const i = STAGES.indexOf(s)
+                const st = closed ? "todo" : i < cur ? "done" : i === cur ? "here" : "todo"
                 return (
-                  <span key={st} className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap ${
-                    here ? "bg-emerald-600 text-white border-transparent font-semibold"
-                    : done ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                    : "bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800"}`}>
-                    {done ? "✓ " : ""}{STAGE_LABEL[st]}
-                  </span>
+                  <div key={s} className="flex items-center gap-2 text-[13px] min-w-0">
+                    <span className={`w-[22px] h-[22px] shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                      st === "done" ? "bg-[#2A6E56] text-white"
+                      : st === "here" ? "bg-[#031B14] text-[#E7C86E] ring-[3px] ring-[#E7C86E]"
+                      : "bg-white dark:bg-zinc-900 text-zinc-500 border-[1.5px] border-zinc-200 dark:border-zinc-700"}`}>
+                      {st === "done" ? "✓" : i + 1}
+                    </span>
+                    <span className={`truncate ${st === "here" ? "font-bold" : st === "done" ? "" : "text-zinc-500"}`}>{STAGE_LABEL[s]}</span>
+                  </div>
                 )
               })}
             </div>
-          </div>
-        ))}
-      </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
 
+// ─── การ์ด "ขั้นถัดไป" ───────────────────────────────────────────────────────
+
+type Act = (body: Record<string, unknown>) => Promise<boolean>
+
+export function DealNextStep({ deal, info, busy, err, act, attach }: {
+  deal: DealForPanel
+  info: StageInfo
+  busy: boolean
+  err: string
+  act: Act
+  attach: (type: string, file: File) => Promise<boolean>
+}) {
+  const [dialog, setDialog] = useState<"" | "hold" | "close">("")
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [attachType, setAttachType] = useState("")
+
+  const onHold = deal.stage === "ON_HOLD"
+  const closed = deal.stage === "CLOSED_LOST"
+  const active = activeStageOf(deal)
+  const form = STAGE_FORM[active]
+  const isLead = active === "LEAD"
+
+  // รายการที่ต้องมีก่อนขยับขั้น (ขั้นผู้สนใจใช้เช็กลิสต์คัดกรอง 7 ข้อแทน)
+  const reqs = isLead
+    ? info.screening.map((c) => ({ ok: c.pass }))
+    : [...(form?.fields ?? []).map((f) => ({ ok: fieldDone(deal, f) })),
+       ...(form?.attach ? [{ ok: attachDone(deal, form.attach) }] : [])]
+  const total = reqs.length
+  const done = reqs.filter((r) => r.ok).length
+  const canAdvance = info.advance.ok && !onHold && !closed
+  const nextLabel = info.advance.to ? STAGE_LABEL[info.advance.to] : ""
+
+  const input = "h-[38px] w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm"
+
+  return (
+    <>
       {onHold && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm">
-          <p className="font-semibold text-amber-800 dark:text-amber-300">พักติดตามอยู่ (ขั้นเดิม: {STAGE_LABEL[activeStage as Stage]})</p>
-          <p className="text-amber-700 dark:text-amber-200 mt-0.5">{deal.holdReason} · ติดตามอีกที {deal.nextFollowUpDate}</p>
+        <div className="rounded-xl border border-amber-300 bg-[#FFFCEB] dark:bg-amber-950/20 px-4 py-3 text-sm">
+          <p className="font-semibold text-[#7A4E00] dark:text-amber-300">พักติดตามอยู่ · ขั้นเดิม {STAGE_LABEL[active as Stage]}</p>
+          <p className="text-zinc-600 dark:text-amber-200/80 mt-0.5">{deal.holdReason} · ติดตามอีกที {deal.nextFollowUpDate}</p>
         </div>
       )}
       {closed && (
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 px-4 py-3 text-sm">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 px-4 py-3 text-sm">
           <p className="font-semibold">ปิดดีล – ไม่สำเร็จ ที่ขั้น {STATUS_LABEL[(deal.lostAtStage ?? "LEAD") as Stage]}</p>
           <p className="text-zinc-600 dark:text-zinc-300 mt-0.5">{deal.lossReasonLabel}{deal.lossNote ? ` · ${deal.lossNote}` : ""}</p>
         </div>
       )}
 
-      {/* เช็กลิสต์คัดกรอง — เฉพาะขั้นผู้สนใจ */}
-      {activeStage === "LEAD" && !closed && (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
-          <p className="text-sm font-semibold mb-2">เช็กลิสต์คัดกรอง (ต้องผ่านครบก่อนไปขั้นถัดไป)</p>
-          <div className="grid sm:grid-cols-2 gap-2 mb-3">
-            <label className="text-xs">วันเกิด
-              <input type="date" className={stageInput} defaultValue={String(deal.screening?.birthDate ?? "")}
-                onBlur={(e) => act({ action: "fields", fields: { screening: { birthDate: e.target.value } } })} />
-            </label>
-            <label className="text-xs">วันออกใบขับขี่
-              <input type="date" className={stageInput} defaultValue={String(deal.screening?.licenseIssueDate ?? "")}
-                onBlur={(e) => act({ action: "fields", fields: { screening: { licenseIssueDate: e.target.value } } })} />
-            </label>
-            <label className="text-xs">ชนิดใบขับขี่
-              <select className={stageInput} defaultValue={String(deal.screening?.licenseType ?? "")}
-                onChange={(e) => act({ action: "fields", fields: { screening: { licenseType: e.target.value } } })}>
-                <option value="">— เลือก —</option>
-                {["ท.1", "ท.2", "ท.3", "ท.4"].map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </label>
-          </div>
-          <ul className="space-y-1.5">
-            {info.screening.map((c) => (
-              <li key={c.key} className="flex items-start gap-2 text-sm">
-                {c.auto ? (
-                  <span className={`mt-0.5 w-4 h-4 rounded-full shrink-0 ${c.pass ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-700"}`} />
-                ) : (
-                  <input type="checkbox" checked={c.pass} disabled={busy}
-                    onChange={(e) => act({ action: "fields", fields: { screening: { [c.key]: e.target.checked } } })}
-                    className="mt-1 w-4 h-4 shrink-0" />
-                )}
-                <span className={c.pass ? "" : "text-zinc-500"}>
-                  {c.label}
-                  {c.detail && <span className="text-xs text-zinc-400"> — {c.detail}</span>}
-                  {c.auto && <span className="text-[10px] text-zinc-400"> (คำนวณจากวันที่)</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
+      {!closed && (
+      <section aria-labelledby="next-h" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-[#031B14] text-white">
+          <h2 id="next-h" className="text-[15px] font-semibold">
+            {info.advance.to ? `ขั้นถัดไป → ${nextLabel} · ต้องมีข้อมูลครบก่อนขยับ` : "ขั้นสุดท้ายของไปป์ไลน์"}
+          </h2>
+          {total > 0 && <span className="text-xs font-semibold text-[#E7C86E] tabular-nums shrink-0">{done}/{total} รายการครบ</span>}
         </div>
-      )}
 
-      {/* ข้อมูล/ไฟล์ของขั้นปัจจุบัน */}
-      {form && !closed && (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 space-y-3">
-          <p className="text-sm font-semibold">ข้อมูลที่ต้องมีก่อนขยับขั้น</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {form.fields.map((f) => (
-              <label key={f.key} className="text-xs">{f.label}
-                {f.type === "select" ? (
-                  <select className={stageInput} defaultValue={String(deal.trainingResult ?? "")}
-                    onChange={(e) => act({ action: "fields", fields: { trainingResult: e.target.value } })}>
-                    <option value="">— ยังไม่สรุป —</option>
-                    <option value="PASSED">ผ่าน</option>
-                    <option value="FAILED">ไม่ผ่าน</option>
-                  </select>
-                ) : (
-                  <input type={f.type} className={stageInput}
-                    defaultValue={String((deal as unknown as Record<string, unknown>)[f.key] ?? (f.key === "reservationAmount" ? deal.depositAmount ?? "" : ""))}
-                    onBlur={(e) => act({ action: "fields", fields: { [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value } })} />
-                )}
-              </label>
-            ))}
-          </div>
-
-          {form.attach && (
-            <div>
-              <p className="text-xs text-zinc-500 mb-1.5">{ATTACH_LABEL[form.attach]}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                {files.filter((f) => f.type === form.attach).map((f) => (
-                  <a key={f.url} href={f.url} target="_blank" rel="noreferrer"
-                    className="text-xs text-emerald-700 underline underline-offset-2">ไฟล์ที่แนบ</a>
+        <>
+            {isLead ? (
+              <div className="px-4 py-3 space-y-3">
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <label className="text-xs text-zinc-500">วันเกิด
+                    <input type="date" className={input} defaultValue={String(deal.screening?.birthDate ?? "")}
+                      onBlur={(e) => act({ action: "fields", fields: { screening: { birthDate: e.target.value } } })} />
+                  </label>
+                  <label className="text-xs text-zinc-500">วันออกใบขับขี่
+                    <input type="date" className={input} defaultValue={String(deal.screening?.licenseIssueDate ?? "")}
+                      onBlur={(e) => act({ action: "fields", fields: { screening: { licenseIssueDate: e.target.value } } })} />
+                  </label>
+                  <label className="text-xs text-zinc-500">ชนิดใบขับขี่
+                    <select className={input} defaultValue={String(deal.screening?.licenseType ?? "")}
+                      onChange={(e) => act({ action: "fields", fields: { screening: { licenseType: e.target.value } } })}>
+                      <option value="">— เลือก —</option>
+                      {["ท.1", "ท.2", "ท.3", "ท.4"].map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {info.screening.map((c) => (
+                    <li key={c.key} className="grid grid-cols-[28px_minmax(0,1fr)_auto] gap-3 items-center py-2.5">
+                      <ReqIcon ok={c.pass} />
+                      <div>
+                        <div className="text-sm font-medium">{c.label}</div>
+                        {c.detail && <div className="text-xs text-zinc-500">{c.detail}{c.auto ? " · คำนวณจากวันที่" : ""}</div>}
+                      </div>
+                      {c.auto ? (
+                        <span className="text-xs text-zinc-500">อัตโนมัติ</span>
+                      ) : (
+                        <input type="checkbox" checked={c.pass} disabled={busy} aria-label={c.label}
+                          onChange={(e) => act({ action: "fields", fields: { screening: { [c.key]: e.target.checked } } })}
+                          className="w-5 h-5" />
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : form ? (
+              <ul className="px-4 py-1">
+                {form.fields.map((f) => (
+                  <li key={f.key} className="grid grid-cols-[28px_minmax(0,1fr)_220px] gap-3 items-center py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-b-0">
+                    <ReqIcon ok={fieldDone(deal, f)} />
+                    <div>
+                      <div className="text-sm font-semibold">{f.label}</div>
+                      <div className="text-xs text-zinc-500">{f.help}</div>
+                    </div>
+                    {f.type === "select" ? (
+                      <select className={input} defaultValue={String(deal.trainingResult ?? "")} disabled={busy}
+                        onChange={(e) => act({ action: "fields", fields: { trainingResult: e.target.value } })}>
+                        <option value="">— ยังไม่สรุป —</option>
+                        <option value="PASSED">ผ่าน</option>
+                        <option value="FAILED">ไม่ผ่าน</option>
+                      </select>
+                    ) : f.type === "number" ? (
+                      <label className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-900">
+                        <span className="px-2.5 self-stretch flex items-center text-[13px] text-zinc-500 bg-zinc-50 dark:bg-zinc-800">฿</span>
+                        <input type="number" aria-label={f.label} defaultValue={String(fieldValue(deal, f.key))} disabled={busy}
+                          onBlur={(e) => act({ action: "fields", fields: { [f.key]: Number(e.target.value) || 0 } })}
+                          className="w-full h-[38px] px-2.5 text-sm text-right tabular-nums bg-transparent" />
+                      </label>
+                    ) : (
+                      <input type="date" className={input} aria-label={f.label} defaultValue={String(fieldValue(deal, f.key))} disabled={busy}
+                        onBlur={(e) => act({ action: "fields", fields: { [f.key]: e.target.value } })} />
+                    )}
+                  </li>
                 ))}
-                <button type="button" disabled={busy}
-                  onClick={() => { setAttachType(form.attach!); fileRef.current?.click() }}
-                  className="inline-flex items-center gap-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-1.5">
-                  <Upload className="w-3.5 h-3.5" /> แนบไฟล์
+                {form.attach && (
+                  <li className="grid grid-cols-[28px_minmax(0,1fr)_220px] gap-3 items-center py-3">
+                    <ReqIcon ok={attachDone(deal, form.attach)} />
+                    <div>
+                      <div className="text-sm font-semibold">{ATTACH_LABEL[form.attach]}</div>
+                      <div className="text-xs text-zinc-500">
+                        {attachDone(deal, form.attach) ? "แนบแล้ว · " : "ยังไม่แนบ — "}{ATTACH_HELP[form.attach]}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {(deal.attachments ?? []).filter((a) => a.type === form.attach).map((a, i) => (
+                          <a key={a.url} href={a.url} target="_blank" rel="noreferrer" className="text-xs text-[#7A5C14] dark:text-[#E7C86E] underline underline-offset-2">ไฟล์ที่ {i + 1}</a>
+                        ))}
+                      </div>
+                    </div>
+                    <button type="button" disabled={busy}
+                      onClick={() => { setAttachType(form.attach!); fileRef.current?.click() }}
+                      className={`h-[38px] flex items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold ${
+                        attachDone(deal, form.attach)
+                          ? "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700"
+                          : "bg-[#FFF8C5] dark:bg-amber-950/30 border border-[#D4A72C] text-[#7A4E00] dark:text-amber-300"}`}>
+                      <Upload className="w-[15px] h-[15px]" />
+                      {attachDone(deal, form.attach) ? "แนบเพิ่ม / เปลี่ยนไฟล์" : `แนบ${ATTACH_LABEL[form.attach]}`}
+                    </button>
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="px-4 py-3 text-sm text-zinc-500">
+                {info.advance.to ? "ขั้นนี้ไม่ต้องกรอกข้อมูลเพิ่ม — กดขยับได้เลย" : (info.advance.error ?? "ดีลนี้เดินครบทุกขั้นแล้ว")}
+              </p>
+            )}
+
+            {err && <p className="mx-4 mb-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">{err}</p>}
+
+            <div className="flex items-center gap-2.5 flex-wrap px-4 py-3.5 bg-zinc-50 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-800">
+              {onHold ? (
+                <button onClick={() => act({ action: "resume" })} disabled={busy}
+                  className="h-10 inline-flex items-center gap-2 gold-grad text-[#3F3000] text-sm font-semibold px-4 rounded-lg disabled:opacity-50">
+                  <PlayCircle className="w-4 h-4" /> กลับมาดำเนินการต่อ
+                </button>
+              ) : info.advance.to && (
+                <>
+                  <button onClick={() => act({ action: "advance" })} disabled={busy || !canAdvance}
+                    className={`h-10 inline-flex items-center gap-2 text-sm font-semibold px-[18px] rounded-lg ${
+                      canAdvance ? "gold-grad text-[#3F3000]" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 cursor-not-allowed"}`}>
+                    <ArrowRight className="w-4 h-4" /> ขยับเป็น &ldquo;{nextLabel}&rdquo;
+                  </button>
+                  <span className={`text-[13px] font-semibold ${canAdvance ? "text-emerald-700 dark:text-emerald-400" : "text-[#9A6700] dark:text-amber-400"}`}>
+                    {canAdvance ? "พร้อมขยับ" : `ขาดอีก ${Math.max(total - done, info.advance.missing.length)} รายการ`}
+                  </span>
+                </>
+              )}
+              <div className="ml-auto flex gap-2">
+                {!onHold && (
+                  <button onClick={() => setDialog("hold")} disabled={busy}
+                    className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-[#D4A72C] text-[#7A4E00] dark:text-amber-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
+                    <PauseCircle className="w-[15px] h-[15px]" /> พักติดตาม
+                  </button>
+                )}
+                <button onClick={() => setDialog("close")} disabled={busy}
+                  className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
+                  <XCircle className="w-[15px] h-[15px]" /> ปิดดีล–ไม่สำเร็จ
                 </button>
               </div>
             </div>
-          )}
-        </div>
+        </>
+      </section>
       )}
 
-      {/* สิ่งที่ยังขาด */}
-      {!closed && info.advance.missing.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
-          <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4" /> ยังขยับขั้นไม่ได้
-          </p>
-          <ul className="mt-1 text-sm text-amber-700 dark:text-amber-200 list-disc list-inside">
-            {info.advance.missing.map((m) => <li key={m}>{m}</li>)}
-          </ul>
-        </div>
+      {dialog === "hold" && (
+        <HoldDialog busy={busy} onClose={() => setDialog("")}
+          onSubmit={async (holdReason, nextFollowUpDate) => { if (await act({ action: "hold", holdReason, nextFollowUpDate })) setDialog("") }} />
       )}
-
-      {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{err}</div>}
-
-      {/* ปุ่มสั่งงาน */}
-      <div className="flex flex-wrap gap-2">
-        {!closed && !onHold && info.advance.to && (
-          <button onClick={() => act({ action: "advance" })} disabled={busy || !info.advance.ok}
-            className="inline-flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-40">
-            <CheckCircle2 className="w-4 h-4" /> ขยับเป็น &quot;{STAGE_LABEL[info.advance.to]}&quot;
-          </button>
-        )}
-        {onHold && (
-          <button onClick={() => act({ action: "resume" })} disabled={busy}
-            className="inline-flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
-            <PlayCircle className="w-4 h-4" /> กลับมาดำเนินการต่อ
-          </button>
-        )}
-        {!closed && !onHold && (
-          <button onClick={() => setDialog("hold")} disabled={busy}
-            className="inline-flex items-center gap-2 border border-amber-300 text-amber-700 text-sm font-semibold px-4 py-2 rounded-lg">
-            <PauseCircle className="w-4 h-4" /> พักติดตาม
-          </button>
-        )}
-        {!closed && (
-          <button onClick={() => setDialog("close")} disabled={busy}
-            className="inline-flex items-center gap-2 border border-zinc-300 text-zinc-600 dark:text-zinc-300 text-sm font-semibold px-4 py-2 rounded-lg">
-            <XCircle className="w-4 h-4" /> Pass on (ปิด–ไม่สำเร็จ)
-          </button>
-        )}
-      </div>
-
-      {dialog === "hold" && <HoldDialog busy={busy} onClose={() => setDialog("")} onSubmit={(holdReason, nextFollowUpDate) => act({ action: "hold", holdReason, nextFollowUpDate })} />}
-      {dialog === "close" && <CloseDialog busy={busy} reasons={info.lossReasons} onClose={() => setDialog("")} onSubmit={(lossReasonId, lossNote) => act({ action: "close", lossReasonId, lossNote })} />}
+      {dialog === "close" && (
+        <CloseDialog busy={busy} reasons={info.lossReasons} onClose={() => setDialog("")}
+          onSubmit={async (lossReasonId, lossNote) => { if (await act({ action: "close", lossReasonId, lossNote })) setDialog("") }} />
+      )}
 
       <input ref={fileRef} type="file" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = "" }} />
-    </div>
+        onChange={(e) => { const f = e.target.files?.[0]; if (f && attachType) attach(attachType, f); e.target.value = ""; setAttachType("") }} />
+    </>
+  )
+}
+
+function ReqIcon({ ok }: { ok: boolean }) {
+  return ok ? (
+    <span aria-label="ครบแล้ว" className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+      <Check className="w-3 h-3" strokeWidth={3} />
+    </span>
+  ) : (
+    <span aria-label="ยังขาด" className="w-6 h-6 rounded-full border-2 border-dashed border-[#D4A72C]" />
   )
 }
 
