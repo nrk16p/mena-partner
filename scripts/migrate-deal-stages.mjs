@@ -58,7 +58,9 @@ if (apply && plan.length) {
     const $set = {
       stage: r.stage,
       stageEnteredAt: at,
-      lastActivityAt: at,
+      // นาฬิกา "เงียบ 30 วัน" เริ่มนับจากวันที่ย้ายเข้าไปป์ไลน์ใหม่
+      // (ถ้าใช้ updatedAt เดิม ดีลเก่าจะถูกปิดอัตโนมัติทันทีทั้งกอง — เจอจริงตอนทดสอบ)
+      lastActivityAt: now,
       ...(r.lostAtStage ? { lostAtStage: r.lostAtStage, lostAt: at } : {}),
     }
     await db.collection("quotations").updateOne({ _id: r._id }, { $set })

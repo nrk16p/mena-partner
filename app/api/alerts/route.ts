@@ -6,6 +6,7 @@ const DB = process.env.MONGO_DB ?? "mena_partner"
 
 type Alert = {
   type: "negative_pay" | "insurance_expired" | "insurance_expiring" | "repair_budget_critical" | "trip_fee_mismatch" | "overdue_installment"
+    | "deal_follow_up_due" | "deal_auto_closed"
   severity: "critical" | "warning" | "info"
   contractCode: string
   driverName: string
@@ -194,6 +195,34 @@ export async function GET() {
       driverName: (c.driverName as string) ?? driverNameMap[code] ?? code,
       message: `ค้างชำระค่างวด ${c.overdueCount} งวด`,
       value: `฿${(c.overdueAmount as number).toLocaleString("th-TH", { maximumFractionDigits: 0 })}`,
+    })
+  }
+
+  // ── ดีลในไปป์ไลน์ขาย: เลยวันติดตาม / ถูกระบบปิดเพราะเงียบ (รอเซลล์ระบุเหตุผลจริง) ──
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const dueDeals = await db.collection("quotations")
+    .find({ stage: "ON_HOLD", nextFollowUpDate: { $lte: todayISO } },
+      { projection: { quotationNo: 1, customerName: 1, salesName: 1, nextFollowUpDate: 1 } })
+    .limit(50).toArray()
+  for (const d of dueDeals) {
+    alerts.push({
+      type: "deal_follow_up_due", severity: "warning",
+      contractCode: String(d.quotationNo ?? ""),
+      driverName: String(d.customerName ?? ""),
+      message: `ดีลพักติดตาม เลยวันนัดติดตามแล้ว (${d.nextFollowUpDate}) — ${d.salesName ?? "ไม่ระบุเซลล์"}`,
+    })
+  }
+
+  const autoClosed = await db.collection("quotations")
+    .find({ stage: "CLOSED_LOST", lossNote: { $regex: "ระบบปิดให้อัตโนมัติ" } },
+      { projection: { quotationNo: 1, customerName: 1, salesName: 1 } })
+    .limit(50).toArray()
+  for (const d of autoClosed) {
+    alerts.push({
+      type: "deal_auto_closed", severity: "info",
+      contractCode: String(d.quotationNo ?? ""),
+      driverName: String(d.customerName ?? ""),
+      message: `ระบบปิดดีลเพราะไม่มีความเคลื่อนไหว — รอเซลล์ระบุเหตุผลจริง (${d.salesName ?? "ไม่ระบุเซลล์"})`,
     })
   }
 
