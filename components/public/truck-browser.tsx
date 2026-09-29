@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react"
 import { TruckCard } from "./truck-card"
 import type { PublicTruck } from "@/lib/public-trucks"
-import { ReadyStars } from "./ready-stars"
+import { PrepStars, ReadyStars } from "./ready-stars"
 
 type Sort = "recommended" | "price-asc" | "year-desc"
+/** ระดับดาว: ready = ★★★★★ พร้อมขาย · prep = ★★★ เตรียมรถ */
+type Tier = "" | "ready" | "prep"
 
 /** กรองในหน่วยความจำ — สต็อกหลักสิบคัน ไม่ต้อง server pagination; ตัวกรองไม่เขียนลง URL (กันหน้าซ้ำถูก index) */
 export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
@@ -15,7 +17,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [yearFrom, setYearFrom] = useState(0)
   const [yearTo, setYearTo] = useState(0)
   const [sort, setSort] = useState<Sort>("recommended")
-  const [readyOnly, setReadyOnly] = useState(false)
+  const [tier, setTier] = useState<Tier>("")
 
   const brands = useMemo(() => [...new Set(trucks.map((t) => t.brand).filter(Boolean))].sort(), [trucks])
   const chars  = useMemo(() => [...new Set(trucks.map((t) => t.characteristic).filter(Boolean))].sort(), [trucks])
@@ -24,13 +26,14 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     () => [...new Set(trucks.map((t) => t.registrationYear).filter((y): y is number => !!y))].sort((a, b) => a - b),
     [trucks])
   const readyCount = useMemo(() => trucks.filter((t) => t.isReady).length, [trucks])
+  const prepCount = trucks.length - readyCount
 
   const shown = useMemo(() => {
     const out = trucks.filter((t) => {
       // ตั้งช่วงปีแล้ว รถที่ไม่ได้บันทึกปีจะไม่ขึ้น (ยืนยันปีไม่ได้)
       const y = t.registrationYear
       if ((yearFrom || yearTo) && !y) return false
-      return (!readyOnly || t.isReady) &&
+      return (!tier || (tier === "ready") === t.isReady) &&
         (!brand || t.brand === brand) &&
         (!characteristic || t.characteristic === characteristic) &&
         (!maxPrice || t.display.price <= maxPrice) &&
@@ -40,26 +43,30 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     if (sort === "price-asc") return [...out].sort((a, b) => a.display.price - b.display.price)
     if (sort === "year-desc") return [...out].sort((a, b) => (b.registrationYear ?? 0) - (a.registrationYear ?? 0))
     return out
-  }, [trucks, readyOnly, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
+  }, [trucks, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
 
-  const reset = () => { setReadyOnly(false); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
-  const filtered = !!(readyOnly || brand || characteristic || maxPrice || yearFrom || yearTo)
+  const reset = () => { setTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
+  const filtered = !!(tier || brand || characteristic || maxPrice || yearFrom || yearTo)
   const sel = "rounded-full border border-[var(--mena-line)] bg-white px-4 py-2.5 text-sm hover:border-[var(--mena-green-soft)] focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--mena-line)] pb-5 mb-8">
-        {readyCount > 0 && (
+        {([
+          ["ready", <ReadyStars key="s" />, "พร้อมขาย", readyCount],
+          ["prep", <PrepStars key="s" />, "เตรียมรถ", prepCount],
+        ] as const).map(([key, stars, label, count]) => count > 0 && (
+          // กดซ้ำ = ยกเลิก; เลือกได้ทีละระดับ
           <button
-            type="button" aria-pressed={readyOnly} onClick={() => setReadyOnly((v) => !v)}
-            className={readyOnly
+            key={key} type="button" aria-pressed={tier === key} onClick={() => setTier((v) => (v === key ? "" : key))}
+            className={tier === key
               ? "inline-flex items-center gap-1.5 rounded-full border border-[var(--mena-green)] bg-[var(--mena-green)] text-white px-4 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mena-green)]"
               : `${sel} inline-flex items-center gap-1.5 font-medium`}
           >
-            <ReadyStars />
-            พร้อมขาย ({readyCount})
+            {stars}
+            {label} ({count})
           </button>
-        )}
+        ))}
         <select className={sel} value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="ยี่ห้อ">
           <option value="">ยี่ห้อทั้งหมด</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}

@@ -10,7 +10,7 @@ import { TruckSpecTable } from "@/components/public/truck-spec-table"
 import { TruckCard } from "@/components/public/truck-card"
 import { LeadForm } from "@/components/public/lead-form"
 import { telHref } from "@/components/public/thai-text"
-import { ReadyStars } from "@/components/public/ready-stars"
+import { PrepStars, ReadyStars } from "@/components/public/ready-stars"
 
 export const revalidate = 600
 
@@ -123,7 +123,7 @@ export default async function TruckDetailPage({ params }: Params) {
             )}
             {!truck.isSold && !truck.isReady && (
               <p className="mt-3 rounded-lg bg-[var(--mena-paper)] px-3 py-2 text-sm text-[var(--mena-ink)]/70">
-                อยู่ระหว่างเตรียมรถ สอบถามวันส่งมอบกับฝ่ายขาย
+                <PrepStars className="mr-1.5" />อยู่ระหว่างเตรียมรถ สอบถามวันส่งมอบกับฝ่ายขาย
               </p>
             )}
 

@@ -7,7 +7,7 @@ import { siteUrl, fmtBaht } from "@/lib/public-seo"
 import { TruckBrowser } from "@/components/public/truck-browser"
 import { LeadForm } from "@/components/public/lead-form"
 import { ThaiText, telHref } from "@/components/public/thai-text"
-import { ReadyStars } from "@/components/public/ready-stars"
+import { PrepStars, ReadyStars } from "@/components/public/ready-stars"
 
 export const revalidate = 600
 
@@ -70,8 +70,9 @@ export default async function TrucksPage() {
       <section id="รถพร้อมขาย" className="max-w-6xl mx-auto px-4 py-12 sm:py-16 scroll-mt-20">
         <h2 className="text-2xl font-medium">รถทั้งหมด</h2>
         <p className="text-[var(--mena-ink)]/60 mt-1">ทุกคันมีโปรโมชั่นติดรถ ดูราคาและแผนผ่อนได้ทุกคัน</p>
-        <p className="text-sm text-[var(--mena-ink)]/60 mt-2 inline-flex items-center gap-1.5">
-          <ReadyStars /> = พร้อมขาย ส่งมอบได้ทันที
+        <p className="text-sm text-[var(--mena-ink)]/60 mt-2 flex flex-wrap gap-x-5 gap-y-1">
+          <span className="inline-flex items-center gap-1.5"><ReadyStars /> = พร้อมขาย ส่งมอบได้ทันที</span>
+          <span className="inline-flex items-center gap-1.5"><PrepStars /> = อยู่ระหว่างเตรียมรถ</span>
         </p>
         <div className="mt-8">
           <TruckBrowser trucks={trucks} />
