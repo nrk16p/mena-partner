@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import { TruckCard } from "./truck-card"
 import type { PublicTruck } from "@/lib/public-trucks"
 import { PrepStars, ReadyStars } from "./ready-stars"
@@ -9,7 +9,25 @@ type Sort = "recommended" | "price-asc" | "year-desc"
 /** ระดับดาว: ready = ★★★★★ พร้อมขาย · prep = ★★★ เตรียมรถ */
 type Tier = "" | "ready" | "prep"
 
-/** กรองในหน่วยความจำ — สต็อกหลักสิบคัน ไม่ต้อง server pagination; ตัวกรองไม่เขียนลง URL (กันหน้าซ้ำถูก index) */
+/** ระดับดาวผูกกับ #hash — ลิงก์ส่งต่อได้ (/trucks#พร้อมขาย) และ Google นับเป็นหน้าเดียว (fragment ไม่ถูก index)
+ *  ปุ่มหัวหน้า: #พร้อมขาย = กรองพร้อมขาย · #รถพร้อมขาย (ดูรถทั้งหมด) = ล้างระดับดาว */
+const TIER_HASH: Record<Tier, string> = { "": "", ready: "#พร้อมขาย", prep: "#เตรียมรถ" }
+function tierFromHash(raw: string): Tier | null {
+  let h = raw
+  try { h = decodeURIComponent(raw) } catch { /* hash เพี้ยน → ใช้ค่าดิบ */ }
+  if (h === TIER_HASH.ready) return "ready"
+  if (h === TIER_HASH.prep) return "prep"
+  if (h === "#รถพร้อมขาย") return ""
+  return null   // hash อื่น (#ติดต่อ) ไม่แตะตัวกรอง
+}
+const subscribeHash = (cb: () => void) => {
+  window.addEventListener("hashchange", cb)
+  return () => window.removeEventListener("hashchange", cb)
+}
+const readHash = () => window.location.hash
+const serverHash = () => ""
+
+/** กรองในหน่วยความจำ — สต็อกหลักร้อยคัน ไม่ต้อง server pagination; ตัวกรองไม่เขียนลง query (กันหน้าซ้ำถูก index) ยกเว้นระดับดาวที่อยู่ใน #hash */
 export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [brand, setBrand] = useState("")
   const [characteristic, setChar] = useState("")
@@ -18,6 +36,22 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [yearTo, setYearTo] = useState(0)
   const [sort, setSort] = useState<Sort>("recommended")
   const [tier, setTier] = useState<Tier>("")
+
+  // hash เปลี่ยน (โหลดหน้า/กดปุ่มหัวหน้า/ย้อนกลับ) → ตั้งระดับดาวตาม — ปรับ state ระหว่าง render แทน effect
+  const hash = useSyncExternalStore(subscribeHash, readHash, serverHash)
+  const [seenHash, setSeenHash] = useState(hash)
+  if (hash !== seenHash) {
+    setSeenHash(hash)
+    const t = tierFromHash(hash)
+    if (t !== null) setTier(t)
+  }
+  // กดชิป/ล้างตัวกรอง → เขียน hash ตาม (replaceState: ไม่เลื่อนจอ ไม่เพิ่มประวัติ)
+  const chooseTier = (next: Tier) => {
+    setTier(next)
+    const cur = window.location.hash
+    if (!next && tierFromHash(cur) === null) return
+    history.replaceState(history.state, "", window.location.pathname + window.location.search + TIER_HASH[next])
+  }
 
   const brands = useMemo(() => [...new Set(trucks.map((t) => t.brand).filter(Boolean))].sort(), [trucks])
   const chars  = useMemo(() => [...new Set(trucks.map((t) => t.characteristic).filter(Boolean))].sort(), [trucks])
@@ -45,7 +79,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     return out
   }, [trucks, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
 
-  const reset = () => { setTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
+  const reset = () => { chooseTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
   const filtered = !!(tier || brand || characteristic || maxPrice || yearFrom || yearTo)
   const sel = "rounded-full border border-[var(--mena-line)] bg-white px-4 py-2.5 text-sm hover:border-[var(--mena-green-soft)] focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
 
@@ -58,7 +92,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
         ] as const).map(([key, stars, label, count]) => count > 0 && (
           // กดซ้ำ = ยกเลิก; เลือกได้ทีละระดับ
           <button
-            key={key} type="button" aria-pressed={tier === key} onClick={() => setTier((v) => (v === key ? "" : key))}
+            key={key} type="button" aria-pressed={tier === key} onClick={() => chooseTier(tier === key ? "" : key)}
             className={tier === key
               ? "inline-flex items-center gap-1.5 rounded-full border border-[var(--mena-green)] bg-[var(--mena-green)] text-white px-4 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mena-green)]"
               : `${sel} inline-flex items-center gap-1.5 font-medium`}

@@ -44,6 +44,12 @@ export default async function TrucksPage() {
             <a href="#รถพร้อมขาย" className="rounded-full bg-white text-[var(--mena-green-deep)] px-6 py-3 font-medium hover:bg-white/90 transition-colors">
               ดูรถทั้งหมด {trucks.length} คัน
             </a>
+            {readyCount > 0 && (
+              // #พร้อมขาย → TruckBrowser กดชิป ★★★★★ ให้อัตโนมัติ
+              <a href="#พร้อมขาย" className="inline-flex items-center gap-2 rounded-full border border-white/60 px-6 py-3 font-medium hover:bg-white/10 transition-colors">
+                <ReadyStars /> รถพร้อมขาย {readyCount} คัน
+              </a>
+            )}
             {cfg.contactPhone && (
               <a href={telHref(cfg.contactPhone)} className="rounded-full border border-white/60 px-6 py-3 font-medium hover:bg-white/10 transition-colors">
                 โทรหาฝ่ายขาย {cfg.contactPhone}
@@ -68,6 +74,9 @@ export default async function TrucksPage() {
       </section>
 
       <section id="รถพร้อมขาย" className="max-w-6xl mx-auto px-4 py-12 sm:py-16 scroll-mt-20">
+        {/* จุดเลื่อนของลิงก์กรองดาว (/trucks#พร้อมขาย, #เตรียมรถ) — ตัวกรองอ่าน hash ใน TruckBrowser */}
+        <span id="พร้อมขาย" className="block scroll-mt-20" aria-hidden="true" />
+        <span id="เตรียมรถ" className="block scroll-mt-20" aria-hidden="true" />
         <h2 className="text-2xl font-medium">รถทั้งหมด</h2>
         <p className="text-[var(--mena-ink)]/60 mt-1">ทุกคันมีโปรโมชั่นติดรถ ดูราคาและแผนผ่อนได้ทุกคัน</p>
         <p className="text-sm text-[var(--mena-ink)]/60 mt-2 flex flex-wrap gap-x-5 gap-y-1">
