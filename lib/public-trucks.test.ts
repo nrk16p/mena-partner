@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { makeSlug, uniqueSlug, registrationYear, toPublicTruck, isReadyForSale } from "@/lib/public-trucks"
+import { makeSlug, uniqueSlug, registrationYear, toPublicTruck, isReadyForSale, isAvailable } from "@/lib/public-trucks"
 
 describe("makeSlug", () => {
   it("สร้างจาก เบอร์รถ-ยี่ห้อ-รุ่น-ปีพ.ศ.", () => {
@@ -94,6 +94,29 @@ describe("toPublicTruck — field allowlist", () => {
     expect(out.totalSalePrice).toBe(0)
     expect(out.monthlyPayment).toBe(0)
     expect(out.isSold).toBe(true)
+  })
+
+  it("isReady = ยังไม่ขาย + saleStatus ready (ติดดาว ★★★★★ บนเว็บ)", () => {
+    expect(toPublicTruck(vehicle, price, [], "x", false).isReady).toBe(true)
+    expect(toPublicTruck(vehicle, { ...price, saleStatus: "repair15" }, [], "x", false).isReady).toBe(false)
+    expect(toPublicTruck(vehicle, { ...price, saleStatus: undefined }, [], "x", false).isReady).toBe(false)
+    expect(toPublicTruck(vehicle, price, [], "x", true).isReady).toBe(false)
+  })
+})
+
+describe("isAvailable — รถ \"ว่าง\" ตามหน้า /price-list", () => {
+  it("ว่าง = มีแถวราคา + ไม่ inactive + ไม่มีสัญญา (ไม่สน saleStatus)", () => {
+    expect(isAvailable({ status: "active", licensePlate: "สบ.71-1956" }, { saleStatus: "ready" }, new Set())).toBe(true)
+    expect(isAvailable({ status: "active", licensePlate: "สบ.71-1956" }, { saleStatus: "review" }, new Set())).toBe(true)
+    expect(isAvailable({ status: "active", licensePlate: "สบ.71-1956" }, {}, new Set())).toBe(true)
+  })
+  it("ไม่มี status ใน vehicle_master → ถือว่าว่าง (ตรงกับ /price-list)", () => {
+    expect(isAvailable({ licensePlate: "สบ.71-1956" }, {}, new Set())).toBe(true)
+  })
+  it("inactive / ติดสัญญา / ไม่มีแถวราคา → ไม่ว่าง", () => {
+    expect(isAvailable({ status: "inactive", licensePlate: "สบ.71-1956" }, {}, new Set())).toBe(false)
+    expect(isAvailable({ status: "active", licensePlate: "สบ.71-1956" }, {}, new Set(["71-1956"]))).toBe(false)
+    expect(isAvailable({ status: "active", licensePlate: "สบ.71-1956" }, undefined, new Set())).toBe(false)
   })
 })
 

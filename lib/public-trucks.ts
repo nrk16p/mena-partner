@@ -32,6 +32,8 @@ export interface PublicTruck {
   display: { price: number; monthlyPayment: number; downPayment: number }
   promos: PromoCopy[]   // ถ้อยคำจาก lib/promo-copy (ชุดเดียวกับโปสเตอร์/Catalog PDF)
   isSold: boolean
+  /** saleStatus ready และยังไม่ขาย → ติดดาว ★★★★★ "พร้อมขาย" บนเว็บ (ไม่เผยค่า saleStatus ดิบ) */
+  isReady: boolean
 }
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
@@ -96,18 +98,28 @@ export function toPublicTruck(
     display: displaySalePrice(price ?? {}),
     promos,
     isSold,
+    isReady: !isSold && price?.saleStatus === "ready",
   }
 }
 
-/** เกณฑ์เดียวกับ catalog PDF: ไม่ inactive + ไม่มีสัญญา active + saleStatus ready */
-export function isReadyForSale(
+/** รถ "ว่าง" ตามหน้า /price-list: มีแถวราคา + ไม่ inactive + ไม่มีสัญญา active — เกณฑ์ขึ้นหน้าเว็บ /trucks */
+export function isAvailable(
   vehicle: Record<string, unknown>,
   price: Record<string, unknown> | undefined,
   underContract: Set<string>,
 ): boolean {
   if (!price) return false
   const key = normPlate(String(vehicle.licensePlate ?? ""))
-  return vehicle.status !== "inactive" && !underContract.has(key) && price.saleStatus === "ready"
+  return vehicle.status !== "inactive" && !underContract.has(key)
+}
+
+/** เกณฑ์เดียวกับ catalog PDF: รถว่าง + saleStatus ready */
+export function isReadyForSale(
+  vehicle: Record<string, unknown>,
+  price: Record<string, unknown> | undefined,
+  underContract: Set<string>,
+): boolean {
+  return isAvailable(vehicle, price, underContract) && price?.saleStatus === "ready"
 }
 
 /** projection = field ที่เปิดเผยได้เท่านั้น (ไม่ดึงเลขตัวถัง/เลขเครื่องออกจาก DB ตั้งแต่ต้น) */
@@ -152,13 +164,14 @@ export async function loadPublicTrucks(): Promise<PublicTruck[]> {
   const out: PublicTruck[] = []
   for (const v of vehicles) {
     const key = normPlate(String(v.licensePlate ?? ""))
-    if (!isReadyForSale(v, priceBy.get(key), underContract)) continue
+    if (!isAvailable(v, priceBy.get(key), underContract)) continue
     const slug = slugOf(v, taken)
     taken.add(slug)
     out.push(toPublicTruck(v, priceBy.get(key), promoCopy(promoBy.get(key)), slug, false))
   }
-  // มีรูปขึ้นก่อน (หน้าแรกต้องดูดี) แล้วเรียงราคาต่ำ→สูง
+  // พร้อมขาย (★) ขึ้นก่อน → มีรูป (หน้าแรกต้องดูดี) → ราคาต่ำ→สูง
   return out.sort((a, b) =>
+    Number(b.isReady) - Number(a.isReady) ||
     Number(!!b.photoUrl) - Number(!!a.photoUrl) || a.display.price - b.display.price)
 }
 
@@ -171,9 +184,9 @@ export async function loadPublicTruckBySlug(slug: string): Promise<PublicTruck |
     if (s2 !== slug) continue
     const key = normPlate(String(v.licensePlate ?? ""))
     const price = priceBy.get(key)
-    const ready = isReadyForSale(v, price, underContract)
+    const available = isAvailable(v, price, underContract)
     // รถที่ขายแล้ว/เข้าสัญญาแล้ว ยังเปิดหน้าได้ (ริบบิ้น "ขายแล้ว" + noindex)
-    return toPublicTruck(v, price, promoCopy(promoBy.get(key)), s2, !ready)
+    return toPublicTruck(v, price, promoCopy(promoBy.get(key)), s2, !available)
   }
   return null
 }

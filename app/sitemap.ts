@@ -5,7 +5,7 @@ import { siteUrl } from "@/lib/public-seo"
 export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const trucks = await loadPublicTrucks()   // เฉพาะรถพร้อมขาย — ที่ขายแล้วไม่เข้า sitemap
+  const trucks = await loadPublicTrucks()   // รถว่างทุกคัน (★ พร้อมขาย + ที่กำลังเตรียม) — ที่ขายแล้วไม่เข้า sitemap
   return [
     { url: siteUrl("/trucks"), changeFrequency: "daily", priority: 1 },
     ...trucks.map((t) => ({

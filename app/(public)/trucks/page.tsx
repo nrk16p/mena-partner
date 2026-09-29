@@ -7,6 +7,7 @@ import { siteUrl, fmtBaht } from "@/lib/public-seo"
 import { TruckBrowser } from "@/components/public/truck-browser"
 import { LeadForm } from "@/components/public/lead-form"
 import { ThaiText, telHref } from "@/components/public/thai-text"
+import { ReadyStars } from "@/components/public/ready-stars"
 
 export const revalidate = 600
 
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
 export default async function TrucksPage() {
   const db = (await clientPromise).db(process.env.MONGO_DB ?? "mena_partner")
   const [trucks, cfg] = await Promise.all([loadPublicTrucks(), getCatalogConfig(db)])
+  const readyCount = trucks.filter((t) => t.isReady).length
   const cheapest = trucks.reduce((m, t) => (t.display.monthlyPayment > 0 && (m === 0 || t.display.monthlyPayment < m) ? t.display.monthlyPayment : m), 0)
 
   return (
@@ -40,7 +42,7 @@ export default async function TrucksPage() {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#รถพร้อมขาย" className="rounded-full bg-white text-[var(--mena-green-deep)] px-6 py-3 font-medium hover:bg-white/90 transition-colors">
-              ดูรถพร้อมขาย {trucks.length} คัน
+              ดูรถทั้งหมด {trucks.length} คัน
             </a>
             {cfg.contactPhone && (
               <a href={telHref(cfg.contactPhone)} className="rounded-full border border-white/60 px-6 py-3 font-medium hover:bg-white/10 transition-colors">
@@ -49,12 +51,14 @@ export default async function TrucksPage() {
             )}
           </div>
 
-          <dl className="mt-10 grid grid-cols-2 gap-px bg-white/20 rounded-2xl overflow-hidden max-w-md">
-            {[
-              ["พร้อมขายตอนนี้", `${trucks.length} คัน`],
-              ["ผ่อนเริ่มต้น", cheapest ? `฿${fmtBaht(cheapest)}/เดือน` : "สอบถามฝ่ายขาย"],
-            ].map(([k, v]) => (
-              <div key={k} className="bg-[var(--mena-green-deep)]/85 px-5 py-4">
+          <dl className="mt-10 grid grid-cols-3 gap-px bg-white/20 rounded-2xl overflow-hidden max-w-lg">
+            {([
+              ["รถว่างตอนนี้", `${trucks.length} คัน`],
+              // จอแคบ: ดาวขึ้นบรรทัดเอง + คำไม่แตก (ช่องละ ~110px)
+              [<><ReadyStars className="block sm:inline text-[10px]" /> <span className="whitespace-nowrap">พร้อมขาย</span></>, `${readyCount} คัน`],
+              ["ผ่อนเริ่มต้น", cheapest ? <>฿{fmtBaht(cheapest)}<wbr /><span className="whitespace-nowrap">/เดือน</span></> : "สอบถามฝ่ายขาย"],
+            ] as const).map(([k, v], i) => (
+              <div key={i} className="bg-[var(--mena-green-deep)]/85 px-4 sm:px-5 py-4">
                 <dt className="text-xs text-white/70">{k}</dt>
                 <dd className="mt-1 font-medium tabular-nums">{v}</dd>
               </div>
@@ -64,8 +68,11 @@ export default async function TrucksPage() {
       </section>
 
       <section id="รถพร้อมขาย" className="max-w-6xl mx-auto px-4 py-12 sm:py-16 scroll-mt-20">
-        <h2 className="text-2xl font-medium">รถพร้อมส่งมอบ</h2>
+        <h2 className="text-2xl font-medium">รถทั้งหมด</h2>
         <p className="text-[var(--mena-ink)]/60 mt-1">ทุกคันมีโปรโมชั่นติดรถ ดูราคาและแผนผ่อนได้ทุกคัน</p>
+        <p className="text-sm text-[var(--mena-ink)]/60 mt-2 inline-flex items-center gap-1.5">
+          <ReadyStars /> = พร้อมขาย ส่งมอบได้ทันที
+        </p>
         <div className="mt-8">
           <TruckBrowser trucks={trucks} />
         </div>

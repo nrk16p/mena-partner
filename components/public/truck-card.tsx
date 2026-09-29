@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { fmtBaht } from "@/lib/public-seo"
 import type { PublicTruck } from "@/lib/public-trucks"
+import { ReadyBadge } from "./ready-stars"
 
 export function TruckCard({ truck }: { truck: PublicTruck }) {
   const year = truck.registrationYear
@@ -31,6 +32,7 @@ export function TruckCard({ truck }: { truck: PublicTruck }) {
             โปรฯ {truck.promos.length} ต่อ
           </span>
         )}
+        {truck.isReady && <ReadyBadge className="absolute top-3 right-3" />}
       </div>
 
       <div className="p-5 flex flex-col flex-1">

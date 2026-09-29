@@ -10,6 +10,7 @@ import { TruckSpecTable } from "@/components/public/truck-spec-table"
 import { TruckCard } from "@/components/public/truck-card"
 import { LeadForm } from "@/components/public/lead-form"
 import { telHref } from "@/components/public/thai-text"
+import { ReadyStars } from "@/components/public/ready-stars"
 
 export const revalidate = 600
 
@@ -51,7 +52,7 @@ export default async function TruckDetailPage({ params }: Params) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(truckJsonLd(truck)) }} />
 
       <nav className="text-sm text-[var(--mena-ink)]/55 mb-6">
-        <Link href="/trucks" className="hover:text-[var(--mena-green)]">รถพร้อมขาย</Link>
+        <Link href="/trucks" className="hover:text-[var(--mena-green)]">รถทั้งหมด</Link>
         <span className="mx-2">/</span>
         <span className="text-[var(--mena-ink)]">{heading}</span>
       </nav>
@@ -111,9 +112,19 @@ export default async function TruckDetailPage({ params }: Params) {
             {truck.isSold && (
               <p className="mb-3 inline-block rounded-full bg-[var(--mena-ink)] text-white text-xs px-3 py-1">ขายแล้ว</p>
             )}
+            {truck.isReady && (
+              <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--mena-paper)] text-[var(--mena-green-deep)] text-xs font-medium px-3 py-1">
+                <ReadyStars /> พร้อมขาย ส่งมอบได้ทันที
+              </p>
+            )}
             <h1 className="text-2xl font-medium leading-snug">{heading}</h1>
             {(truck.characteristic || truck.vehicleType) && (
               <p className="text-sm text-[var(--mena-ink)]/55 mt-1">{truck.characteristic || truck.vehicleType}</p>
+            )}
+            {!truck.isSold && !truck.isReady && (
+              <p className="mt-3 rounded-lg bg-[var(--mena-paper)] px-3 py-2 text-sm text-[var(--mena-ink)]/70">
+                อยู่ระหว่างเตรียมรถ สอบถามวันส่งมอบกับฝ่ายขาย
+              </p>
             )}
 
             <p className="mt-5 text-4xl font-semibold text-[var(--mena-green)] tabular-nums">฿{fmtBaht(truck.display.price)}</p>
