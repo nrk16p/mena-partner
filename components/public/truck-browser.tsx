@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useSyncExternalStore } from "react"
+import { useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { TruckCard } from "./truck-card"
 import type { PublicTruck } from "@/lib/public-trucks"
 import { PrepStars, ReadyStars } from "./ready-stars"
@@ -27,7 +27,10 @@ const subscribeHash = (cb: () => void) => {
 const readHash = () => window.location.hash
 const serverHash = () => ""
 
-/** กรองในหน่วยความจำ — สต็อกหลักร้อยคัน ไม่ต้อง server pagination; ตัวกรองไม่เขียนลง query (กันหน้าซ้ำถูก index) ยกเว้นระดับดาวที่อยู่ใน #hash */
+/** 12 = ลงตัวทั้ง grid 2 และ 3 คอลัมน์ (ไม่มีแถวสุดท้ายแหว่ง) */
+const PAGE_SIZE = 12
+
+/** กรอง+แบ่งหน้าในหน่วยความจำ — สต็อกหลักร้อยคัน ไม่ต้อง server pagination (หน้ารถทุกคันอยู่ใน sitemap แล้ว Google ไม่ต้องไล่หน้า); ตัวกรอง/เลขหน้าไม่เขียนลง query (กันหน้าซ้ำถูก index) ยกเว้นระดับดาวที่อยู่ใน #hash */
 export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [brand, setBrand] = useState("")
   const [characteristic, setChar] = useState("")
@@ -79,13 +82,32 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     return out
   }, [trucks, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
 
+  // เปลี่ยนตัวกรอง/การเรียง → กลับหน้า 1 (ปรับ state ระหว่าง render เหมือน hash ด้านบน)
+  const [page, setPage] = useState(1)
+  const filterKey = [tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort].join("|")
+  const [seenFilterKey, setSeenFilterKey] = useState(filterKey)
+  if (filterKey !== seenFilterKey) {
+    setSeenFilterKey(filterKey)
+    setPage(1)
+  }
+  const totalPages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE))
+  const curPage = Math.min(page, totalPages)
+  const paged = shown.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE)
+
+  // เปลี่ยนหน้า → เลื่อนกลับขึ้นแถบตัวกรอง ไม่งั้นลูกค้าค้างอยู่ท้ายรายการหน้าใหม่
+  const topRef = useRef<HTMLDivElement>(null)
+  const goPage = (n: number) => {
+    setPage(n)
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
   const reset = () => { chooseTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
   const filtered = !!(tier || brand || characteristic || maxPrice || yearFrom || yearTo)
   const sel = "rounded-full border border-[var(--mena-line)] bg-white px-4 py-2.5 text-sm hover:border-[var(--mena-green-soft)] focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--mena-line)] pb-5 mb-8">
+      <div ref={topRef} className="flex flex-wrap items-center gap-2 border-b border-[var(--mena-line)] pb-5 mb-8 scroll-mt-24">
         {([
           ["ready", <ReadyStars key="s" />, "พร้อมขาย", readyCount],
           ["prep", <PrepStars key="s" />, "เตรียมรถ", prepCount],
@@ -154,10 +176,66 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((t) => <TruckCard key={t.slug} truck={t} />)}
-        </div>
+        <>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {paged.map((t) => <TruckCard key={t.slug} truck={t} />)}
+          </div>
+          <Pager page={curPage} totalPages={totalPages} total={shown.length} onPage={goPage} />
+        </>
       )}
     </>
+  )
+}
+
+/** แถบเลขหน้าโทนแบรนด์ (ใช้ components/pagination ไม่ได้ — สี zinc ของหลังบ้าน)
+ *  จอแคบ: ก่อนหน้า · หน้า x/y · ถัดไป  ·  sm ขึ้นไป: เลขหน้า 1 … 4 5 6 … 15 */
+function Pager({ page, totalPages, total, onPage }: {
+  page: number
+  totalPages: number
+  total: number
+  onPage: (n: number) => void
+}) {
+  const from = (page - 1) * PAGE_SIZE + 1
+  const to = Math.min(page * PAGE_SIZE, total)
+  const numbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+    .reduce<(number | "…")[]>((acc, n) => {
+      const prev = acc[acc.length - 1]
+      if (typeof prev === "number" && n - prev > 1) acc.push("…")
+      acc.push(n)
+      return acc
+    }, [])
+
+  const btn = "inline-flex items-center justify-center rounded-full border border-[var(--mena-line)] bg-white h-10 text-sm hover:border-[var(--mena-green-soft)] disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mena-green)]"
+
+  return (
+    <nav aria-label="เลขหน้า" className="mt-10 flex flex-col items-center gap-3">
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1.5">
+          <button type="button" onClick={() => onPage(page - 1)} disabled={page <= 1} className={`${btn} px-4`}>
+            ‹ ก่อนหน้า
+          </button>
+          <span className="sm:hidden px-3 text-sm tabular-nums">หน้า {page} / {totalPages}</span>
+          <span className="hidden sm:flex items-center gap-1.5">
+            {numbers.map((n, i) => n === "…" ? (
+              <span key={`gap${i}`} className="w-6 text-center text-[var(--mena-ink)]/40">…</span>
+            ) : (
+              <button
+                key={n} type="button" onClick={() => onPage(n)} aria-current={n === page ? "page" : undefined}
+                className={n === page
+                  ? "inline-flex items-center justify-center rounded-full h-10 min-w-10 px-3 text-sm font-medium bg-[var(--mena-green)] text-white tabular-nums"
+                  : `${btn} min-w-10 px-3 tabular-nums`}
+              >
+                {n}
+              </button>
+            ))}
+          </span>
+          <button type="button" onClick={() => onPage(page + 1)} disabled={page >= totalPages} className={`${btn} px-4`}>
+            ถัดไป ›
+          </button>
+        </div>
+      )}
+      <p className="text-sm text-[var(--mena-ink)]/55 tabular-nums">แสดง {from}–{to} จาก {total} คัน</p>
+    </nav>
   )
 }
