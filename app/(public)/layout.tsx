@@ -27,6 +27,20 @@ const BRAND = {
   "--mena-line": "#DFE3E6",
 } as React.CSSProperties
 
+// ช่องทางโซเชียลฝ่ายขาย (ส่งมาจากทีมขาย 2026-10-06) — ตัด query ติดตามของแอปออก
+const SOCIALS = [
+  {
+    label: "Facebook",
+    href: "https://www.facebook.com/share/17VJvbKqAj/",
+    icon: "M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07",
+  },
+  {
+    label: "TikTok @taokaenoimena",
+    href: "https://www.tiktok.com/@taokaenoimena",
+    icon: "M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07",
+  },
+]
+
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const cfg = await getCatalogConfig((await clientPromise).db(process.env.MONGO_DB ?? "mena_partner"))
 
@@ -96,6 +110,18 @@ export default async function PublicLayout({ children }: { children: React.React
             <ul className="mt-3 space-y-2.5">
               <li><a href="https://www.menatransport.co.th" className="hover:text-white">menatransport.co.th</a></li>
               <li><Link href="/trucks" className="hover:text-white">รถทั้งหมด</Link></li>
+            </ul>
+
+            <p className="mt-6 font-medium text-white">ติดตามเรา</p>
+            <ul className="mt-3 space-y-2.5">
+              {SOCIALS.map((s) => (
+                <li key={s.label}>
+                  <a href={s.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-white">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true"><path d={s.icon} /></svg>
+                    {s.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
