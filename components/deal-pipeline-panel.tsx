@@ -17,6 +17,8 @@ export interface StageInfo {
   advance: { ok: boolean; to: Stage | null; missing: string[]; error?: string }
   screening: { key: string; label: string; pass: boolean; auto: boolean; detail?: string }[]
   lossReasons: { _id?: string; code: string; label: string; group: string }[]
+  /** ดีลที่ระบบปิดเองเพราะเงียบเกิน 30 วัน — ยังไม่มีเหตุผลจริง */
+  needsRealReason?: boolean
 }
 
 export interface DealForPanel {
@@ -40,6 +42,11 @@ export interface DealForPanel {
   contractDate?: string
   deliveryDate?: string
   deliveredAt?: string
+  sourceChannel?: string
+  experienceLevel?: string
+  preferredArea?: string
+  motivation?: string
+  interestedVehicle?: string
   attachments?: { type: string; url: string; label?: string; uploadedAt?: string }[]
 }
 
@@ -90,6 +97,16 @@ const STAGE_FORM: Record<string, { fields: StageField[]; attach?: string }> = {
     attach: "DELIVERY_PHOTO",
   },
 }
+
+/** ข้อมูลประกอบการขาย เก็บตอนขั้นผู้สนใจ — ไม่บังคับ แต่ใช้วางแผนฝึกงานและดูช่องทางที่มา */
+const SOURCE_CHANNELS = ["เพจเฟซบุ๊ก", "TikTok", "เว็บขายรถ", "ลูกค้าเดิมแนะนำ", "พนักงานแนะนำ", "เดินเข้ามาเอง", "อื่น ๆ"]
+const EXPERIENCE = [
+  { v: "NONE", label: "ไม่เคยขับรถโม่", days: "10–15 วัน" },
+  { v: "LT1", label: "ขับโม่มาไม่ถึง 1 ปี", days: "10–15 วัน" },
+  { v: "GT1", label: "ขับโม่มามากกว่า 1 ปี", days: "3 วัน" },
+]
+/** ระยะฝึกที่แนะนำตามประสบการณ์ (คำแนะนำ ไม่ได้บังคับ) */
+export const trainingDaysHint = (level?: string) => EXPERIENCE.find((e) => e.v === level)?.days ?? ""
 
 export const hasSlip = (d: DealForPanel) =>
   (d.attachments ?? []).some((a) => a.type === "RESERVATION_SLIP" && a.url)
@@ -209,7 +226,7 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
   act: Act
   attach: (type: string, file: File) => Promise<boolean>
 }) {
-  const [dialog, setDialog] = useState<"" | "hold" | "close">("")
+  const [dialog, setDialog] = useState<"" | "hold" | "close" | "reason">("")
   const fileRef = useRef<HTMLInputElement>(null)
   const [attachType, setAttachType] = useState("")
 
@@ -245,9 +262,25 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
         </div>
       )}
       {closed && (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 px-4 py-3 text-sm">
-          <p className="font-semibold">ปิดดีล – ไม่สำเร็จ ที่ขั้น {STATUS_LABEL[(deal.lostAtStage ?? "LEAD") as Stage]}</p>
-          <p className="text-zinc-600 dark:text-zinc-300 mt-0.5">{deal.lossReasonLabel}{deal.lossNote ? ` · ${deal.lossNote}` : ""}</p>
+        <div className={`rounded-xl border px-4 py-3 text-sm ${info.needsRealReason
+          ? "border-[#D4A72C] bg-[#FFFCEB] dark:bg-amber-950/20"
+          : "border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50"}`}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="font-semibold">ปิดดีล – ไม่สำเร็จ ที่ขั้น {STATUS_LABEL[(deal.lostAtStage ?? "LEAD") as Stage]}</p>
+              <p className="text-zinc-600 dark:text-zinc-300 mt-0.5">{deal.lossReasonLabel}{deal.lossNote ? ` · ${deal.lossNote}` : ""}</p>
+              {info.needsRealReason && (
+                <p className="text-[#7A4E00] dark:text-amber-300 mt-1 text-xs">ระบบปิดให้อัตโนมัติ — ระบุเหตุผลจริงเพื่อให้รายงานใช้ได้</p>
+              )}
+            </div>
+            {info.needsRealReason && (
+              <button onClick={() => setDialog("reason")} disabled={busy}
+                className="h-[38px] shrink-0 inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-[#D4A72C] text-[#7A4E00] dark:text-amber-300 text-[13px] font-semibold bg-white dark:bg-zinc-900">
+                ระบุเหตุผลจริง
+              </button>
+            )}
+          </div>
+          {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
         </div>
       )}
 
@@ -300,6 +333,40 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                     </li>
                   ))}
                 </ul>
+                <div className="pt-1">
+                  <p className="text-xs font-semibold text-zinc-500">ข้อมูลประกอบการขาย (ไม่บังคับ แต่ช่วยวางแผนฝึกงานและดูช่องทางที่มา)</p>
+                  <div className="grid sm:grid-cols-2 gap-3 mt-2">
+                    <label className="text-xs text-zinc-500">ช่องทางที่มา
+                      <select className={input} defaultValue={String(deal.sourceChannel ?? "")} disabled={busy}
+                        onChange={(e) => act({ action: "fields", fields: { sourceChannel: e.target.value } })}>
+                        <option value="">— เลือก —</option>
+                        {SOURCE_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs text-zinc-500">ประสบการณ์ขับรถโม่
+                      <select className={input} defaultValue={String(deal.experienceLevel ?? "")} disabled={busy}
+                        onChange={(e) => act({ action: "fields", fields: { experienceLevel: e.target.value } })}>
+                        <option value="">— เลือก —</option>
+                        {EXPERIENCE.map((e) => <option key={e.v} value={e.v}>{e.label}</option>)}
+                      </select>
+                      {trainingDaysHint(deal.experienceLevel) && (
+                        <span className="block mt-1 text-[11px] text-[#7A4E00] dark:text-amber-300">แนะนำฝึกงาน {trainingDaysHint(deal.experienceLevel)}</span>
+                      )}
+                    </label>
+                    <label className="text-xs text-zinc-500">พื้นที่ที่สนใจทำงาน
+                      <input className={input} defaultValue={String(deal.preferredArea ?? "")} disabled={busy} placeholder="เช่น สระบุรี–ลาดกระบัง"
+                        onBlur={(e) => act({ action: "fields", fields: { preferredArea: e.target.value } })} />
+                    </label>
+                    <label className="text-xs text-zinc-500">รถคันที่สนใจ
+                      <input className={input} defaultValue={String(deal.interestedVehicle ?? "")} disabled={busy} placeholder="เช่น ISUZU FXZ77NL"
+                        onBlur={(e) => act({ action: "fields", fields: { interestedVehicle: e.target.value } })} />
+                    </label>
+                    <label className="text-xs text-zinc-500 sm:col-span-2">แรงจูงใจ / เหตุผลที่สนใจซื้อรถร่วม
+                      <input className={input} defaultValue={String(deal.motivation ?? "")} disabled={busy} placeholder="เช่น อยากมีรถเป็นของตัวเอง มีรายได้ประจำ"
+                        onBlur={(e) => act({ action: "fields", fields: { motivation: e.target.value } })} />
+                    </label>
+                  </div>
+                </div>
               </div>
             ) : form ? (
               <ul className="px-4 py-1">
@@ -308,11 +375,20 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                     <ReqIcon ok={fieldDone(deal, f)} />
                     <div>
                       <div className="text-sm font-semibold">{f.label}</div>
-                      <div className="text-xs text-zinc-500">{f.help}</div>
+                      <div className="text-xs text-zinc-500">
+                        {f.help}
+                        {f.key === "trainingStartDate" && trainingDaysHint(deal.experienceLevel) &&
+                          <span className="text-[#7A4E00] dark:text-amber-300"> · แนะนำฝึก {trainingDaysHint(deal.experienceLevel)} ตามประสบการณ์ที่กรอกไว้</span>}
+                      </div>
                     </div>
                     {f.type === "select" ? (
                       <select className={input} defaultValue={String(deal.trainingResult ?? "")} disabled={busy}
-                        onChange={(e) => act({ action: "fields", fields: { trainingResult: e.target.value } })}>
+                        onChange={async (e) => {
+                          const v = e.target.value
+                          await act({ action: "fields", fields: { trainingResult: v } })
+                          // ฝึกไม่ผ่าน = ดีลไปต่อไม่ได้ เปิดโมดัลปิดดีลให้เลย จะได้ไม่ค้างเป็นทางตัน
+                          if (v === "FAILED") setDialog("close")
+                        }}>
                         <option value="">— ยังไม่สรุป —</option>
                         <option value="PASSED">ผ่าน</option>
                         <option value="FAILED">ไม่ผ่าน</option>
@@ -419,6 +495,11 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
         <CloseDialog busy={busy} reasons={info.lossReasons} onClose={() => setDialog("")}
           onSubmit={async (lossReasonId, lossNote) => { if (await act({ action: "close", lossReasonId, lossNote })) setDialog("") }} />
       )}
+      {dialog === "reason" && (
+        <CloseDialog busy={busy} reasons={info.lossReasons} title="ระบุเหตุผลจริงที่ดีลหลุด" submitLabel="บันทึกเหตุผล"
+          onClose={() => setDialog("")}
+          onSubmit={async (lossReasonId, lossNote) => { if (await act({ action: "reason", lossReasonId, lossNote })) setDialog("") }} />
+      )}
 
       <input ref={fileRef} type="file" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f && attachType) attach(attachType, f); e.target.value = ""; setAttachType("") }} />
@@ -468,17 +549,19 @@ function HoldDialog({ busy, onClose, onSubmit }: { busy: boolean; onClose: () =>
   )
 }
 
-function CloseDialog({ busy, reasons, onClose, onSubmit }: {
+function CloseDialog({ busy, reasons, onClose, onSubmit, title = "ปิดดีล – ไม่สำเร็จ", submitLabel = "ปิดดีล" }: {
   busy: boolean
   reasons: { _id?: string; code: string; label: string }[]
   onClose: () => void
   onSubmit: (reasonId: string, note: string) => void
+  title?: string
+  submitLabel?: string
 }) {
   const [reasonId, setReasonId] = useState("")
   const [note, setNote] = useState("")
   const input = "h-9 w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm"
   return (
-    <Modal title="ปิดดีล – ไม่สำเร็จ" onClose={onClose}>
+    <Modal title={title} onClose={onClose}>
       <p className="text-xs text-zinc-500">เลือกเหตุผลที่ดีลหลุด (เห็นเฉพาะเหตุผลของขั้นที่ดีลอยู่)</p>
       <select className={input} value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
         <option value="">— เลือกเหตุผล —</option>
@@ -490,7 +573,7 @@ function CloseDialog({ busy, reasons, onClose, onSubmit }: {
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onClose} className="text-sm px-3 py-1.5">ยกเลิก</button>
         <button disabled={busy || !reasonId} onClick={() => onSubmit(reasonId, note)}
-          className="bg-zinc-800 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-40">ปิดดีล</button>
+          className="bg-zinc-800 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-40">{submitLabel}</button>
       </div>
     </Modal>
   )

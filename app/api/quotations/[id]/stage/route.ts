@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
-import { moveStage, holdDeal, resumeDeal, closeLost, attachFile, saveFields, getDeal, type Actor } from "@/lib/deal-actions"
+import { moveStage, holdDeal, resumeDeal, closeLost, attachFile, saveFields, getDeal, type Actor, setLossReason } from "@/lib/deal-actions"
 import { checkAdvance, screeningChecklist, type DealFields } from "@/lib/deal-stage"
 import { listLossReasons, reasonsForStage } from "@/lib/loss-reason"
 
@@ -26,7 +26,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if (!deal) return NextResponse.json({ error: "ไม่พบดีล" }, { status: 404 })
 
   const stage = String(deal.stage ?? "LEAD")
-  const lostAt = stage === "ON_HOLD" ? String(deal.stageBeforeHold ?? "LEAD") : stage
+  const lostAt = stage === "ON_HOLD" ? String(deal.stageBeforeHold ?? "LEAD")
+    : stage === "CLOSED_LOST" ? String(deal.lostAtStage ?? "LEAD")
+    : stage
   const reasons = await listLossReasons(db)
 
   return NextResponse.json({
@@ -34,10 +36,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     advance: checkAdvance(deal as DealFields),
     screening: screeningChecklist(deal as DealFields),
     lossReasons: reasonsForStage(reasons, lostAt),
+    // ดีลที่ระบบปิดเอง (เงียบเกิน 30 วัน) — เซลล์ต้องกลับมาระบุเหตุผลจริง
+    needsRealReason: stage === "CLOSED_LOST" && reasons.some((r) => r.isSystem && String(r._id) === String(deal.lossReasonId)),
   })
 }
 
-/** POST — action: advance | move | hold | resume | close | attach */
+/** POST — action: advance | move | hold | resume | close | reason | fields | attach */
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { id } = await params
   const session = await getServerSession(authOptions)
@@ -73,6 +77,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       break
     case "close":
       result = await closeLost(db, id, actor, String(b.lossReasonId ?? ""), b.lossNote)
+      break
+    case "reason":
+      result = await setLossReason(db, id, actor, String(b.lossReasonId ?? ""), b.lossNote)
       break
     case "fields":
       result = await saveFields(db, id, actor, (b.fields ?? {}) as Record<string, unknown>)

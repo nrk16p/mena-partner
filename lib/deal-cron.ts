@@ -25,6 +25,9 @@ export interface CronReport {
   errors: string[]
 }
 
+/** ขั้นที่ไม่นับว่า "เงียบ" เพราะกำลังรอตามกระบวนการ — รอรถมาส่งมอบ / รอครบ 90 วัน */
+const QUIET_EXEMPT_STAGES = new Set(["CONTRACT_SIGNED", "DELIVERED"])
+
 const daysBetween = (iso: string | undefined, now: Date) =>
   iso ? Math.floor((now.getTime() - new Date(iso).getTime()) / 86400000) : Infinity
 
@@ -46,12 +49,16 @@ export function dealDailyActions(d: DealForCron, now = new Date()) {
 
   const complete = !closedOrDone && stage === "DELIVERED" &&
     daysBetween(String(d.deliveredAt ?? ""), now) >= DAYS_TO_COMPLETE
+  // ดีลที่พักติดตามไว้และยังไม่ถึงวันนัด = รออยู่ตามที่เซลล์ตั้งใจ ไม่ใช่ปล่อยเงียบ
+  const waitingOnPlan = stage === "ON_HOLD" && !!d.nextFollowUpDate && String(d.nextFollowUpDate) > today
   return {
     quietDays,
     followUpDue: !closedOrDone && stage === "ON_HOLD" && !!d.nextFollowUpDate && String(d.nextFollowUpDate) <= today,
     complete,
-    // ขั้นส่งมอบได้รับยกเว้นกฎเงียบ 30 วัน (กำลังรอครบ 90 วันตามปกติ)
-    autoClose: !closedOrDone && !complete && stage !== "DELIVERED" && quietDays >= AUTO_CLOSE_DAYS,
+    waitingOnPlan,
+    // ยกเว้นกฎเงียบ 30 วัน: ขั้นที่ "รอของ" ตามปกติ (รอรถ / รอครบ 90 วัน) และดีลที่พักไว้ยังไม่ถึงวันนัด
+    autoClose: !closedOrDone && !complete && !waitingOnPlan
+      && !QUIET_EXEMPT_STAGES.has(stage) && quietDays >= AUTO_CLOSE_DAYS,
   }
 }
 

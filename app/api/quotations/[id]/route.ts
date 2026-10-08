@@ -27,8 +27,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const email = session.user?.email ?? "unknown"
   const now = new Date().toISOString()
 
+  // lastActivityAt ด้วย ไม่งั้นแก้ดีลจากการ์ดการเงิน/ราคา แล้วยังถูกนับว่าเงียบจนโดนปิดอัตโนมัติ
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const $set: any = { updatedAt: now }
+  const $set: any = { updatedAt: now, lastActivityAt: now }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const events: any[] = []
 

@@ -130,6 +130,39 @@ export async function closeLost(
   return { ok: true }
 }
 
+/**
+ * ระบุเหตุผลจริงให้ดีลที่ระบบปิดเอง (เงียบเกิน 30 วัน)
+ * แก้ได้เฉพาะดีลที่เหตุผลปัจจุบันเป็นของระบบ — ดีลที่คนปิดเองพร้อมเหตุผทางธุรกิจแล้วห้ามแก้ย้อนหลัง
+ */
+export async function setLossReason(
+  db: Db, id: string, actor: Actor, lossReasonId: string, lossNote?: string,
+): Promise<ActionResult> {
+  const deal = await getDeal(db, id)
+  if (!deal) return { ok: false, error: "ไม่พบดีล" }
+  if (String(deal.stage) !== "CLOSED_LOST") return { ok: false, error: "ดีลนี้ยังไม่ได้ปิด" }
+
+  const reasons = await listLossReasons(db)
+  const current = reasons.find((r) => String(r._id) === String(deal.lossReasonId))
+  if (!current?.isSystem) return { ok: false, error: "แก้ได้เฉพาะดีลที่ระบบปิดให้อัตโนมัติ" }
+
+  const lostAt = String(deal.lostAtStage ?? "LEAD")
+  const reason = reasons.find((r) => String(r._id) === lossReasonId || r.code === lossReasonId)
+  if (!reason) return { ok: false, error: "ต้องเลือกเหตุผลที่ดีลหลุด" }
+  if (!reasonsForStage(reasons, lostAt).some((r) => String(r._id) === String(reason._id))) {
+    return { ok: false, error: `เหตุผลนี้ใช้กับขั้น ${STAGE_LABEL[lostAt as Stage] ?? lostAt} ไม่ได้` }
+  }
+
+  await update(db, id, {
+    $set: {
+      lossReasonId: String(reason._id), lossReasonLabel: reason.label,
+      ...(lossNote ? { lossNote } : {}), updatedAt: now(),
+    },
+    $push: { timeline: { $each: [{ at: now(), by: actor.email, action: `ระบุเหตุผลจริง: ${reason.label}`, ...(lossNote ? { note: lossNote } : {}) }] } },
+  })
+  await writeHistory(db, id, "CLOSED_LOST", "CLOSED_LOST", actor.email, `ระบุเหตุผลจริง: ${reason.label}`)
+  return { ok: true }
+}
+
 /** ข้อมูลรายขั้นที่แก้ได้จากแผงไปป์ไลน์ — จำกัดรายชื่อไว้ กัน client ยัด field อื่น */
 const FIELD_KEYS = [
   "sourceChannel", "experienceLevel", "preferredArea", "motivation", "interestedVehicle",
