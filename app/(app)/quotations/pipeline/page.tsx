@@ -133,7 +133,7 @@ export default function PipelineDashboardPage() {
     }
   }, [d])
 
-  const input = "h-9 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-[13px]"
+  const input = "h-9 rounded-lg border border-hairline bg-surface px-2 text-[13px]"
   const rangeLabel = `${thDate(from)} – ${thDate(to)}`
   const openTotal = rows.reduce((s, r) => s + r.active + r.onHold, 0)
   const holdTotal = rows.reduce((s, r) => s + r.onHold, 0)
@@ -144,44 +144,44 @@ export default function PipelineDashboardPage() {
     <div className="space-y-4">
       <header className="flex items-end justify-between flex-wrap gap-4">
         <div>
-          <p className="text-xs font-semibold text-zinc-500 tracking-wider">ระบบขาย</p>
+          <p className="text-xs font-semibold text-soft tracking-wider">ระบบขาย</p>
           <h1 className="text-[26px] leading-tight font-bold mt-0.5">แดชบอร์ดไปป์ไลน์ขาย</h1>
-          <p className="text-[13px] text-zinc-500 mt-0.5">
-            ดีลที่สร้างในช่วง <span className="font-semibold text-zinc-900 dark:text-zinc-100">{rangeLabel}</span>
+          <p className="text-[13px] text-soft mt-0.5">
+            ดีลที่สร้างในช่วง <span className="font-semibold text-foreground">{rangeLabel}</span>
             {d ? ` · ${d.total} ใบ` : ""}
           </p>
         </div>
-        <Link href="/quotations" className="h-10 px-4 flex items-center gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-semibold">
+        <Link href="/quotations" className="h-10 px-4 flex items-center gap-2 bg-surface border border-hairline rounded-lg text-sm font-semibold">
           <List className="w-4 h-4" /> ไปหน้ารายการดีล
         </Link>
       </header>
 
       {/* ตัวกรอง */}
-      <div className="flex flex-wrap items-center gap-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5">
-        <Filter className="w-4 h-4 text-zinc-500 shrink-0" />
-        <div role="group" aria-label="ช่วงเวลา" className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2.5 bg-surface border border-hairline rounded-xl px-3 py-2.5">
+        <Filter className="w-4 h-4 text-soft shrink-0" />
+        <div role="group" aria-label="ช่วงเวลา" className="flex border border-hairline rounded-lg overflow-hidden">
           {PRESETS.map((p) => (
             <button key={p.key} onClick={() => pickPreset(p.key)} aria-pressed={activePreset === p.key}
-              className={`h-9 px-3 text-[13px] ${activePreset === p.key ? "bg-[#031B14] text-white font-semibold" : "bg-white dark:bg-zinc-900"}`}>
+              className={`h-9 px-3 text-[13px] ${activePreset === p.key ? "bg-ink-deep text-white font-semibold" : "bg-surface"}`}>
               {p.label}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">ตั้งแต่
+        <label className="flex items-center gap-1.5 text-[13px] text-soft">ตั้งแต่
           <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} />
         </label>
-        <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">ถึง
+        <label className="flex items-center gap-1.5 text-[13px] text-soft">ถึง
           <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <span className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
-        <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">เซลล์
+        <span className="w-px h-6 bg-hairline" />
+        <label className="flex items-center gap-1.5 text-[13px] text-soft">เซลล์
           <select className={input} value={sales} onChange={(e) => setSales(e.target.value)}>
             <option value="">ทุกคน</option>
             {d?.salesPeople.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         {(d?.sourceChannels.length ?? 0) > 0 && (
-          <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">ช่องทาง
+          <label className="flex items-center gap-1.5 text-[13px] text-soft">ช่องทาง
             <select className={input} value={source} onChange={(e) => setSource(e.target.value)}>
               <option value="">ทุกช่องทาง</option>
               {d?.sourceChannels.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -189,7 +189,7 @@ export default function PipelineDashboardPage() {
           </label>
         )}
         <button onClick={() => { const r = presetRange("quarter"); setFrom(r.from); setTo(r.to); setSales(""); setSource("") }}
-          className="ml-auto h-9 px-3 text-[13px] font-semibold text-[#7A5C14] dark:text-[#E7C86E]">ล้างตัวกรอง</button>
+          className="ml-auto h-9 px-3 text-[13px] font-semibold text-brand-ink">ล้างตัวกรอง</button>
       </div>
 
       {loading || !d ? <StatsSkeleton /> : (
@@ -204,10 +204,10 @@ export default function PipelineDashboardPage() {
           </div>
 
           {bottleneck && (
-            <div role="note" className="flex items-center gap-3.5 flex-wrap px-4 py-3.5 bg-[#031B14] text-white rounded-xl">
-              <span className="w-9 h-9 shrink-0 rounded-[10px] bg-[#E7C86E]/15 text-[#E7C86E] flex items-center justify-center"><Filter className="w-[18px] h-[18px]" /></span>
+            <div role="note" className="flex items-center gap-3.5 flex-wrap px-4 py-3.5 bg-ink-deep text-white rounded-xl">
+              <span className="w-9 h-9 shrink-0 rounded-[10px] bg-[var(--brand-on-ink)]/15 text-[var(--brand-on-ink)] flex items-center justify-center"><Filter className="w-[18px] h-[18px]" /></span>
               <div className="flex-1 min-w-[260px]">
-                <div className="text-xs font-bold tracking-wider text-[#E7C86E]">คอขวดของช่วงนี้</div>
+                <div className="text-xs font-bold tracking-wider text-[var(--brand-on-ink)]">คอขวดของช่วงนี้</div>
                 <div className="text-[15px] mt-0.5">
                   <b>{bottleneck.prev?.label} → {bottleneck.worst.label}</b> ผ่านแค่ <b className="tabular-nums">{pct(bottleneck.worst.rate)}</b> (ต่ำสุด)
                   {bottleneck.lostAtPrev > 0 && <> และดีลหลุดที่ขั้น{bottleneck.prev?.label} <b className="tabular-nums">{bottleneck.lostAtPrev}</b> ใบ</>}
@@ -215,28 +215,28 @@ export default function PipelineDashboardPage() {
                 </div>
               </div>
               <Link href={`/quotations?stage=${bottleneck.prev?.stage ?? ""}`}
-                className="h-9 px-3.5 flex items-center rounded-lg gold-grad text-[#3F3000] text-[13px] font-semibold whitespace-nowrap">
+                className="h-9 px-3.5 flex items-center rounded-lg gold-grad text-[var(--gold-ink)] text-[13px] font-semibold whitespace-nowrap">
                 ดูดีลที่{bottleneck.prev?.label} {bottleneck.prev ? bottleneck.prev.active + bottleneck.prev.onHold : 0} ใบ
               </Link>
             </div>
           )}
 
           {/* ภาพรวมทีละขั้น — แทนการ์ดกราฟแท่ง 4 ใบเดิม */}
-          <section aria-labelledby="stage-h" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+          <section aria-labelledby="stage-h" className="bg-surface border border-hairline rounded-xl overflow-hidden">
             <div className="flex items-end justify-between gap-4 flex-wrap px-4 pt-4 pb-3">
               <div>
                 <h2 id="stage-h" className="text-base font-semibold">ภาพรวมทีละขั้น</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">รวม 4 มุมมองเดิม (funnel · ค้าง · เวลาเฉลี่ย · หลุด) ในตารางเดียว อ่านเทียบกันได้ในแถวเดียว</p>
+                <p className="text-xs text-soft mt-0.5">รวม 4 มุมมองเดิม (funnel · ค้าง · เวลาเฉลี่ย · หลุด) ในตารางเดียว อ่านเทียบกันได้ในแถวเดียว</p>
               </div>
-              <div className="flex gap-3.5 text-xs text-zinc-500">
-                <Legend color="#165443">กำลังเดิน</Legend>
-                <Legend color="#D4A72C">พักติดตาม</Legend>
-                <Legend color="#CF222E">อัตราผ่าน &lt; 70%</Legend>
+              <div className="flex gap-3.5 text-xs text-soft">
+                <Legend color="var(--ok-fill)">กำลังเดิน</Legend>
+                <Legend color="var(--warn-fill)">พักติดตาม</Legend>
+                <Legend color="var(--bad-fill)">อัตราผ่าน &lt; 70%</Legend>
               </div>
             </div>
             <div className="overflow-x-auto">
               <div className="min-w-[860px]">
-                <div className="grid grid-cols-[196px_minmax(0,1.3fr)_104px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-y border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500">
+                <div className="grid grid-cols-[196px_minmax(0,1.3fr)_104px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-4 py-2 bg-surface-2 border-y border-hairline text-xs font-semibold text-soft">
                   <div>ขั้น</div><div>เคยถึงขั้นนี้</div><div className="text-right">ผ่านจากขั้นก่อน</div>
                   <div>ค้างอยู่ตอนนี้</div><div>เวลาเฉลี่ยในขั้น</div><div>หลุดที่ขั้นนี้</div>
                 </div>
@@ -248,33 +248,33 @@ export default function PipelineDashboardPage() {
                   return (
                     <div key={r.stage}>
                       {isPhaseHead && (
-                        <div className="flex items-center gap-2 px-4 pt-2.5 pb-1 text-xs font-bold text-zinc-500">
+                        <div className="flex items-center gap-2 px-4 pt-2.5 pb-1 text-xs font-bold text-soft">
                           <span className="w-2 h-2 rounded-sm" style={{ background: PHASE_COLOR[phase.no] }} />
                           {phase.no} {phase.label}
                         </div>
                       )}
                       <div className={`grid grid-cols-[196px_minmax(0,1.3fr)_104px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 items-center px-4 py-2 ${
-                        worst ? "bg-[#FFF5F4] dark:bg-red-950/20" : ""}`}>
+                        worst ? "bg-bad-tint" : ""}`}>
                         <div className="flex items-center gap-2 text-sm font-medium">
-                          <span className="w-5 text-xs text-zinc-500 tabular-nums">{i + 1}</span>{r.label}
+                          <span className="w-5 text-xs text-soft tabular-nums">{i + 1}</span>{r.label}
                         </div>
                         <Bar value={r.reached} max={max.reached} color={PHASE_COLOR[phase.no]} text={String(r.reached)} w="w-8" />
-                        <div className={`text-right text-[13px] tabular-nums ${r.rate < 0.7 ? "text-[#CF222E] dark:text-red-400 font-bold" : ""}`}>
+                        <div className={`text-right text-[13px] tabular-nums ${r.rate < 0.7 ? "text-bad font-bold" : ""}`}>
                           {i === 0 ? "—" : pct(r.rate)}
                         </div>
                         <div className="flex items-center gap-2.5">
-                          <div className="flex-1 flex h-3.5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                            <div style={{ width: `${(r.active / max.open) * 100}%`, background: "#165443" }} />
-                            <div style={{ width: `${(r.onHold / max.open) * 100}%`, background: "#D4A72C" }} />
+                          <div className="flex-1 flex h-3.5 rounded bg-track overflow-hidden">
+                            <div style={{ width: `${(r.active / max.open) * 100}%`, background: "var(--ok-fill)" }} />
+                            <div style={{ width: `${(r.onHold / max.open) * 100}%`, background: "var(--warn-fill)" }} />
                           </div>
                           <span className="w-11 text-right text-[13px] tabular-nums">{r.active}{r.onHold ? ` +${r.onHold}` : ""}</span>
                         </div>
                         {noDays ? (
-                          <div className="text-[13px] text-zinc-500">—</div>
+                          <div className="text-[13px] text-soft">—</div>
                         ) : (
-                          <Bar value={r.days ?? 0} max={max.days} color={(r.days ?? 0) > 10 ? "#9A6700" : "#8C959F"} text={`${r.days} วัน`} w="w-14" />
+                          <Bar value={r.days ?? 0} max={max.days} color={(r.days ?? 0) > 10 ? "var(--warn-fill)" : "var(--soft)"} text={`${r.days} วัน`} w="w-14" />
                         )}
-                        <Bar value={r.lost} max={max.lost} color="#8C959F" text={String(r.lost)} w="w-7" />
+                        <Bar value={r.lost} max={max.lost} color="var(--soft)" text={String(r.lost)} w="w-7" />
                       </div>
                     </div>
                   )
@@ -285,29 +285,29 @@ export default function PipelineDashboardPage() {
           </section>
 
           <div className="grid lg:grid-cols-2 gap-4 items-start">
-            <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <section className="bg-surface border border-hairline rounded-xl overflow-hidden">
               <div className="px-4 pt-4 pb-2.5">
                 <h2 className="flex items-center gap-2 text-base font-semibold">
                   ดีลพักติดตามที่เลยวันนัด
-                  <span className="px-2 rounded-full bg-[#FFEBE9] dark:bg-red-950/40 text-[#A40E26] dark:text-red-300 text-xs font-bold tabular-nums">{d.followUpOverdue.length}</span>
+                  <span className="px-2 rounded-full bg-bad-tint-2 text-bad-ink text-xs font-bold tabular-nums">{d.followUpOverdue.length}</span>
                 </h2>
-                <p className="text-xs text-zinc-500 mt-0.5">เรียงค้างนานสุดก่อน · กดเลขที่เพื่อเปิดดีล</p>
+                <p className="text-xs text-soft mt-0.5">เรียงค้างนานสุดก่อน · กดเลขที่เพื่อเปิดดีล</p>
               </div>
               {d.followUpOverdue.length === 0 ? (
-                <p className="px-4 pb-4 text-sm text-zinc-500">ไม่มีดีลที่เลยวันติดตาม</p>
+                <p className="px-4 pb-4 text-sm text-soft">ไม่มีดีลที่เลยวันติดตาม</p>
               ) : (
                 <div className="overflow-x-auto">
                   <div className="min-w-[520px]">
-                    <div className="grid grid-cols-[124px_minmax(0,1fr)_96px_90px_72px] gap-3 px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500">
+                    <div className="grid grid-cols-[124px_minmax(0,1fr)_96px_90px_72px] gap-3 px-4 py-2 bg-surface-2 border-t border-hairline text-xs font-semibold text-soft">
                       <div>เลขที่</div><div>เหตุผลที่พัก</div><div>เซลล์</div><div>นัดไว้</div><div className="text-right">เลยมา</div>
                     </div>
                     {d.followUpOverdue.map((r) => (
-                      <div key={r.id} className="grid grid-cols-[124px_minmax(0,1fr)_96px_90px_72px] gap-3 items-center px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 text-[13px]">
-                        <Link href={`/quotations/${r.id}`} className="font-mono font-semibold text-[#7A5C14] dark:text-[#E7C86E] hover:underline">{r.quotationNo}</Link>
+                      <div key={r.id} className="grid grid-cols-[124px_minmax(0,1fr)_96px_90px_72px] gap-3 items-center px-4 py-2.5 border-t border-hairline text-[13px]">
+                        <Link href={`/quotations/${r.id}`} className="font-mono font-semibold text-brand-ink hover:underline">{r.quotationNo}</Link>
                         <span className="truncate">{r.holdReason || "—"}</span>
-                        <span className="text-zinc-500 truncate">{r.salesName}</span>
-                        <span className="text-zinc-500 tabular-nums">{thDate(r.nextFollowUpDate)}</span>
-                        <span className={`text-right tabular-nums font-semibold ${r.overdueDays > 14 ? "text-[#CF222E] dark:text-red-400" : "text-[#9A6700] dark:text-amber-400"}`}>
+                        <span className="text-soft truncate">{r.salesName}</span>
+                        <span className="text-soft tabular-nums">{thDate(r.nextFollowUpDate)}</span>
+                        <span className={`text-right tabular-nums font-semibold ${r.overdueDays > 14 ? "text-bad" : "text-warn"}`}>
                           {r.overdueDays} วัน
                         </span>
                       </div>
@@ -317,23 +317,23 @@ export default function PipelineDashboardPage() {
               )}
             </section>
 
-            <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <section className="bg-surface border border-hairline rounded-xl overflow-hidden">
               <div className="px-4 pt-4 pb-2.5">
                 <h2 className="text-base font-semibold">เหตุผลที่ดีลหลุด รายเดือน</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">สีเข้ม = หลุดมาก · อ่านแนวนอนเพื่อดูว่าเหตุผลไหนเพิ่มขึ้น</p>
+                <p className="text-xs text-soft mt-0.5">สีเข้ม = หลุดมาก · อ่านแนวนอนเพื่อดูว่าเหตุผลไหนเพิ่มขึ้น</p>
               </div>
               {!heat ? (
-                <p className="px-4 pb-4 text-sm text-zinc-500">ยังไม่มีดีลที่ปิดไม่สำเร็จในช่วงนี้</p>
+                <p className="px-4 pb-4 text-sm text-soft">ยังไม่มีดีลที่ปิดไม่สำเร็จในช่วงนี้</p>
               ) : (
                 <>
-                  <div className="grid gap-1.5 px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-800 text-xs font-semibold text-zinc-500"
+                  <div className="grid gap-1.5 px-4 py-2 bg-surface-2 border-t border-hairline text-xs font-semibold text-soft"
                     style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${heat.months.length}, 64px) 56px` }}>
                     <div>เหตุผล</div>
                     {heat.months.map((m) => <div key={m.month} className="text-center">{monthLabel(m.month)}</div>)}
                     <div className="text-right">รวม</div>
                   </div>
                   {heat.rows.map((r) => (
-                    <div key={r.label} className="grid gap-1.5 items-center px-4 py-1.5 border-t border-zinc-100 dark:border-zinc-800 text-[13px]"
+                    <div key={r.label} className="grid gap-1.5 items-center px-4 py-1.5 border-t border-hairline text-[13px]"
                       style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${heat.months.length}, 64px) 56px` }}>
                       <span className="truncate" title={r.label}>{r.label}</span>
                       {r.cells.map((c, i) => <span key={i} className={`py-1 text-center rounded tabular-nums ${heatClass(c)}`}>{c || ""}</span>)}
@@ -352,11 +352,11 @@ export default function PipelineDashboardPage() {
 
 /** ระดับสีของตารางความร้อน — ไล่ตามจำนวนดีลที่หลุดด้วยเหตุผลนั้นในเดือนนั้น */
 function heatClass(n: number) {
-  if (n === 0) return "bg-zinc-50 dark:bg-zinc-800/40 text-zinc-400"
-  if (n <= 2) return "bg-[#E8F3EE] dark:bg-[#12362B] text-[#165443] dark:text-emerald-300"
-  if (n <= 4) return "bg-[#B9D9CB] dark:bg-[#1B5140] text-[#0E3A2C] dark:text-emerald-100"
-  if (n <= 6) return "bg-[#4E8F77] text-white"
-  return "bg-[#165443] text-white"
+  if (n === 0) return "bg-[var(--heat-0)] text-soft"
+  if (n <= 2) return "bg-[var(--heat-1)] text-[var(--heat-1-ink)]"
+  if (n <= 4) return "bg-[var(--heat-2)] text-[var(--heat-2-ink)]"
+  if (n <= 6) return "bg-[var(--heat-3)] text-[var(--heat-on)]"
+  return "bg-[var(--heat-4)] text-[var(--heat-on)]"
 }
 
 function Legend({ color, children }: { color: string; children: React.ReactNode }) {
@@ -366,7 +366,7 @@ function Legend({ color, children }: { color: string; children: React.ReactNode 
 function Bar({ value, max, color, text, w }: { value: number; max: number; color: string; text: string; w: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex-1 h-3.5 rounded bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+      <div className="flex-1 h-3.5 rounded bg-track overflow-hidden">
         <div className="h-full" style={{ width: `${Math.min(100, (value / max) * 100)}%`, background: color }} />
       </div>
       <span className={`${w} text-right text-[13px] tabular-nums font-medium`}>{text}</span>
@@ -376,10 +376,10 @@ function Bar({ value, max, color, text, w }: { value: number; max: number; color
 
 function Kpi({ title, value, hint, good }: { title: string; value: string; hint: string; good?: boolean }) {
   return (
-    <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-      <div className="text-[13px] font-semibold text-zinc-500">{title}</div>
-      <div className={`text-[30px] leading-none font-bold mt-1.5 tabular-nums ${good ? "text-[#165443] dark:text-emerald-300" : ""}`}>{value}</div>
-      <div className="text-xs text-zinc-500 mt-1 tabular-nums">{hint}</div>
+    <div className="p-4 bg-surface border border-hairline rounded-xl">
+      <div className="text-[13px] font-semibold text-soft">{title}</div>
+      <div className={`text-[30px] leading-none font-bold mt-1.5 tabular-nums ${good ? "text-ok" : ""}`}>{value}</div>
+      <div className="text-xs text-soft mt-1 tabular-nums">{hint}</div>
     </div>
   )
 }

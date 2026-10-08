@@ -40,13 +40,15 @@ export const PHASES: { no: number; label: string; stages: Stage[] }[] = [
   { no: 5, label: "ส่งมอบ", stages: ["DELIVERED", "COMPLETED_90D"] },
 ]
 
-/** สีประจำด่าน ไล่เข้มขึ้นตามความใกล้ปิดดีล (ด่าน 5 = ทอง) — ใช้ร่วมกันทุกหน้าจอ */
+/** สีประจำด่าน ไล่เข้มขึ้นตามความใกล้ปิดดีล — ค่าจริงอยู่ที่ token ใน globals.css
+ *  (ชี้ไปที่ตัวแปร CSS เพื่อให้สลับโทนมืดเองได้ และผ่าน contrast ทั้งสองโทน) */
 export const PHASE_COLOR: Record<number, string> = {
-  1: "#8FB3A5", 2: "#4E8F77", 3: "#2A6E56", 4: "#165443", 5: "#C9A227",
+  1: "var(--phase-1)", 2: "var(--phase-2)", 3: "var(--phase-3)", 4: "var(--phase-4)", 5: "var(--phase-5)",
 }
+export const PHASE_COLOR_NONE = "var(--phase-0)"
 export const phaseColorOf = (stage?: string) => {
   const p = PHASES.find((x) => x.stages.includes(stage as Stage))
-  return p ? PHASE_COLOR[p.no] : "#D1D9E0"
+  return p ? PHASE_COLOR[p.no] : PHASE_COLOR_NONE
 }
 
 export const phaseOf = (stage: Stage) => PHASES.find((p) => p.stages.includes(stage))!
