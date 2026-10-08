@@ -302,7 +302,8 @@ button.bg-primary:hover, a.bg-primary:hover {
    Sales pipeline tokens (2026-10-08)
    ชุดสีเดียวของหน้างานขาย — เลิกฮาร์ดโค้ด hex ในหน้าเว็บ
    ทุกคู่ตรวจด้วย WCAG AA แล้ว: ตัวอักษร ≥ 4.5:1 · กราฟ/แท่ง/จุด ≥ 3:1
-   แก้สีที่นี่ที่เดียว แล้วรัน  python3 contrast.py tokens.json  ก่อน commit
+   แก้สีที่นี่ที่เดียว และแก้ค่าเดียวกันใน docs/design-tokens.json ด้วย
+   แล้วตรวจก่อน commit:  python3 ~/.claude/skills/replica-design/contrast.py docs/design-tokens.json
    ════════════════════════════════════════════════════════════════════ */
 :root {
   --surface:    #FFFFFF;   /* พื้นการ์ด */
