@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { logActivity } from "@/lib/activity-log"
 import { hasPerm } from "@/lib/rbac"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -48,5 +49,6 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     changes: { สถานะ: { from: LABEL[from] ?? from, to: LABEL[to] } },
     editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
   })
+  revalidatePublicTrucks()   // ปิดงวด/เปิดสัญญาใหม่ = ชุดรถว่างเปลี่ยน
   return NextResponse.json({ ok: true, status: to })
 }

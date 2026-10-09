@@ -9,7 +9,8 @@ import { LeadForm } from "@/components/public/lead-form"
 import { ThaiText, telHref } from "@/components/public/thai-text"
 import { PrepStars, ReadyStars } from "@/components/public/ready-stars"
 
-export const revalidate = 600
+// ตัวกันพลาด — ปกติ lib/revalidate-public.ts สั่งล้างแคชทันทีที่ชุดรถว่างเปลี่ยน
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: "รถบรรทุกมือสอง (มิกเซอร์) พร้อมงานวิ่ง ผ่อนตรงกับบริษัท | มีนาทรานสปอร์ต",

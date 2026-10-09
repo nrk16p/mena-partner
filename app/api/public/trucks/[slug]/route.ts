@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { loadPublicTruckBySlug } from "@/lib/public-trucks"
 
-export const revalidate = 600
+// ตัวกันพลาด — ปกติ lib/revalidate-public.ts สั่งล้างแคชทันทีที่ชุดรถว่างเปลี่ยน
+export const revalidate = 60
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params

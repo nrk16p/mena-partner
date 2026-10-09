@@ -6,6 +6,7 @@ import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
 import { hasPerm } from "@/lib/rbac"
 import { withVehicleDetails } from "@/lib/contract-vehicle"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "contracts"
@@ -98,6 +99,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     }
   )
 
+  revalidatePublicTrucks()   // แก้/ยกเลิกสัญญา = ชุดรถว่างเปลี่ยน
   return NextResponse.json(result)
 }
 

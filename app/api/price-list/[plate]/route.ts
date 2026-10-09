@@ -5,6 +5,7 @@ import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
 import { resolveRole } from "@/lib/roles"
 import { hasPerm } from "@/lib/rbac"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -60,5 +61,6 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     })
   }
 
+  revalidatePublicTrucks()   // ราคาเปลี่ยน = ตัวเลขบนหน้าเว็บเปลี่ยน
   return NextResponse.json({ ok: true })
 }

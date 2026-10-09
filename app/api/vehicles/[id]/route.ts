@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "vehicle_master"
@@ -102,6 +103,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       editedBy: { email: session?.user?.email ?? "unknown", name: session?.user?.name ?? undefined },
     })
   }
+  revalidatePublicTrucks()   // แก้ข้อมูลรถ/สถานะ active-inactive
   return NextResponse.json(result)
 }
 
@@ -111,5 +113,6 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const result  = await client.db(DB).collection(COLL).deleteOne({ _id: new ObjectId(id) })
   if (result.deletedCount === 0)
     return NextResponse.json({ error: "Not found" }, { status: 404 })
+  revalidatePublicTrucks()   // ลบรถออกจากทะเบียนกลาง
   return NextResponse.json({ ok: true })
 }

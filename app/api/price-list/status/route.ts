@@ -5,6 +5,7 @@ import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
 import { resolveRole } from "@/lib/roles"
 import { hasPerm } from "@/lib/rbac"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "master_price_list"
@@ -74,5 +75,6 @@ export async function POST(req: NextRequest) {
     await logActivity({ entity: "price_list", entityId: plate, action: "saleStatus", changes, editedBy })
   }
 
+  revalidatePublicTrucks()   // saleStatus เปลี่ยน = ดาว ★ พร้อมขายเปลี่ยน
   return NextResponse.json({ ok: true })
 }

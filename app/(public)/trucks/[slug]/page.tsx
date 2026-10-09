@@ -12,7 +12,8 @@ import { LeadForm } from "@/components/public/lead-form"
 import { telHref } from "@/components/public/thai-text"
 import { PrepStars, ReadyStars } from "@/components/public/ready-stars"
 
-export const revalidate = 600
+// ตัวกันพลาด — ปกติ lib/revalidate-public.ts สั่งล้างแคชทันทีที่ชุดรถว่างเปลี่ยน
+export const revalidate = 60
 
 type Params = { params: Promise<{ slug: string }> }
 

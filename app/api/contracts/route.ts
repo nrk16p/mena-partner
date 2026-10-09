@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
 import { ensureFirstVersion } from "@/lib/company-config"
 import type { Contract, Driver } from "@/types"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "contracts"
@@ -84,5 +85,6 @@ export async function POST(req: NextRequest) {
     { upsert: true }
   )
 
+  revalidatePublicTrucks()   // สัญญาใหม่ = รถคันนี้หายจากหน้า /trucks ทันที
   return NextResponse.json({ _id: result.insertedId, ...doc }, { status: 201 })
 }
