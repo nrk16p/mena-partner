@@ -12,6 +12,7 @@ export function TruckSpecTable({ truck }: { truck: PublicTruck }) {
     ["สี", truck.color],
     ["ขนาดเครื่องยนต์", truck.engineSize],
     ["เบอร์รถ", truck.truckNumber],
+    ["ทะเบียน", truck.licensePlate],
   ]
   const shown = rows.filter(([, v]) => v.trim())
   if (shown.length === 0) return null

@@ -42,6 +42,18 @@ export function TruckCard({ truck }: { truck: PublicTruck }) {
         </p>
         {kind && <p className="text-sm text-[var(--mena-ink)]/55 mt-0.5">{kind}</p>}
 
+        {/* เบอร์รถ + ทะเบียน — ให้ทีมขายอ้างอิงคันได้จากหน้ารวมเลย (ผู้ใช้สั่ง 2026-10-09) */}
+        {(truck.truckNumber || truck.licensePlate) && (
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-[var(--mena-ink)]/60">
+            {truck.truckNumber && (
+              <span className="rounded bg-[var(--mena-paper)] px-1.5 py-0.5 tabular-nums">{truck.truckNumber}</span>
+            )}
+            {truck.licensePlate && (
+              <span className="rounded bg-[var(--mena-paper)] px-1.5 py-0.5 tabular-nums">{truck.licensePlate}</span>
+            )}
+          </p>
+        )}
+
         <p className="mt-4 text-2xl font-semibold text-[var(--mena-green)] tabular-nums">฿{fmtBaht(truck.display.price)}</p>
         {truck.display.monthlyPayment > 0 && (
           <p className="text-sm text-[var(--mena-ink)]/70 tabular-nums">

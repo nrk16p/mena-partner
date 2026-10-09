@@ -66,10 +66,16 @@ describe("toPublicTruck — field allowlist", () => {
 
   it("ไม่มี field ต้องห้ามหลุดออกมาแม้แต่ตัวเดียว", () => {
     const out = toPublicTruck(vehicle, price, [], "me009-hino-fm2p-2561", false)
-    const forbidden = ["licensePlate", "chassisNumber", "engineNumber", "registrationDocUrl", "_id", "saleStatus", "costBasis", "status", "contractCode", "driverName"]
+    const forbidden = ["chassisNumber", "engineNumber", "registrationDocUrl", "_id", "saleStatus", "costBasis", "status", "contractCode", "driverName"]
     for (const k of forbidden) expect(out).not.toHaveProperty(k)
-    expect(JSON.stringify(out)).not.toContain("71-1956")
     expect(JSON.stringify(out)).not.toContain("NKRHF")
+    expect(JSON.stringify(out)).not.toContain("6HK1")
+  })
+
+  it("เบอร์รถกับทะเบียนออกสู่หน้าเว็บ (ผู้ใช้สั่ง 2026-10-09)", () => {
+    const out = toPublicTruck(vehicle, price, [], "me009-hino-fm2p-2561", false)
+    expect(out.truckNumber).toBe("ME009")
+    expect(out.licensePlate).toBe("สบ.71-1956")
   })
 
   it("map ข้อมูลที่เปิดเผยได้ครบ", () => {

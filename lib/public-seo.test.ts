@@ -3,7 +3,7 @@ import { siteUrl, truckTitle, truckDescription, truckJsonLd } from "@/lib/public
 import type { PublicTruck } from "@/lib/public-trucks"
 
 const truck: PublicTruck = {
-  slug: "me009-hino-fm2p-2561", truckNumber: "ME009", brand: "HINO", model: "FM2P",
+  slug: "me009-hino-fm2p-2561", truckNumber: "ME009", licensePlate: "สบ.71-1956", brand: "HINO", model: "FM2P",
   vehicleType: "รถผสมปูน", characteristic: "10 ล้อ", color: "ขาว", registrationYear: 2018,
   engineSize: "7790 cc", photoUrl: "https://spaces/f.jpg",
   photos: { front: "https://spaces/f.jpg", back: "", left: "", right: "", cabin: "" },

@@ -7,6 +7,7 @@ const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim(
 
 /**
  * ชั้นข้อมูลสาธารณะของหน้า /trucks — **แยก namespace จาก API ภายในโดยตั้งใจ**
+ * เบอร์รถกับทะเบียนเปิดเผยได้ (ผู้ใช้สั่ง 2026-10-09) แต่เลขตัวถัง/เลขเครื่อง/ทุน/สถานะดิบ ยังห้าม
  * ทุก field ที่ออกสู่เว็บสาธารณะต้องผ่าน toPublicTruck() เท่านั้น
  * ห้ามเพิ่ม field ลง PublicTruck โดยไม่อัปเดตเทสต์ allowlist ใน public-trucks.test.ts
  */
@@ -14,6 +15,8 @@ const normPlate = (p?: string | null) => (p ?? "").replace(/^[^0-9]*/, "").trim(
 export interface PublicTruck {
   slug: string
   truckNumber: string
+  /** ทะเบียนเต็มตามที่เก็บใน DB เช่น "สบ.71-7395" — เปิดเผยบนเว็บสาธารณะตามที่ผู้ใช้สั่ง 2026-10-09 */
+  licensePlate: string
   brand: string
   model: string
   vehicleType: string
@@ -54,7 +57,7 @@ export function makeSlug(v: {
   registrationDate?: string; licensePlate?: string
 }): string {
   const year = registrationYear(v.registrationDate)
-  // ไม่มีเบอร์รถ → hash ทะเบียน (ย้อนกลับเป็นทะเบียนไม่ได้ ตามข้อห้ามไม่เผยทะเบียน)
+  // ไม่มีเบอร์รถ → hash ทะเบียน (ไม่ใส่ทะเบียนตรง ๆ ใน slug เพื่อไม่ให้ URL ที่ index ไว้แล้วเปลี่ยน)
   const head = slugPart(s(v.truckNumber)) ||
     `t-${createHash("sha256").update(s(v.licensePlate)).digest("hex").slice(0, 6)}`
   const parts = [head, slugPart(s(v.brand)), slugPart(s(v.model)), year ? String(year + 543) : ""]
@@ -79,6 +82,7 @@ export function toPublicTruck(
   return {
     slug,
     truckNumber: s(vehicle.truckNumber),
+    licensePlate: s(vehicle.licensePlate),
     brand: s(vehicle.brand),
     model: s(vehicle.model),
     vehicleType: s(vehicle.vehicleType),
