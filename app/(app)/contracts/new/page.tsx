@@ -15,6 +15,7 @@ import { GuaranteeContractDocument } from "@/components/guarantee-contract-docum
 import { VendorDocDocument } from "@/components/vendor-doc-document"
 import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
 import { useDebounced } from "@/lib/use-debounced"
+import { computeMoney } from "@/lib/contract-money"
 import type { Contract, Driver, Vehicle } from "@/types"
 
 // ─── types ─────────────────────────────────────────────────────────────────────
@@ -30,6 +31,30 @@ interface PriceRow {
   financeAmount:        number
   financeInstallments:  number
   monthlyPayment:       number
+}
+
+/** ช่องตั้งต้นที่แก้ได้ในหน้าสร้างสัญญา — ช่องที่เหลือคำนวณจาก computeMoney */
+type MoneyBaseKey = "totalPrice" | "downPayment" | "cashDown" | "downInstallmentCount" | "totalInstallments"
+const MONEY_BASE_FIELDS: { key: MoneyBaseKey; label: string; unit: string }[] = [
+  { key: "totalPrice",           label: "ราคาขายรวม",      unit: "บาท" },
+  { key: "downPayment",          label: "เงินดาวน์รวม",     unit: "บาท" },
+  { key: "cashDown",             label: "เงินดาวน์สด",      unit: "บาท" },
+  { key: "downInstallmentCount", label: "จำนวนงวดดาวน์",   unit: "งวด" },
+  { key: "totalInstallments",    label: "จำนวนงวดไฟแนนซ์", unit: "งวด" },
+]
+const MONEY_DEPENDS: Record<MoneyBaseKey, (keyof ReturnType<typeof computeMoney>)[]> = {
+  totalPrice:           ["financeAmount", "monthlyInstallment"],
+  downPayment:          ["remainingInstallment", "downInstallmentAmt", "financeAmount", "monthlyInstallment"],
+  cashDown:             ["remainingInstallment", "downInstallmentAmt"],
+  downInstallmentCount: ["downInstallmentAmt"],
+  totalInstallments:    ["monthlyInstallment"],
+}
+const PRICE_ROW_KEY: Record<MoneyBaseKey, (p: PriceRow) => number> = {
+  totalPrice:           (p) => p.totalSalePrice,
+  downPayment:          (p) => p.downPayment,
+  cashDown:             (p) => p.cashDown,
+  downInstallmentCount: (p) => p.downInstallmentCount,
+  totalInstallments:    (p) => p.financeInstallments,
 }
 
 // ─── helpers ───────────────────────────────────────────────────────────────────
@@ -357,6 +382,37 @@ export default function NewContractPage() {
 
   const isAdmin = ["admin", "superadmin"].includes(session?.user?.role ?? "")
   const priceRow = prices.find((p) => p.licensePlate === form.licensePlate.trim())
+
+  // แก้ช่องตั้งต้นช่องไหนก็ได้ → ดาวน์คงเหลือ/ค่างวดดาวน์/ยอดไฟแนนซ์/ค่างวดต่อเดือน คำนวณใหม่พร้อมกัน (สูตรเดียวกับหน้าแก้สัญญา)
+  // แก้แค่ในสัญญานี้ ราคาที่หน้าราคาขายไม่เปลี่ยน
+  function setMoney(k: MoneyBaseKey, v: number) {
+    setForm((prev) => {
+      const next = { ...prev, [k]: v }
+      const calc = computeMoney(next)
+      // คำนวณใหม่เฉพาะช่องที่ขึ้นกับช่องที่แก้ — ค่างวดจากหน้าราคาขายปัดเป็นบาทไว้แล้ว แก้ดาวน์สดไม่ควรทำให้ค่างวดเพี้ยนเป็นสตางค์
+      for (const d of MONEY_DEPENDS[k]) next[d] = calc[d]
+      return next
+    })
+  }
+  function resetMoneyToPriceList() {
+    if (!priceRow) return
+    setForm((prev) => ({
+      ...prev,
+      totalPrice:           priceRow.totalSalePrice,
+      downPayment:          priceRow.downPayment,
+      cashDown:             priceRow.cashDown,
+      remainingInstallment: priceRow.remainingInstallment,
+      downInstallmentCount: priceRow.downInstallmentCount,
+      downInstallmentAmt:   priceRow.downInstallmentAmt,
+      financeAmount:        priceRow.financeAmount,
+      monthlyInstallment:   priceRow.monthlyPayment,
+      totalInstallments:    priceRow.financeInstallments,
+    }))
+  }
+  const moneyEdited = !!priceRow && (
+    form.totalPrice !== priceRow.totalSalePrice || form.downPayment !== priceRow.downPayment ||
+    form.cashDown !== priceRow.cashDown || form.downInstallmentCount !== priceRow.downInstallmentCount ||
+    form.totalInstallments !== priceRow.financeInstallments)
 
   // ── live preview: ใช้เกณฑ์/เอกสารชุดเดียวกับหน้าแก้ไขสัญญา ──
   const previewContract = form as unknown as Contract
@@ -700,88 +756,58 @@ export default function NewContractPage() {
         {/* ── 4. ราคาซื้อและการชำระราคา ── */}
         <Section
           title="ราคาซื้อและการชำระราคา"
-          badge={priceRow ? `อ้างอิงจาก ${form.licensePlate}` : undefined}
+          badge={priceRow ? (moneyEdited ? `แก้จากราคาของ ${form.licensePlate}` : `อ้างอิงจาก ${form.licensePlate}`) : undefined}
         >
-          {priceRow ? (
-            /* ── auto-filled from price-list ── */
-            <div className="space-y-4">
-              {/* summary strip */}
-              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 divide-y divide-emerald-100 dark:divide-emerald-900 overflow-hidden text-sm">
-                <div className="flex">
-                  <div className="flex-1 px-4 py-3 border-r border-emerald-100 dark:border-emerald-900">
-                    <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">ราคาขายรวม</div>
-                    <div className="font-bold text-zinc-800 dark:text-zinc-100 text-base">{fmt(priceRow.totalSalePrice)} <span className="text-xs font-normal text-zinc-400">บาท</span></div>
-                  </div>
-                  <div className="flex-1 px-4 py-3 border-r border-emerald-100 dark:border-emerald-900">
-                    <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">ยอดไฟแนนซ์</div>
-                    <div className="font-bold text-zinc-800 dark:text-zinc-100 text-base">{fmt(priceRow.financeAmount)} <span className="text-xs font-normal text-zinc-400">บาท</span></div>
-                  </div>
-                  <div className="flex-1 px-4 py-3">
-                    <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">ค่างวด / เดือน</div>
-                    <div className="font-bold text-zinc-800 dark:text-zinc-100 text-base">{fmt(priceRow.monthlyPayment)} <span className="text-xs font-normal text-zinc-400">บาท × {priceRow.financeInstallments} งวด</span></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 divide-x divide-emerald-100 dark:divide-emerald-900 text-xs">
-                  <div className="px-4 py-2.5">
-                    <span className="text-zinc-400">เงินดาวน์รวม</span>
-                    <div className="font-semibold text-zinc-700 dark:text-zinc-300">{fmt(priceRow.downPayment)} บาท</div>
-                  </div>
-                  <div className="px-4 py-2.5">
-                    <span className="text-zinc-400">เงินดาวน์สด</span>
-                    <div className="font-semibold text-zinc-700 dark:text-zinc-300">{fmt(priceRow.cashDown)} บาท</div>
-                  </div>
-                  <div className="px-4 py-2.5">
-                    <span className="text-zinc-400">งวดดาวน์คงเหลือ</span>
-                    <div className="font-semibold text-zinc-700 dark:text-zinc-300">{fmt(priceRow.remainingInstallment)} บาท</div>
-                  </div>
-                  <div className="px-4 py-2.5">
-                    <span className="text-zinc-400">จำนวนงวดดาวน์</span>
-                    <div className="font-semibold text-zinc-700 dark:text-zinc-300">{priceRow.downInstallmentCount} งวด</div>
-                  </div>
-                  <div className="px-4 py-2.5">
-                    <span className="text-zinc-400">ค่างวดดาวน์</span>
-                    <div className="font-semibold text-zinc-700 dark:text-zinc-300">{fmt(priceRow.downInstallmentAmt)} บาท</div>
-                  </div>
-                  <div className="px-4 py-2.5">
-                    <span className="text-zinc-400">จำนวนงวดไฟแนนซ์</span>
-                    <div className="font-semibold text-zinc-700 dark:text-zinc-300">{priceRow.financeInstallments} งวด</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* ── manual entry when no price-list match ── */
-            <div>
-              {form.licensePlate && (
-                <div className="mb-4 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-lg">
-                  ไม่พบข้อมูลราคาสำหรับทะเบียน <span className="font-mono font-semibold">{form.licensePlate}</span> — กรอกราคาด้วยตนเอง
-                </div>
-              )}
-              {!form.licensePlate && (
-                <div className="mb-4 text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 rounded-lg">
-                  เลือกทะเบียนรถก่อนเพื่อดึงราคาอัตโนมัติจาก price-list
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                {(["totalPrice","downPayment","monthlyInstallment","totalInstallments"] as const).map((k) => (
-                  <div key={k}>
-                    <label className="block text-xs text-zinc-400 mb-1">
-                      {k === "totalPrice" ? "ราคารถรวม (บาท)" :
-                       k === "downPayment" ? "เงินดาวน์ (บาท)" :
-                       k === "monthlyInstallment" ? "ค่างวด/เดือน (บาท)" : "จำนวนงวดรวม"}
-                    </label>
-                    <Input
-                      type="number" min="0"
-                      value={form[k] || ""}
-                      onChange={(e) => set(k, Number(e.target.value))}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
+          {!priceRow && form.licensePlate && (
+            <div className="mb-4 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-lg">
+              ไม่พบข้อมูลราคาสำหรับทะเบียน <span className="font-mono font-semibold">{form.licensePlate}</span> — กรอกราคาด้วยตนเอง
             </div>
           )}
+          {!form.licensePlate && (
+            <div className="mb-4 text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 rounded-lg">
+              เลือกทะเบียนรถก่อนเพื่อดึงราคาอัตโนมัติจาก price-list
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {MONEY_BASE_FIELDS.map(({ key, label, unit }) => (
+              <div key={key}>
+                <label htmlFor={`money-${key}`} className="block text-xs text-zinc-400 mb-1">{label}</label>
+                <div className="relative">
+                  <Input
+                    id={`money-${key}`} type="number" min="0" inputMode="numeric"
+                    value={form[key] || ""}
+                    onChange={(e) => setMoney(key, Number(e.target.value) || 0)}
+                    className={`h-9 text-sm pr-12 tabular-nums ${priceRow && form[key] !== PRICE_ROW_KEY[key](priceRow) ? "border-amber-400 dark:border-amber-600" : ""}`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">{unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ช่องที่คำนวณให้ — อัปเดตทันทีเมื่อแก้ช่องด้านบน */}
+          <div className="mt-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 grid grid-cols-2 sm:grid-cols-4 divide-x divide-emerald-100 dark:divide-emerald-900 text-sm">
+            {([
+              ["ยอดไฟแนนซ์", `${fmt(form.financeAmount)} บาท`],
+              ["ค่างวด / เดือน", `${fmt(form.monthlyInstallment)} บาท`],
+              ["งวดดาวน์คงเหลือ", `${fmt(form.remainingInstallment)} บาท`],
+              ["ค่างวดดาวน์", `${fmt(form.downInstallmentAmt)} บาท`],
+            ] as const).map(([k, v]) => (
+              <div key={k} className="px-4 py-3">
+                <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">{k}</div>
+                <div className="font-bold text-zinc-800 dark:text-zinc-100 tabular-nums">{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+            <span>ช่องสีเขียวคำนวณให้เอง · แก้แค่ในสัญญานี้ ราคาที่หน้าราคาขายไม่เปลี่ยน</span>
+            {moneyEdited && (
+              <button type="button" onClick={resetMoneyToPriceList} className="text-emerald-600 underline underline-offset-2">
+                ใช้ราคาตามหน้าราคาขาย
+              </button>
+            )}
+          </div>
         </Section>
         </>}
 
