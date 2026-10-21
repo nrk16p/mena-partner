@@ -145,7 +145,8 @@ export function BrokerForm({ phone }: { phone?: string }) {
       </fieldset>
 
       <fieldset className={box}>
-        <legend className={heading}>3. สังกัดศูนย์{req}</legend>
+        <legend className="sr-only">สังกัดศูนย์</legend>
+        <p className={heading}>3. สังกัดศูนย์{req}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {BROKER_CENTERS.map((c) => (
             <label
