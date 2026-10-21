@@ -30,6 +30,9 @@ const serverHash = () => ""
 /** 12 = ลงตัวทั้ง grid 2 และ 3 คอลัมน์ (ไม่มีแถวสุดท้ายแหว่ง) */
 const PAGE_SIZE = 12
 
+/** ตัดช่องว่าง ขีด จุด และตัวอักษรนำหน้าเลขทะเบียน — พิมพ์ "717395" / "71-7395" / "สบ.71 7395" / "mtm 145" ก็เจอ */
+const normSearch = (v: string) => v.toLowerCase().replace(/[\s.\-_/]/g, "")
+
 /** กรอง+แบ่งหน้าในหน่วยความจำ — สต็อกหลักร้อยคัน ไม่ต้อง server pagination (หน้ารถทุกคันอยู่ใน sitemap แล้ว Google ไม่ต้องไล่หน้า); ตัวกรอง/เลขหน้าไม่เขียนลง query (กันหน้าซ้ำถูก index) ยกเว้นระดับดาวที่อยู่ใน #hash */
 export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [brand, setBrand] = useState("")
@@ -39,6 +42,8 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [yearTo, setYearTo] = useState(0)
   const [sort, setSort] = useState<Sort>("recommended")
   const [tier, setTier] = useState<Tier>("")
+  const [query, setQuery] = useState("")
+  const q = normSearch(query)
 
   // hash เปลี่ยน (โหลดหน้า/กดปุ่มหัวหน้า/ย้อนกลับ) → ตั้งระดับดาวตาม — ปรับ state ระหว่าง render แทน effect
   const hash = useSyncExternalStore(subscribeHash, readHash, serverHash)
@@ -70,7 +75,8 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
       // ตั้งช่วงปีแล้ว รถที่ไม่ได้บันทึกปีจะไม่ขึ้น (ยืนยันปีไม่ได้)
       const y = t.registrationYear
       if ((yearFrom || yearTo) && !y) return false
-      return (!tier || (tier === "ready") === t.isReady) &&
+      return (!q || normSearch(t.truckNumber).includes(q) || normSearch(t.licensePlate).includes(q)) &&
+        (!tier || (tier === "ready") === t.isReady) &&
         (!brand || t.brand === brand) &&
         (!characteristic || t.characteristic === characteristic) &&
         (!maxPrice || t.display.price <= maxPrice) &&
@@ -80,11 +86,11 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     if (sort === "price-asc") return [...out].sort((a, b) => a.display.price - b.display.price)
     if (sort === "year-desc") return [...out].sort((a, b) => (b.registrationYear ?? 0) - (a.registrationYear ?? 0))
     return out
-  }, [trucks, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
+  }, [trucks, q, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
 
   // เปลี่ยนตัวกรอง/การเรียง → กลับหน้า 1 (ปรับ state ระหว่าง render เหมือน hash ด้านบน)
   const [page, setPage] = useState(1)
-  const filterKey = [tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort].join("|")
+  const filterKey = [q, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort].join("|")
   const [seenFilterKey, setSeenFilterKey] = useState(filterKey)
   if (filterKey !== seenFilterKey) {
     setSeenFilterKey(filterKey)
@@ -101,13 +107,18 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
-  const reset = () => { chooseTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
-  const filtered = !!(tier || brand || characteristic || maxPrice || yearFrom || yearTo)
+  const reset = () => { setQuery(""); chooseTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
+  const filtered = !!(q || tier || brand || characteristic || maxPrice || yearFrom || yearTo)
   const sel = "rounded-full border border-[var(--mena-line)] bg-white px-4 py-2.5 text-sm hover:border-[var(--mena-green-soft)] focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
 
   return (
     <>
       <div ref={topRef} className="flex flex-wrap items-center gap-2 border-b border-[var(--mena-line)] pb-5 mb-8 scroll-mt-24">
+        <input
+          type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder="ค้นหาเบอร์รถ หรือทะเบียน" aria-label="ค้นหาเบอร์รถ หรือทะเบียน"
+          className={`${sel} w-full sm:w-64 placeholder:text-[var(--mena-ink)]/40`}
+        />
         {([
           ["ready", <ReadyStars key="s" />, "พร้อมขาย", readyCount],
           ["prep", <PrepStars key="s" />, "เตรียมรถ", prepCount],
@@ -169,7 +180,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
 
       {shown.length === 0 ? (
         <div className="rounded-2xl bg-white border border-[var(--mena-line)] py-16 text-center">
-          <p className="font-medium">ไม่มีรถตรงเงื่อนไขนี้</p>
+          <p className="font-medium">{q ? `ไม่เจอรถเบอร์หรือทะเบียน "${query.trim()}"` : "ไม่มีรถตรงเงื่อนไขนี้"}</p>
           <p className="text-sm text-[var(--mena-ink)]/60 mt-1">ลองกว้างขึ้น หรือโทรถามฝ่ายขายว่ามีคันไหนกำลังจะว่าง</p>
           <button type="button" onClick={reset} className="mt-4 rounded-full bg-[var(--mena-green)] text-white px-5 py-2.5 text-sm font-medium">
             ดูรถทั้งหมด
