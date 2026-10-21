@@ -8,6 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const trucks = await loadPublicTrucks()   // รถว่างทุกคัน (★ พร้อมขาย + ที่กำลังเตรียม) — ที่ขายแล้วไม่เข้า sitemap
   return [
     { url: siteUrl("/trucks"), changeFrequency: "daily", priority: 1 },
+    { url: siteUrl("/sales-partner"), changeFrequency: "monthly", priority: 0.5 },
     ...trucks.map((t) => ({
       url: siteUrl(`/trucks/${t.slug}`),
       changeFrequency: "weekly" as const,

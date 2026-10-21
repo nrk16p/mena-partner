@@ -3,12 +3,12 @@ import { isPublicPath } from "@/lib/public-routes"
 
 describe("isPublicPath", () => {
   it("เปิดเฉพาะเส้นทางสาธารณะที่ตั้งใจ", () => {
-    for (const p of ["/trucks", "/trucks/me009-hino-fm2p-2561", "/api/public/trucks", "/og/truck/x", "/sitemap.xml", "/robots.txt"])
+    for (const p of ["/trucks", "/sales-partner", "/api/public/broker-applications", "/trucks/me009-hino-fm2p-2561", "/api/public/trucks", "/og/truck/x", "/sitemap.xml", "/robots.txt"])
       expect(isPublicPath(p)).toBe(true)
   })
 
   it("หน้าระบบภายในต้องไม่หลุดเป็น public", () => {
-    for (const p of ["/", "/drivers", "/payroll", "/vehicle-cost", "/catalog", "/api/drivers", "/api/contracts", "/api/upload", "/admin/users"])
+    for (const p of ["/", "/drivers", "/payroll", "/vehicle-cost", "/catalog", "/api/drivers", "/api/contracts", "/api/upload", "/admin/users", "/quotations/brokers", "/api/quotations/brokers"])
       expect(isPublicPath(p)).toBe(false)
   })
 

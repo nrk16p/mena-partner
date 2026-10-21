@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation"
 import {
   FileText, Users, ShieldCheck, Home, Upload, Settings, Tag, Truck, Wrench,
   ClipboardList, Banknote, BarChart3, SlidersHorizontal, Receipt, BadgeCheck, HandCoins, Fuel, CalendarCheck, BookOpenCheck, ChevronDown,
-  UserMinus, BookImage, Globe, Building2,
+  UserMinus, UserPlus, BookImage, Globe, Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
@@ -36,6 +36,7 @@ const GROUPS: { title: string | null; items: { href: string; label: string; icon
       { href: "/trucks", label: "เว็บขายรถ", icon: Globe, hint: "หน้าเว็บสาธารณะ — เปิดแท็บใหม่", external: true },
       { href: "/quotations/pipeline", label: "แดชบอร์ดไปป์ไลน์", icon: BarChart3, hint: "ดีลค้างขั้นไหน หลุดตรงไหน ใช้เวลาเท่าไหร่" },
       { href: "/quotations/commission", label: "ยอดขาย & ค่าคอม", icon: HandCoins, hint: "ขายกี่คัน ได้คอมเท่าไหร่" },
+      { href: "/quotations/brokers", label: "ใบสมัครนายหน้า", icon: UserPlus, hint: "สมัครจากหน้าเว็บ /sales-partner รอตรวจ/อนุมัติ", adminOnly: true },
       { href: "/quotations/sales-people", label: "ทีมขาย", icon: Users, hint: "ชื่อ / email / เบอร์โทร พนักงานขาย", adminOnly: true },
     ],
   },

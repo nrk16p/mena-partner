@@ -61,6 +61,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-4 text-sm">
             <Link href="/trucks" className="px-2 py-1 hover:text-[var(--mena-green)]">รถทั้งหมด</Link>
+            <Link href="/sales-partner" className="hidden sm:block px-2 py-1 hover:text-[var(--mena-green)]">สมัครนายหน้า</Link>
             <a href="https://www.menatransport.co.th" className="hidden sm:block px-2 py-1 hover:text-[var(--mena-green)]">เว็บไซต์บริษัท</a>
             {cfg.contactPhone && (
               <a
@@ -110,6 +111,7 @@ export default async function PublicLayout({ children }: { children: React.React
             <ul className="mt-3 space-y-2.5">
               <li><a href="https://www.menatransport.co.th" className="hover:text-white">menatransport.co.th</a></li>
               <li><Link href="/trucks" className="hover:text-white">รถทั้งหมด</Link></li>
+              <li><Link href="/sales-partner" className="hover:text-white">สมัครเป็นนายหน้าขายรถร่วม</Link></li>
             </ul>
 
             <p className="mt-6 font-medium text-white">ติดตามเรา</p>
