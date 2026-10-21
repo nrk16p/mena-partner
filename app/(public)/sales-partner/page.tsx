@@ -58,6 +58,10 @@ export default async function SalesPartnerPage() {
                 </a>
               )}
             </div>
+            {/* ความน่าเชื่อถือ — ตัวเลขชุดเดียวกับหน้า /trucks (ฝ่ายขายให้มา 2026-09-23) */}
+            <p className="mt-6 text-sm text-white/75">
+              บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน) <span className="whitespace-nowrap">ดูแลรถมิกเซอร์กว่า 472 คัน</span> <span className="whitespace-nowrap">มากว่า 10 ปี</span>
+            </p>
           </div>
           <CommissionCalc topSellerAt={TOP_SELLER_AT} topSellerBonus={TOP_SELLER_BONUS} />
         </div>

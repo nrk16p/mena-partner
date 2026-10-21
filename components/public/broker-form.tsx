@@ -1,8 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { BROKER_CENTERS, THAI_BANKS, isThaiNationalId } from "@/lib/broker-application"
+import { BROKER_CENTERS, THAI_BANKS, isThaiNationalId, phoneError, bankAccountError } from "@/lib/broker-application"
 import { telHref } from "./thai-text"
+
+/** ช่องที่ server บอกว่าผิด → id ของช่องในฟอร์ม (ไว้เลื่อน+โฟกัสไปที่ช่องนั้น) */
+const FIELD_ID: Record<string, string> = {
+  firstName: "b-first", lastName: "b-last", nationalId: "b-nid", address: "b-addr", phone: "b-phone",
+  bankName: "b-bank", bankAccountNo: "b-accno", bankAccountName: "b-accname", centerOther: "b-center-other",
+  confirmTrue: "b-confirm", consentPdpa: "b-pdpa",
+}
+/** ช่องที่มีที่โชว์ข้อความผิดใต้ช่อง — ช่องอื่นโชว์รวมที่ปุ่มส่ง */
+const INLINE = new Set(["nationalId", "address", "phone", "bankAccountNo", "centerOther", "confirmTrue", "consentPdpa"])
 
 /** ฟอร์มสมัครนายหน้า — ช่องตามใบกระดาษข้อ 1–3 และ 6 + ชื่อบัญชี + ยินยอม PDPA · ส่งเข้า /api/public/broker-applications */
 export function BrokerForm({ phone }: { phone?: string }) {
@@ -15,6 +24,13 @@ export function BrokerForm({ phone }: { phone?: string }) {
   const [nid, setNid] = useState("")
   const [center, setCenter] = useState("")
   const [bank, setBank] = useState("")
+  // ข้อความผิดรายช่อง — โชว์ใต้ช่องนั้น (ตรวจตอนออกจากช่อง + ตอน server ตอบกลับ)
+  const [errs, setErrs] = useState<Record<string, string>>({})
+  const setErr = (k: string, msg: string) => setErrs((p) => (p[k] === msg ? p : { ...p, [k]: msg }))
+  const errProps = (k: string) => ({ "aria-invalid": !!errs[k], "aria-describedby": errs[k] ? `${FIELD_ID[k]}-err` : undefined })
+  const errText = (k: string) =>
+    errs[k] ? <p id={`${FIELD_ID[k]}-err`} className="mt-1 text-sm text-[var(--mena-red)]">{errs[k]}</p> : null
+  const bad = (k: string) => (errs[k] ? "border-[var(--mena-red)]" : "")
 
   // ชื่อบัญชีส่วนใหญ่ = ชื่อผู้สมัคร → เติมให้จนกว่าจะพิมพ์เอง
   const shownAccName = accNameTouched ? accName : `${first} ${last}`.trim()
@@ -24,7 +40,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    setState("sending"); setError("")
+    setState("sending"); setError(""); setErrs({})
     const res = await fetch("/api/public/broker-applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -40,9 +56,16 @@ export function BrokerForm({ phone }: { phone?: string }) {
       }),
     }).catch(() => null)
     if (res?.ok) { setState("done"); window.scrollTo({ top: 0, behavior: "smooth" }); return }
-    const j = await res?.json().catch(() => ({})) ?? {}
-    setError(j.error ?? "ส่งไม่สำเร็จ ลองใหม่อีกครั้ง หรือโทรหาฝ่ายขาย")
+    const j: { error?: string; field?: string } = await res?.json().catch(() => ({})) ?? {}
+    const msg = j.error ?? "ส่งไม่สำเร็จ ลองใหม่อีกครั้ง หรือโทรหาฝ่ายขาย"
     setState("idle")
+    if (j.field && INLINE.has(j.field)) {
+      setErr(j.field, msg)
+      // พาไปที่ช่องที่ผิดเลย ไม่ต้องให้คนไล่หาเอง
+      const el = document.getElementById(FIELD_ID[j.field])
+      el?.scrollIntoView({ behavior: "smooth", block: "center" })
+      el?.focus({ preventScroll: true })
+    } else setError(msg)
   }
 
   if (state === "done") {
@@ -68,7 +91,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
   const heading = "text-lg font-medium"
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onSubmit} aria-busy={state === "sending"} className="space-y-5">
       <fieldset className={box}>
         <legend className="sr-only">ข้อมูลผู้สมัคร</legend>
         <p className={heading}>1. ข้อมูลผู้สมัคร</p>
@@ -84,20 +107,27 @@ export function BrokerForm({ phone }: { phone?: string }) {
           <div className="sm:col-span-2">
             <label htmlFor="b-nid" className={label}>เลขบัตรประชาชน 13 หลัก{req}</label>
             <input
-              id="b-nid" required inputMode="numeric" maxLength={17} value={nid} onChange={(e) => setNid(e.target.value)}
-              aria-invalid={nidBad} aria-describedby="b-nid-hint" className={`${field} tabular-nums ${nidBad ? "border-[var(--mena-red)]" : ""}`}
+              id="b-nid" required inputMode="numeric" maxLength={17} value={nid} onChange={(e) => { setNid(e.target.value); setErr("nationalId", "") }}
+              aria-invalid={nidBad || !!errs.nationalId} aria-describedby="b-nid-hint"
+              className={`${field} tabular-nums ${nidBad || errs.nationalId ? "border-[var(--mena-red)]" : ""}`}
             />
-            <p id="b-nid-hint" className={`mt-1 text-xs ${nidBad ? "text-[var(--mena-red)]" : "text-[var(--mena-ink)]/65"}`}>
-              {nidBad ? "เลขนี้ไม่ตรงกับเลขบัตรประชาชนจริง ลองเช็กอีกรอบ" : "ใช้ออกหนังสือรับรองหัก ณ ที่จ่ายตอนจ่ายค่าคอม"}
+            <p id="b-nid-hint" className={`mt-1 text-sm ${nidBad || errs.nationalId ? "text-[var(--mena-red)]" : "text-[var(--mena-ink)]/65"}`}>
+              {nidBad ? "เลขนี้ไม่ตรงกับเลขบัตรประชาชนจริง ลองเช็กอีกรอบ" : errs.nationalId || "ใช้ออกหนังสือรับรองหัก ณ ที่จ่ายตอนจ่ายค่าคอม"}
             </p>
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="b-addr" className={label}>ที่อยู่ตามบัตรประชาชน{req}</label>
-            <textarea id="b-addr" name="address" required rows={2} autoComplete="street-address" className={field} />
+            <textarea id="b-addr" name="address" required rows={2} autoComplete="street-address" {...errProps("address")}
+              onChange={() => setErr("address", "")} className={`${field} ${bad("address")}`} />
+            {errText("address")}
           </div>
           <div>
             <label htmlFor="b-phone" className={label}>เบอร์โทรศัพท์{req}</label>
-            <input id="b-phone" name="phone" required inputMode="tel" autoComplete="tel" placeholder="0812345678" className={field} />
+            <input id="b-phone" name="phone" type="tel" required inputMode="tel" autoComplete="tel" placeholder="0812345678"
+              {...errProps("phone")} className={`${field} ${bad("phone")}`}
+              onBlur={(e) => setErr("phone", e.target.value ? phoneError(e.target.value) : "")}
+              onChange={() => setErr("phone", "")} />
+            {errText("phone")}
           </div>
           <div>
             <label htmlFor="b-line" className={label}>LINE ID</label>
@@ -131,7 +161,11 @@ export function BrokerForm({ phone }: { phone?: string }) {
           </div>
           <div>
             <label htmlFor="b-accno" className={label}>เลขที่บัญชี{req}</label>
-            <input id="b-accno" name="bankAccountNo" required inputMode="numeric" className={`${field} tabular-nums`} />
+            <input id="b-accno" name="bankAccountNo" required inputMode="numeric" autoComplete="off"
+              {...errProps("bankAccountNo")} className={`${field} tabular-nums ${bad("bankAccountNo")}`}
+              onBlur={(e) => setErr("bankAccountNo", e.target.value ? bankAccountError(e.target.value) : "")}
+              onChange={() => setErr("bankAccountNo", "")} />
+            {errText("bankAccountNo")}
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="b-accname" className={label}>ชื่อบัญชี{req}</label>
@@ -161,7 +195,11 @@ export function BrokerForm({ phone }: { phone?: string }) {
           ))}
         </div>
         {center === "other" && (
-          <input name="centerOther" required aria-label="ชื่อศูนย์" placeholder="พิมพ์ชื่อศูนย์" className={`${field} mt-3 sm:max-w-sm`} />
+          <>
+            <input id="b-center-other" name="centerOther" required aria-label="ชื่อศูนย์" placeholder="พิมพ์ชื่อศูนย์"
+              {...errProps("centerOther")} onChange={() => setErr("centerOther", "")} className={`${field} ${bad("centerOther")} mt-3 sm:max-w-sm`} />
+            {errText("centerOther")}
+          </>
         )}
       </fieldset>
 
@@ -170,16 +208,18 @@ export function BrokerForm({ phone }: { phone?: string }) {
         <p className={heading}>4. ยืนยันข้อมูล</p>
         <div className="mt-4 space-y-3 text-sm leading-[1.8]">
           <label className="flex gap-3 cursor-pointer">
-            <input type="checkbox" name="confirmTrue" required className="mt-1 h-5 w-5 shrink-0 accent-[var(--mena-green)]" />
+            <input id="b-confirm" type="checkbox" name="confirmTrue" required {...errProps("confirmTrue")} onChange={() => setErr("confirmTrue", "")} className="mt-1 h-5 w-5 shrink-0 accent-[var(--mena-green)]" />
             <span>ข้าพเจ้าขอยืนยันว่าข้อมูลเป็นความจริงทุกประการ</span>
           </label>
           <label className="flex gap-3 cursor-pointer">
-            <input type="checkbox" name="consentPdpa" required className="mt-1 h-5 w-5 shrink-0 accent-[var(--mena-green)]" />
+            <input id="b-pdpa" type="checkbox" name="consentPdpa" required {...errProps("consentPdpa")} onChange={() => setErr("consentPdpa", "")} className="mt-1 h-5 w-5 shrink-0 accent-[var(--mena-green)]" />
             <span>
               ยินยอมให้บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน) เก็บเลขบัตรประชาชน ที่อยู่ และเลขบัญชีนี้
               ไว้ใช้ตรวจสอบตัวตน จ่ายค่าคอม และออกเอกสารภาษีเท่านั้น
             </span>
           </label>
+          {errText("confirmTrue")}
+          {errText("consentPdpa")}
         </div>
       </fieldset>
 

@@ -44,6 +44,16 @@ export function isThaiNationalId(id: string): boolean {
 const digits = (v: string) => v.replace(/\D/g, "")
 const thaiPhone = /^0\d{8,9}$/
 
+/** ตรวจทีละช่อง — ใช้ทั้งตอนออกจากช่องในฟอร์ม (บอกทันที) และตอนตรวจฝั่ง server · คืน "" = ผ่าน */
+export const phoneError = (v: string) =>
+  thaiPhone.test(digits(v)) ? "" : "เบอร์โทรไม่ถูกต้อง ใส่เป็นเบอร์ 10 หลัก เช่น 0812345678"
+export const bankAccountError = (v: string) => {
+  const n = digits(v).length
+  return n >= 10 && n <= 15 ? "" : "เลขบัญชีไม่ถูกต้อง ใส่เฉพาะตัวเลข 10–15 หลัก"
+}
+export const nationalIdError = (v: string) =>
+  isThaiNationalId(digits(v)) ? "" : "เลขบัตรประชาชนไม่ถูกต้อง ลองเช็กอีกรอบ"
+
 const schema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
@@ -81,11 +91,11 @@ export interface BrokerApplicationInput {
 
 /** ฟอร์มสาธารณะ = ไม่มี auth → validate เข้ม ทิ้ง field ที่ไม่รู้จัก และบอกว่าช่องไหนผิดเป็นภาษาคน */
 export function parseBrokerApplication(body: unknown):
-  { ok: true; data: BrokerApplicationInput } | { ok: false; error: string } {
+  { ok: true; data: BrokerApplicationInput } | { ok: false; error: string; field?: string } {
   const b = (body ?? {}) as Record<string, unknown>
   if (b.website) return { ok: false, error: "rejected" }
-  if (b.consentPdpa !== true) return { ok: false, error: "กรุณาติ๊กยินยอมให้บริษัทเก็บข้อมูลก่อนส่ง" }
-  if (b.confirmTrue !== true) return { ok: false, error: "กรุณาติ๊กยืนยันว่าข้อมูลเป็นความจริงก่อนส่ง" }
+  if (b.consentPdpa !== true) return { ok: false, error: "กรุณาติ๊กยินยอมให้บริษัทเก็บข้อมูลก่อนส่ง", field: "consentPdpa" }
+  if (b.confirmTrue !== true) return { ok: false, error: "กรุณาติ๊กยืนยันว่าข้อมูลเป็นความจริงก่อนส่ง", field: "confirmTrue" }
 
   const parsed = schema.safeParse(body)
   if (!parsed.success) {
@@ -94,16 +104,18 @@ export function parseBrokerApplication(body: unknown):
       firstName: "ชื่อ", lastName: "นามสกุล", address: "ที่อยู่", bankName: "ธนาคาร",
       bankAccountName: "ชื่อบัญชี", center: "ศูนย์ที่สังกัด",
     }
-    return { ok: false, error: name[field] ? `กรุณากรอก${name[field]}` : "ข้อมูลไม่ครบ ลองเช็กอีกรอบ" }
+    return { ok: false, error: name[field] ? `กรุณากรอก${name[field]}` : "ข้อมูลไม่ครบ ลองเช็กอีกรอบ", field }
   }
   const v = parsed.data
   const nationalId = digits(v.nationalId)
-  if (!isThaiNationalId(nationalId)) return { ok: false, error: "เลขบัตรประชาชนไม่ถูกต้อง ลองเช็กอีกรอบ" }
   const phone = digits(v.phone)
-  if (!thaiPhone.test(phone)) return { ok: false, error: "เบอร์โทรไม่ถูกต้อง ใส่เป็นเบอร์ 10 หลัก เช่น 0812345678" }
   const bankAccountNo = digits(v.bankAccountNo)
-  if (bankAccountNo.length < 10 || bankAccountNo.length > 15) return { ok: false, error: "เลขบัญชีไม่ถูกต้อง ใส่เฉพาะตัวเลข 10–15 หลัก" }
-  if (v.center === "other" && !v.centerOther) return { ok: false, error: "เลือกศูนย์ อื่น ๆ แล้ว กรุณาพิมพ์ชื่อศูนย์ด้วย" }
+  for (const [field, err] of [
+    ["nationalId", nationalIdError(nationalId)],
+    ["phone", phoneError(phone)],
+    ["bankAccountNo", bankAccountError(bankAccountNo)],
+  ] as const) if (err) return { ok: false, error: err, field }
+  if (v.center === "other" && !v.centerOther) return { ok: false, error: "เลือกศูนย์ อื่น ๆ แล้ว กรุณาพิมพ์ชื่อศูนย์ด้วย", field: "centerOther" }
 
   return {
     ok: true,

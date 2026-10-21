@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   const parsed = parseBrokerApplication(await req.json().catch(() => null))
-  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error, field: parsed.field }, { status: 400 })
   const a = parsed.data
 
   const db = (await clientPromise).db(DB)

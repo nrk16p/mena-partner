@@ -42,7 +42,7 @@ describe("parseBrokerApplication", () => {
   })
   it("เลขบัตรผิด → บอกว่าเลขบัตรผิด", () => {
     const r = parseBrokerApplication({ ...good, nationalId: "1234567890123" })
-    expect(r).toEqual({ ok: false, error: expect.stringContaining("เลขบัตร") })
+    expect(r).toMatchObject({ ok: false, field: "nationalId", error: expect.stringContaining("เลขบัตร") })
   })
   it("เลือกศูนย์อื่น ๆ แต่ไม่พิมพ์ชื่อ → ปฏิเสธ", () => {
     expect(parseBrokerApplication({ ...good, center: "other", centerOther: "" }).ok).toBe(false)
@@ -54,5 +54,18 @@ describe("parseBrokerApplication", () => {
   it("field แปลกปลอมไม่หลุดเข้าข้อมูล", () => {
     const r = parseBrokerApplication({ ...good, status: "approved" })
     expect(r.ok && "status" in r.data).toBe(false)
+  })
+})
+
+describe("แจ้งช่องที่ผิด", () => {
+  it("เลขบัญชีสั้นไป → บอกว่าเป็นช่อง bankAccountNo", () => {
+    const r = parseBrokerApplication({ ...good, bankAccountNo: "123" })
+    expect(r).toMatchObject({ ok: false, field: "bankAccountNo" })
+  })
+  it("เบอร์ผิด → field phone", () => {
+    expect(parseBrokerApplication({ ...good, phone: "12345" })).toMatchObject({ ok: false, field: "phone" })
+  })
+  it("ไม่กรอกที่อยู่ → field address", () => {
+    expect(parseBrokerApplication({ ...good, address: "" })).toMatchObject({ ok: false, field: "address" })
   })
 })
