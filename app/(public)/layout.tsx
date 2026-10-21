@@ -60,8 +60,8 @@ export default async function PublicLayout({ children }: { children: React.React
           </Link>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-4 text-sm">
-            <Link href="/trucks" className="px-2 py-1 hover:text-[var(--mena-green)]">รถทั้งหมด</Link>
-            <Link href="/sales-partner" className="hidden sm:block px-2 py-1 hover:text-[var(--mena-green)]">สมัครนายหน้า</Link>
+            <Link href="/trucks" className="px-2 py-2.5 hover:text-[var(--mena-green)]">รถทั้งหมด</Link>
+            <Link href="/sales-partner" className="hidden sm:block px-2 py-2.5 hover:text-[var(--mena-green)]">สมัครนายหน้า</Link>
             <a href="https://www.menatransport.co.th" className="hidden sm:block px-2 py-1 hover:text-[var(--mena-green)]">เว็บไซต์บริษัท</a>
             {cfg.contactPhone && (
               <a
@@ -93,12 +93,12 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="text-sm">
             <p className="font-medium text-white">ติดต่อฝ่ายขาย</p>
-            <ul className="mt-3 space-y-2.5">
-              {cfg.contactName && <li>{cfg.contactName}</li>}
-              {cfg.contactPhone && <li><a href={telHref(cfg.contactPhone)} className="hover:text-white">โทร {cfg.contactPhone}</a></li>}
+            <ul className="mt-2 space-y-0.5">
+              {cfg.contactName && <li className="py-2">{cfg.contactName}</li>}
+              {cfg.contactPhone && <li><a href={telHref(cfg.contactPhone)} className="inline-block py-2 hover:text-white">โทร {cfg.contactPhone}</a></li>}
               {cfg.contactLine && (
                 <li>
-                  <a href={`https://line.me/R/ti/p/${encodeURIComponent(cfg.contactLine)}`} className="hover:text-white">
+                  <a href={`https://line.me/R/ti/p/${encodeURIComponent(cfg.contactLine)}`} className="inline-block py-2 hover:text-white">
                     LINE {cfg.contactLine}
                   </a>
                 </li>
@@ -108,17 +108,17 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="text-sm">
             <p className="font-medium text-white">เกี่ยวกับบริษัท</p>
-            <ul className="mt-3 space-y-2.5">
-              <li><a href="https://www.menatransport.co.th" className="hover:text-white">menatransport.co.th</a></li>
-              <li><Link href="/trucks" className="hover:text-white">รถทั้งหมด</Link></li>
-              <li><Link href="/sales-partner" className="hover:text-white">สมัครเป็นนายหน้าขายรถร่วม</Link></li>
+            <ul className="mt-2 space-y-0.5">
+              <li><a href="https://www.menatransport.co.th" className="inline-block py-2 hover:text-white">menatransport.co.th</a></li>
+              <li><Link href="/trucks" className="inline-block py-2 hover:text-white">รถทั้งหมด</Link></li>
+              <li><Link href="/sales-partner" className="inline-block py-2 hover:text-white">สมัครเป็นนายหน้าขายรถร่วม</Link></li>
             </ul>
 
             <p className="mt-6 font-medium text-white">ติดตามเรา</p>
-            <ul className="mt-3 space-y-2.5">
+            <ul className="mt-2 space-y-0.5">
               {SOCIALS.map((s) => (
                 <li key={s.label}>
-                  <a href={s.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-white">
+                  <a href={s.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 py-2 hover:text-white">
                     <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true"><path d={s.icon} /></svg>
                     {s.label}
                   </a>

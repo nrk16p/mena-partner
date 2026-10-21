@@ -65,7 +65,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
   const label = "block text-sm font-medium mb-1.5"
   const req = <span className="text-[var(--mena-red)]" aria-hidden="true"> *</span>
   const box = "rounded-2xl border border-[var(--mena-line)] bg-white p-6 sm:p-8"
-  const heading = "text-lg font-medium text-[var(--mena-green)]"
+  const heading = "text-lg font-medium"
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -87,7 +87,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
               id="b-nid" required inputMode="numeric" maxLength={17} value={nid} onChange={(e) => setNid(e.target.value)}
               aria-invalid={nidBad} aria-describedby="b-nid-hint" className={`${field} tabular-nums ${nidBad ? "border-[var(--mena-red)]" : ""}`}
             />
-            <p id="b-nid-hint" className={`mt-1 text-xs ${nidBad ? "text-[var(--mena-red)]" : "text-[var(--mena-ink)]/50"}`}>
+            <p id="b-nid-hint" className={`mt-1 text-xs ${nidBad ? "text-[var(--mena-red)]" : "text-[var(--mena-ink)]/65"}`}>
               {nidBad ? "เลขนี้ไม่ตรงกับเลขบัตรประชาชนจริง ลองเช็กอีกรอบ" : "ใช้ออกหนังสือรับรองหัก ณ ที่จ่ายตอนจ่ายค่าคอม"}
             </p>
           </div>
@@ -139,7 +139,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
               id="b-accname" required value={shownAccName}
               onChange={(e) => { setAccNameTouched(true); setAccName(e.target.value) }} className={field}
             />
-            <p className="mt-1 text-xs text-[var(--mena-ink)]/50">ต้องเป็นบัญชีชื่อผู้สมัครเอง บริษัทโอนเข้าบัญชีคนอื่นให้ไม่ได้</p>
+            <p className="mt-1 text-xs text-[var(--mena-ink)]/65">ต้องเป็นบัญชีชื่อผู้สมัครเอง บริษัทโอนเข้าบัญชีคนอื่นให้ไม่ได้</p>
           </div>
         </div>
       </fieldset>

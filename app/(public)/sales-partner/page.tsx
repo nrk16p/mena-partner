@@ -38,7 +38,9 @@ export default async function SalesPartnerPage() {
           <div>
             <p className="text-sm text-white/70">นายหน้า / เซลล์ขายรถร่วม</p>
             <h1 className="mt-2 text-3xl sm:text-5xl font-medium leading-tight">
-              แนะนำคนขับมาซื้อรถ<br className="hidden sm:block" /> รับค่าคอมทุกคัน
+              {/* แยกวลีไม่ให้ตัดกลางคำ (เดิมมือถือขึ้น "รับค่า / คอมทุกคัน") */}
+              <span className="whitespace-nowrap">แนะนำคนขับมาซื้อรถ</span>{" "}
+              <span className="whitespace-nowrap">รับค่าคอมทุกคัน</span>
             </h1>
             <p className="mt-5 max-w-xl leading-[1.9] text-white/85 text-balance">
               <ThaiText>
@@ -65,11 +67,11 @@ export default async function SalesPartnerPage() {
         <div>
           <h2 className="text-2xl font-medium">ค่าคอมแบบขั้นบันได</h2>
           <p className="mt-2 leading-[1.9] text-[var(--mena-ink)]/70 text-balance">
-            <ThaiText>แต่ละคันได้อัตราตามลำดับของคันนั้น คันแรก ๆ ที่จ่ายไปแล้วไม่ปรับย้อน เช่น ขายได้ 7 คัน = 5 × 2,000 + 2 × 3,500 = 17,000 บาท</ThaiText>
+            <ThaiText>แต่ละคันได้อัตราตามลำดับของคันนั้น คันที่จ่ายไปแล้วไม่ปรับย้อน เช่น ขายได้ 7 คัน 5 คันแรกได้คันละ 2,000 อีก 2 คันได้คันละ 3,500 รวม 17,000 บาท</ThaiText>
           </p>
           <table className="mt-6 w-full text-left bg-white rounded-2xl overflow-hidden border border-[var(--mena-line)]">
             <thead className="text-sm text-[var(--mena-ink)]/60 bg-[var(--mena-paper)]">
-              <tr><th className="px-5 py-3 font-medium">ลำดับคันที่ขายได้</th><th className="px-5 py-3 font-medium text-right">ค่าคอมต่อคัน</th></tr>
+              <tr><th className="px-5 py-3 font-medium">ลำดับคันที่ขายได้</th><th className="px-5 py-3 font-medium text-right">ต่อคัน</th></tr>
             </thead>
             <tbody className="divide-y divide-[var(--mena-line)]">
               {tiers.map((t) => (
@@ -79,12 +81,15 @@ export default async function SalesPartnerPage() {
                 </tr>
               ))}
               <tr className="bg-[var(--mena-green)]/5">
-                <td className="px-5 py-3.5">ยอดสะสมครบ {TOP_SELLER_AT} คัน (Top Seller)</td>
+                <td className="px-5 py-3.5">
+                  ขายครบ {TOP_SELLER_AT} คัน
+                  <span className="block text-sm text-[var(--mena-ink)]/65">โบนัส Top Seller</span>
+                </td>
                 <td className="px-5 py-3.5 text-right font-medium tabular-nums text-[var(--mena-green)]">+฿{fmt(TOP_SELLER_BONUS)}</td>
               </tr>
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-[var(--mena-ink)]/50">โบนัส Top Seller นับยอดภายในโครงการหรือช่วงเวลาที่บริษัทกำหนด</p>
+          <p className="mt-2 text-xs text-[var(--mena-ink)]/65">โบนัส Top Seller นับยอดภายในโครงการหรือช่วงเวลาที่บริษัทกำหนด</p>
         </div>
 
         <div>
@@ -113,9 +118,22 @@ export default async function SalesPartnerPage() {
 
       <section id="สมัคร" className="max-w-3xl mx-auto px-4 pb-6 scroll-mt-24">
         <h2 className="text-2xl font-medium">ใบสมัครนายหน้า / เซลล์ขายรถร่วม</h2>
-        <p className="mt-2 mb-8 leading-[1.9] text-[var(--mena-ink)]/70">
+        <p className="mt-2 leading-[1.9] text-[var(--mena-ink)]/70">
           <ThaiText>กรอกประมาณ 3 นาที ช่องที่มี * ต้องกรอก ข้อมูลบัตรกับบัญชีใช้แค่ตอนจ่ายค่าคอม</ThaiText>
         </p>
+        {/* บอกก่อนกรอกว่าส่งแล้วจะเกิดอะไร — คนลังเลน้อยลงตอนต้องใส่เลขบัตร/บัญชี */}
+        <ol className="mt-5 mb-8 grid gap-3 sm:grid-cols-3 text-sm">
+          {[
+            ["ส่งใบสมัคร", "ใช้เวลาประมาณ 3 นาที"],
+            ["ฝ่ายขายโทรกลับ", "ภายใน 2–3 วันทำการ"],
+            ["พาคนขับมาคุย", "ปิดการขายแล้วรับค่าคอม"],
+          ].map(([t, d], i) => (
+            <li key={t} className="flex items-start gap-3">
+              <span className="shrink-0 grid place-items-center h-7 w-7 rounded-full border border-[var(--mena-green)] text-[var(--mena-green)] text-sm font-medium tabular-nums">{i + 1}</span>
+              <span><span className="block font-medium">{t}</span><span className="text-[var(--mena-ink)]/65">{d}</span></span>
+            </li>
+          ))}
+        </ol>
         <BrokerForm phone={cfg.contactPhone} />
       </section>
     </>

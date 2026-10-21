@@ -1,7 +1,10 @@
+"use client"
+
 /**
  * ปุ่มติดต่อฝ่ายขายที่ติดหน้าจอตลอด — มือถือเป็นแถบล่างจอ, จอใหญ่เป็นปุ่มลอยมุมขวาล่าง
  * ยังไม่ได้ตั้งเบอร์/LINE ใน /catalog → ปุ่มพาไปช่องฝากเบอร์ (#ติดต่อ) แทน จะได้ไม่มีปุ่มกดแล้วไม่เกิดอะไร
  */
+import { usePathname } from "next/navigation"
 import { telHref } from "./thai-text"
 
 export function ContactBar({ phone, line }: { phone?: string; line?: string }) {
@@ -9,7 +12,14 @@ export function ContactBar({ phone, line }: { phone?: string; line?: string }) {
   const solid = "rounded-full bg-[var(--mena-green)] text-white font-medium px-5 py-3 text-center hover:bg-[var(--mena-green-soft)] transition-colors"
   const ghost = "rounded-full border border-[var(--mena-green)] text-[var(--mena-green)] font-medium px-5 py-3 text-center bg-white hover:bg-[var(--mena-paper)] transition-colors"
 
-  const buttons = phone || line ? (
+  // หน้าสมัครนายหน้า: เป้าหมายคือให้กรอกใบสมัคร ไม่ใช่โทร → ปุ่มหลักพาไปที่ฟอร์ม โทรเป็นปุ่มรอง
+  const isApply = usePathname() === "/sales-partner"
+  const buttons = isApply ? (
+    <>
+      <a href="#สมัคร" className={`${solid} flex-1 sm:flex-none`}>กรอกใบสมัคร</a>
+      {phone && <a href={telHref(phone)} className={`${ghost} sm:flex-none`}>โทร</a>}
+    </>
+  ) : phone || line ? (
     <>
       {phone && <a href={telHref(phone)} className={`${solid} flex-1 sm:flex-none`}>โทรหาฝ่ายขาย</a>}
       {line && <a href={lineHref} className={`${ghost} flex-1 sm:flex-none`}>ทักทาง LINE</a>}
