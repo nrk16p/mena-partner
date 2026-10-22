@@ -11,6 +11,7 @@ import { usePagination, PaginationBar } from "@/components/pagination"
 import { PriceHistoryDrawer } from "@/components/price-history-drawer"
 import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import { hasPerm } from "@/lib/rbac"
+import { effectiveSaleKey, countBySaleKey } from "@/lib/sale-readiness"
 
 type SaleStatus = "ready" | "repair15" | "repair30" | "review"
 
@@ -388,7 +389,8 @@ export default function PriceListPage() {
   const filtered = useMemo(() => {
     let res = rows
     if (statusFilter)        res = res.filter((r) => r.status === statusFilter)
-    if (saleFilter)          res = res.filter((r) => saleFilter === "none" ? !r.saleStatus : r.saleStatus === saleFilter)
+    // รถติดสัญญา = ขายแล้ว ไม่นับในกลุ่มพร้อมขาย/รอซ่อม/ยังไม่ระบุ (lib/sale-readiness)
+    if (saleFilter)          res = res.filter((r) => effectiveSaleKey(r) === saleFilter)
     if (installFilter !== null) res = res.filter((r) => r.financeInstallments === installFilter)
     if (q) res = res.filter((r) => r.licensePlate.toLowerCase().includes(q.toLowerCase()))
     return res
@@ -396,7 +398,7 @@ export default function PriceListPage() {
 
   // ── แจ้งเตือนรถรอซ่อมถึง/ใกล้ถึงกำหนด ──
   const repairRows = useMemo(() =>
-    rows.filter((r) => (r.saleStatus === "repair15" || r.saleStatus === "repair30") && r.repairEnd),
+    rows.filter((r) => r.status !== "contract" && (r.saleStatus === "repair15" || r.saleStatus === "repair30") && r.repairEnd),
     [rows]
   )
   const overdueRepairs = repairRows.filter((r) => daysUntil(r.repairEnd!) <= 0)
@@ -414,6 +416,7 @@ export default function PriceListPage() {
 
   const pg = usePagination(filtered, 50, [q, installFilter, statusFilter, saleFilter])
 
+  const saleCounts     = useMemo(() => countBySaleKey(rows), [rows])
   const contractCount  = rows.filter((r) => r.status === "contract").length
   const availableCount = rows.filter((r) => r.status === "active").length
 
@@ -627,6 +630,7 @@ export default function PriceListPage() {
         <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1 flex-wrap">
           {[
             { key: "",         label: "ทั้งหมด" },
+            { key: "sold",     label: "ขายแล้ว" },
             { key: "ready",    label: "พร้อมขาย" },
             { key: "repair15", label: "รอซ่อม 15 วัน" },
             { key: "repair30", label: "รอซ่อม 30 วัน" },
@@ -644,9 +648,7 @@ export default function PriceListPage() {
             >
               {tab.label}
               <span className="ml-1 text-[10px] opacity-60">
-                ({tab.key === "" ? rows.length
-                  : tab.key === "none" ? rows.filter((r) => !r.saleStatus).length
-                  : rows.filter((r) => r.saleStatus === tab.key).length})
+                ({tab.key === "" ? rows.length : saleCounts[tab.key as keyof typeof saleCounts]})
               </span>
             </button>
           ))}
