@@ -52,7 +52,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[var(--mena-line)]">
         <div className="max-w-6xl mx-auto px-4 h-[72px] flex items-center gap-6">
           <Link href="/trucks" className="flex items-center gap-3 shrink-0">
-            <Image src="/brand/mena-logo.svg" alt="มีนาทรานสปอร์ต" width={104} height={71} className="h-11 w-auto" priority />
+            <Image src="/brand/mena-logo.svg" alt="มีนาทรานสปอร์ต" width={104} height={71} className="h-11 w-auto" priority unoptimized />
             <span className="hidden sm:block leading-tight">
               <span className="block text-[15px] font-medium text-[var(--mena-green)]">รถบรรทุกมือสอง</span>
               <span className="block text-xs text-[var(--mena-ink)]/60">บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน)</span>
@@ -83,7 +83,7 @@ export default async function PublicLayout({ children }: { children: React.React
         <div className="max-w-6xl mx-auto px-4 py-14 grid gap-10 sm:gap-8 sm:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <span className="inline-flex bg-white rounded-xl px-3 py-2">
-              <Image src="/brand/mena-logo.svg" alt="มีนาทรานสปอร์ต" width={104} height={71} className="h-10 w-auto" />
+              <Image src="/brand/mena-logo.svg" alt="มีนาทรานสปอร์ต" width={104} height={71} className="h-10 w-auto" unoptimized />
             </span>
             <p className="mt-5 font-medium text-white">บริษัท มีนาทรานสปอร์ต จำกัด (มหาชน)</p>
             <p className="mt-2 max-w-xs text-sm leading-[1.9] text-balance">

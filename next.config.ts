@@ -16,10 +16,11 @@ const nextConfig: NextConfig = {
     "/api/catalog/pdf": ["./fonts/**"],
     "/og/truck/[slug]": ["./fonts/**"],
   },
-  // รูปอัปโหลด (สำเนาเอกสาร/รูปรถบน DO Spaces) เสิร์ฟผ่าน next/image ได้เร็วขึ้น
+  // ย่อรูปเองที่ /api/public/img แทน /_next/image — โควตาย่อรูปฟรีของ Vercel หมดแล้วรูปหาย (402)
+  // รายละเอียด + โฮสต์ที่อนุญาต อยู่ใน lib/image-proxy.ts
   images: {
-    formats: ["image/avif", "image/webp"],
-    remotePatterns: [{ protocol: "https", hostname: "*.digitaloceanspaces.com" }],
+    loader: "custom",
+    loaderFile: "./lib/image-loader.ts",
   },
 };
 
