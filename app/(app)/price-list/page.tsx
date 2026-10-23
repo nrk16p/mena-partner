@@ -439,16 +439,14 @@ export default function PriceListPage() {
     await exportToExcel([{ name: "ราคาขาย", rows: rows_ }], `price-list-${todayStamp()}`)
   }
 
-  // สัดส่วนความพร้อมขายของฝูงรถ (แยกกลุ่มไม่ซ้ำ รวม = จำนวนคันทั้งหมด)
-  const soldCount   = contractCount
-  const readyCount  = rows.filter((r) => r.status !== "contract" && r.saleStatus === "ready").length
-  const repairCnt   = rows.filter((r) => r.status !== "contract" && (r.saleStatus === "repair15" || r.saleStatus === "repair30")).length
-  const unsetCount  = rows.length - soldCount - readyCount - repairCnt
+  // สัดส่วนความพร้อมขายของฝูงรถ — นับชุดเดียวกับปุ่มกรอง (lib/sale-readiness) แยกกลุ่มไม่ซ้ำ รวม = จำนวนคันทั้งหมด
+  // (เดิมเอา "ยังไม่ได้เริ่มดำเนินการ" ไปรวมกับยังไม่ระบุ ตัวเลขเลยไม่ตรงกับปุ่ม 147 vs 143 — 2026-10-23)
   const saleBreakdown = [
-    { key: "sold",   label: "ขายแล้ว",    count: soldCount,  cls: "bg-blue-500" },
-    { key: "ready",  label: "พร้อมขาย",   count: readyCount, cls: "bg-emerald-500" },
-    { key: "repair", label: "รอซ่อม",     count: repairCnt,  cls: "bg-amber-500" },
-    { key: "unset",  label: "ยังไม่ระบุ", count: unsetCount, cls: "bg-zinc-300 dark:bg-zinc-600" },
+    { key: "sold",   label: "ขายแล้ว",                count: saleCounts.sold,                          cls: "bg-blue-500" },
+    { key: "ready",  label: "พร้อมขาย",               count: saleCounts.ready,                         cls: "bg-emerald-500" },
+    { key: "repair", label: "รอซ่อม",                 count: saleCounts.repair15 + saleCounts.repair30, cls: "bg-amber-500" },
+    { key: "review", label: "ยังไม่ได้เริ่มดำเนินการ", count: saleCounts.review,                        cls: "bg-violet-500" },
+    { key: "unset",  label: "ยังไม่ระบุ",             count: saleCounts.none,                          cls: "bg-zinc-300 dark:bg-zinc-600" },
   ]
 
   if (loading) return (
