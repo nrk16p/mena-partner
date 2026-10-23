@@ -1,4 +1,4 @@
-import { PHASES, PHASE_COLOR, STAGES, isOpen, stageIndex } from "@/lib/deal-stage"
+import { PHASES, PHASE_COLOR, STAGES, STAGE_LABEL, isOpen, phaseColorOf, stageIndex } from "@/lib/deal-stage"
 
 /**
  * ตัวช่วยของหน้ารายการดีล — กรอง/นับ/เรียง ฝั่งหน้าเว็บทั้งหมด
@@ -23,13 +23,21 @@ export const PHASE_BUCKETS: Bucket[] = PHASES.map((p) => ({
   key: `phase${p.no}`, label: `${p.no}. ${p.label}`, short: p.label,
   stages: p.stages as string[], color: PHASE_COLOR[p.no],
 }))
+/** ช่องกรองบนแถบสถานะ — ช่องละ 1 สถานะ ครบ 10 (สีตามด่าน) · เดิมกรองได้แค่ทีละด่าน (2 สถานะ) */
+export const STAGE_BUCKETS: Bucket[] = STAGES.map((s) => ({
+  key: s, label: STAGE_LABEL[s], short: STAGE_LABEL[s], stages: [s], color: phaseColorOf(s),
+}))
 export const SIDE_BUCKETS: Bucket[] = [
   { key: "ON_HOLD", label: "พักติดตาม", short: "พักติดตาม", stages: ["ON_HOLD"], color: "#D4A72C" },
   { key: "CLOSED_LOST", label: "ปิด–ไม่สำเร็จ", short: "ปิด–ไม่สำเร็จ", stages: ["CLOSED_LOST"], color: "#8C959F" },
 ]
-export const BUCKETS: Bucket[] = [...PHASE_BUCKETS, ...SIDE_BUCKETS]
+// ตัวกรอง/ตัวนับของหน้ารายการ = รายสถานะ · PHASE_BUCKETS ยังใช้กับกระดานดีล (5 คอลัมน์) และสีป้าย
+export const BUCKETS: Bucket[] = [...STAGE_BUCKETS, ...SIDE_BUCKETS]
 
 export const bucketOf = (stage?: string) => BUCKETS.find((b) => b.stages.includes(stage ?? ""))?.key ?? ""
+
+/** ขั้นของดีล — ไม่มี stage = ผู้สนใจ (lead จากฟอร์มหน้าเว็บรุ่นก่อน 2026-10-23 บันทึกไว้แค่ status:"lead") */
+export const stageOfDeal = (d: { stage?: string }) => d.stage || "LEAD"
 
 /** ค้างขั้นนี้มากี่วัน */
 export function daysIn(iso?: string, now: Date = new Date()): number | null {
@@ -51,7 +59,7 @@ export type Quick = "" | "followup" | "stuck"
 export function matchesQuick(d: ListDeal, quick: Quick, now: Date = new Date()): boolean {
   if (!quick) return true
   if (quick === "followup") return !!d.nextFollowUpDate && d.nextFollowUpDate <= today(now)
-  return isOpen(d.stage ?? "") && (daysIn(d.stageEnteredAt, now) ?? 0) > STUCK_BAD
+  return isOpen(stageOfDeal(d)) && (daysIn(d.stageEnteredAt, now) ?? 0) > STUCK_BAD
 }
 
 export interface ListFilter {
@@ -63,7 +71,7 @@ export interface ListFilter {
 
 export function filterDeals<T extends ListDeal>(rows: T[], f: ListFilter = {}, now: Date = new Date()): T[] {
   return rows.filter((d) => {
-    if (f.bucket && bucketOf(d.stage) !== f.bucket) return false
+    if (f.bucket && bucketOf(stageOfDeal(d)) !== f.bucket) return false
     if (!matchesQuick(d, f.quick ?? "", now)) return false
     if (f.mine) {
       const email = f.me?.email ?? ""
@@ -81,7 +89,7 @@ export function bucketStats(rows: ListDeal[]) {
   const stats: Record<string, { count: number; value: number }> = {}
   for (const b of BUCKETS) stats[b.key] = { count: 0, value: 0 }
   for (const d of rows) {
-    const k = bucketOf(d.stage)
+    const k = bucketOf(stageOfDeal(d))
     if (!stats[k]) continue
     stats[k].count++
     stats[k].value += price(d)
@@ -92,14 +100,14 @@ export function bucketStats(rows: ListDeal[]) {
 /** จำนวนดีลแยกตามขั้นย่อย (ใช้โชว์ใต้ชื่อด่านว่าอยู่ขั้นไหนกี่ใบ) */
 export function stageCounts(rows: ListDeal[]) {
   const c: Record<string, number> = {}
-  for (const d of rows) { const k = d.stage ?? ""; if (k) c[k] = (c[k] ?? 0) + 1 }
+  for (const d of rows) { const k = stageOfDeal(d); c[k] = (c[k] ?? 0) + 1 }
   return c
 }
 
 export function kpis(rows: ListDeal[], now: Date = new Date()) {
   const t = today(now)
   const withFollowUp = rows.filter((d) => !!d.nextFollowUpDate)
-  const open = rows.filter((d) => isOpen(d.stage ?? ""))
+  const open = rows.filter((d) => isOpen(stageOfDeal(d)))
   return {
     total: rows.length,
     followUpToday: withFollowUp.filter((d) => d.nextFollowUpDate! <= t).length,

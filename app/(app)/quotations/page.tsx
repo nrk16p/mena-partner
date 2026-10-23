@@ -9,10 +9,10 @@ import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePagination, PaginationBar } from "@/components/pagination"
-import { STATUS_LABEL } from "@/lib/deal-stage"
+import { STATUS_LABEL, phaseOf, type Stage } from "@/lib/deal-stage"
 import {
-  PHASE_BUCKETS, SIDE_BUCKETS, BADGE_CLASS, DOT_COLOR, FOLLOW_CLASS,
-  badgeKind, bucketOf, bucketStats, stageCounts, daysIn, filterDeals, followTone, kpis,
+  PHASE_BUCKETS, STAGE_BUCKETS, SIDE_BUCKETS, BADGE_CLASS, DOT_COLOR, FOLLOW_CLASS,
+  badgeKind, bucketOf, bucketStats, daysIn, filterDeals, followTone, kpis, stageOfDeal,
   progressSegments, sortDeals, stuckClass, type Quick,
 } from "@/lib/deal-list"
 
@@ -87,7 +87,6 @@ function QuotationsInner() {
   // ฐานของตัวนับ = ทุกดีลที่โหลดมา (กรองเฉพาะ "ดีลของฉัน") — ไม่ผูกกับด่านที่เลือก
   const base = useMemo(() => filterDeals(rows, { mine, me }), [rows, mine, me])
   const stats = useMemo(() => bucketStats(base), [base])
-  const byStage = useMemo(() => stageCounts(base), [base])
   const k = useMemo(() => kpis(rows), [rows])
   const shown = useMemo(() => sortDeals(filterDeals(base, { bucket, quick })), [base, bucket, quick])
 
@@ -139,17 +138,21 @@ function QuotationsInner() {
         </div>
       </div>
 
-      {/* แถบด่าน — ตัวเลขคิดจาก base เสมอ เลือกด่านหนึ่งแล้วด่านอื่นไม่เปลี่ยน */}
+      {/* แถบสถานะ — 10 ช่อง ช่องละสถานะ (จุดสี = ด่าน 1–5) · ตัวเลขคิดจาก base เสมอ เลือกช่องหนึ่งแล้วช่องอื่นไม่เปลี่ยน
+          "ทั้งหมด" กินสองแถวบนจอใหญ่ ให้ 10 ช่องลงตัว 5×2 ไม่มีช่องว่าง */}
       <div className="flex flex-col xl:flex-row items-stretch gap-3">
-        <div role="group" aria-label="กรองตามด่าน"
-          className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-          <PhaseTab label="ทั้งหมด" parts={[]} count={base.length} on={bucket === ""} onClick={() => setBucket("")} />
-          {PHASE_BUCKETS.map((b) => (
-            <PhaseTab key={b.key} color={b.color} label={b.label}
-              parts={b.stages.map((s) => ({ label: stageLabel(s), count: byStage[s] ?? 0 }))}
-              count={stats[b.key].count}
-              on={bucket === b.key} onClick={() => setBucket(bucket === b.key ? "" : b.key)} />
-          ))}
+        <div role="group" aria-label="กรองตามสถานะ"
+          className="flex-1 grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-6 gap-px bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+          <StageTab className="col-span-2 sm:col-span-5 lg:col-span-1 lg:row-span-2" label="ทั้งหมด" count={base.length}
+            on={bucket === ""} onClick={() => setBucket("")} />
+          {STAGE_BUCKETS.map((b) => {
+            const phase = phaseOf(b.key as Stage)
+            return (
+              <StageTab key={b.key} color={b.color} label={b.label} hint={`ด่าน ${phase.no} ${phase.label}`}
+                count={stats[b.key].count}
+                on={bucket === b.key} onClick={() => setBucket(bucket === b.key ? "" : b.key)} />
+            )
+          })}
         </div>
         <div className="flex xl:flex-col gap-2 xl:w-[170px]">
           {SIDE_BUCKETS.map((b) => (
@@ -221,7 +224,7 @@ function QuotationsInner() {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 p-4 bg-zinc-50 dark:bg-zinc-900/40">
               {PHASE_BUCKETS.map((b) => {
-                const cards = shown.filter((r) => b.stages.includes(r.stage ?? ""))
+                const cards = shown.filter((r) => b.stages.includes(stageOfDeal(r)))
                 return (
                   <div key={b.key} className="flex flex-col gap-2.5 min-w-0">
                     <div className="pb-2 px-1 border-b-2" style={{ borderColor: b.color }}>
@@ -236,7 +239,7 @@ function QuotationsInner() {
               })}
             </div>
             <p className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 text-xs text-zinc-500">
-              ขยับขั้นทำได้จากหน้าดีลเท่านั้น (ต้องมีข้อมูลบังคับครบ) · ดีลพักติดตามและปิดไม่สำเร็จ ดูได้จากปุ่มด้านขวาของแถบด่าน
+              ขยับขั้นทำได้จากหน้าดีลเท่านั้น (ต้องมีข้อมูลบังคับครบ) · ดีลพักติดตามและปิดไม่สำเร็จ ดูได้จากปุ่มด้านขวาของแถบสถานะ
             </p>
           </>
         )}
@@ -257,33 +260,24 @@ export default function QuotationsPage() {
   )
 }
 
-function PhaseTab({ color, label, parts, count, on, onClick }: {
-  color?: string; label: string; parts: { label: string; count: number }[]; count: number; on: boolean; onClick: () => void
+function StageTab({ color, label, hint, count, on, onClick, className = "" }: {
+  color?: string; label: string; hint?: string; count: number; on: boolean; onClick: () => void; className?: string
 }) {
   return (
-    <button onClick={onClick} aria-pressed={on}
-      className={`flex flex-col items-start gap-0.5 min-w-0 px-3.5 py-2.5 text-left border-r border-zinc-100 dark:border-zinc-800 last:border-r-0 ${
-        on ? "bg-[#031B14] text-white shadow-[inset_0_-3px_0_#C9A227]" : "bg-white dark:bg-zinc-900"}`}>
-      <span className={`flex items-center gap-1.5 text-xs font-semibold ${on ? "text-[#E7C86E]" : "text-zinc-500"}`}>
-        {color && <span className="w-2 h-2 rounded-sm" style={{ background: color }} />}{label}
+    <button onClick={onClick} aria-pressed={on} title={hint}
+      className={`flex flex-col justify-between items-start gap-1 min-w-0 px-3 py-2.5 text-left ${className} ${
+        on ? "bg-[#031B14] text-white shadow-[inset_0_-3px_0_#C9A227]" : "bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"}`}>
+      <span className={`flex items-start gap-1.5 text-xs font-semibold leading-snug ${on ? "text-[#E7C86E]" : "text-zinc-500"}`}>
+        {color && <span className="w-2 h-2 mt-[3px] rounded-sm shrink-0" style={{ background: color }} />}{label}
       </span>
-      <span className="text-lg font-bold tabular-nums">{count}</span>
-      {/* ขั้นย่อยของด่าน — บรรทัดละขั้น ตัวเลขชิดขวา อ่านง่ายกว่าเอามาต่อกันแล้วโดนตัด */}
-      <span className={`w-full flex flex-col gap-px text-[11px] ${on ? "text-white/70" : "text-zinc-500"}`}>
-        {parts.length === 0 ? "ทุกด่าน" : parts.map((p) => (
-          <span key={p.label} className="flex justify-between gap-2">
-            <span className="truncate">{p.label}</span>
-            <span className={`shrink-0 tabular-nums font-semibold ${p.count === 0 ? "" : on ? "text-white" : "text-zinc-900 dark:text-zinc-100"}`}>{p.count}</span>
-          </span>
-        ))}
-      </span>
+      <span className={`text-lg font-bold tabular-nums ${count === 0 && !on ? "text-zinc-400 dark:text-zinc-500" : ""}`}>{count}</span>
     </button>
   )
 }
 
 function StageBadge({ stage }: { stage?: string }) {
   const kind = badgeKind(stage)
-  const dot = DOT_COLOR[kind] || PHASE_BUCKETS.find((b) => b.stages.includes(stage ?? ""))?.color || "#8C959F"
+  const dot = DOT_COLOR[kind] || PHASE_BUCKETS.find((b) => b.stages.includes(stageOfDeal({ stage })))?.color || "#8C959F"
   return (
     <span className={`inline-flex self-start items-center gap-1.5 pl-2 pr-2.5 py-0.5 rounded-full text-xs font-semibold ${BADGE_CLASS[kind]}`}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />{stageLabel(stage)}

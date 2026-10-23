@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { bucketOf, bucketStats, stageCounts, filterDeals, kpis, sortDeals, daysIn, type ListDeal } from "@/lib/deal-list"
+import { bucketOf, bucketStats, stageCounts, filterDeals, kpis, sortDeals, daysIn, STAGE_BUCKETS, type ListDeal } from "@/lib/deal-list"
 
 const NOW = new Date("2026-09-24T00:00:00Z")
 const ago = (days: number) => new Date(NOW.getTime() - days * 86400000).toISOString()
@@ -14,12 +14,21 @@ const rows: ListDeal[] = [
   { _id: "7", stage: "CLOSED_LOST", stageEnteredAt: ago(90), totalSalePrice: 900_000, salesName: "แอน" },
 ]
 
-describe("จัดดีลเข้าด่าน", () => {
-  it("แต่ละขั้นตกอยู่ในด่านที่ถูก และสถานะพิเศษแยกออกมา", () => {
-    expect(bucketOf("LEAD")).toBe("phase1")
-    expect(bucketOf("CONTRACT_SIGNED")).toBe("phase4")
+describe("จัดดีลเข้าช่องสถานะ (10 สถานะ แยกช่องละสถานะ — ผู้ใช้สั่ง 2026-10-23)", () => {
+  it("แต่ละขั้นได้ช่องของตัวเอง และสถานะพิเศษแยกออกมา", () => {
+    expect(bucketOf("LEAD")).toBe("LEAD")
+    expect(bucketOf("CONTRACT_SIGNED")).toBe("CONTRACT_SIGNED")
     expect(bucketOf("ON_HOLD")).toBe("ON_HOLD")
     expect(bucketOf(undefined)).toBe("")
+  })
+  it("มีครบ 10 ช่อง เรียงตามลำดับขั้น พร้อมชื่อไทยและสีของด่าน", () => {
+    expect(STAGE_BUCKETS.map((b) => b.key)).toEqual([
+      "LEAD", "QUALIFIED", "QUOTED", "VIEWING_SCHEDULED", "RESERVED",
+      "TRAINING", "CONTRACT_SCHEDULED", "CONTRACT_SIGNED", "DELIVERED", "COMPLETED_90D",
+    ])
+    expect(STAGE_BUCKETS[0].label).toBe("ผู้สนใจ")
+    expect(STAGE_BUCKETS[0].color).toBe("var(--phase-1)")
+    expect(STAGE_BUCKETS[9].color).toBe("var(--phase-5)")
   })
 })
 
@@ -33,18 +42,35 @@ describe("ตัวนับด่าน", () => {
 
   it("นับจำนวนและมูลค่าตามด่าน", () => {
     const s = bucketStats(rows)
-    expect(s.phase1).toEqual({ count: 1, value: 1_000_000 })
-    expect(s.phase4).toEqual({ count: 1, value: 1_400_000 })
+    expect(s.LEAD).toEqual({ count: 1, value: 1_000_000 })
+    expect(s.CONTRACT_SIGNED).toEqual({ count: 1, value: 1_400_000 })
+    expect(s.VIEWING_SCHEDULED).toEqual({ count: 0, value: 0 })
     expect(s.CLOSED_LOST.count).toBe(1)
   })
 
   // บั๊กที่ต้องกันไว้: เดิมกรองด่านที่ server แล้วเอาผลมานับ ด่านอื่นเลยเหลือ 0
   it("เลือกด่านแล้ว ตัวเลขของด่านอื่นต้องไม่เปลี่ยน", () => {
     const before = bucketStats(rows)
-    const shown = filterDeals(rows, { bucket: "phase2" }, NOW)
+    const shown = filterDeals(rows, { bucket: "QUOTED" }, NOW)
     expect(shown.map((d) => d._id)).toEqual(["2"])
     expect(bucketStats(rows)).toEqual(before)
     expect(kpis(rows, NOW).total).toBe(7)
+  })
+})
+
+// ลูกค้าจากฟอร์มบนเว็บ /trucks เคยถูกบันทึกโดยไม่มี stage → ไม่ตกช่องไหนเลย (ทั้งหมด 119 แต่รวมทุกช่องได้ 115 — 2026-10-23)
+describe("ดีลที่ไม่มี stage (lead จากหน้าเว็บรุ่นเก่า)", () => {
+  const web: ListDeal[] = [...rows, { _id: "8", totalSalePrice: 800_000 }]
+  it("นับเป็นผู้สนใจ ทุกช่องรวมกันเท่าทั้งหมด", () => {
+    const s = bucketStats(web)
+    expect(s.LEAD.count).toBe(2)
+    expect(Object.values(s).reduce((a, b) => a + b.count, 0)).toBe(web.length)
+  })
+  it("นับเป็นดีลที่ยังเดินอยู่ในมูลค่า pipeline", () => {
+    expect(kpis(web, NOW).openCount).toBe(kpis(rows, NOW).openCount + 1)
+  })
+  it("กดช่องผู้สนใจแล้วเห็นดีลนี้", () => {
+    expect(filterDeals(web, { bucket: "LEAD" }, NOW).map((d) => d._id)).toEqual(["1", "8"])
   })
 })
 
