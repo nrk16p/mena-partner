@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
   await db.collection("quotations").insertOne({
     quotationNo: "",                       // ยังไม่ออกเลขใบเสนอ — ออกตอนทีมขายแปลงเป็นใบจริง
     status: "lead",
+    // ต้องมี stage — ไม่งั้นดีลไม่ตกช่องไหนในหน้ารายการ และกดพักติดตามไม่ได้ (lib/deal-actions เช็ก stage)
+    stage: "LEAD",
+    stageEnteredAt: now,
+    lastActivityAt: now,
     source: "public-listing",
     publicSlug: lead.slug,
     customerName: lead.name,
