@@ -71,5 +71,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|otf|eot)$).*)"],
+  matcher: [
+    // หน้า + ทุกอย่าง ยกเว้นไฟล์นิ่ง (รูป/ฟอนต์ใน public)
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|otf|eot)$).*)",
+    // API ต้องผ่านเสมอ — ข้อแรกข้ามตามนามสกุล เลยเคยต่อ ".png" ท้าย /api/... แล้วหลุดการตรวจสิทธิ์ (QA 2026-10-23)
+    "/api/:path*",
+  ],
 }
