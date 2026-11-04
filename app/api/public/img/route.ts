@@ -1,6 +1,6 @@
 import sharp from "sharp"
 import type { NextRequest } from "next/server"
-import { parseImageRequest } from "@/lib/image-proxy"
+import { parseImageRequest, renderWidth } from "@/lib/image-proxy"
 
 export const runtime = "nodejs"
 
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
   try {
     const out = await sharp(buf)
       .rotate() // หมุนตาม EXIF (รูปจากมือถือ) เหมือนตัวย่อรูปเดิม
-      .resize({ width: p.width, withoutEnlargement: true })
-      .webp({ quality: 75 })
+      .resize({ width: renderWidth(p.width), withoutEnlargement: true })
+      .webp({ quality: 72 })
       .toBuffer()
     return new Response(new Uint8Array(out), {
       headers: { "Content-Type": "image/webp", "Cache-Control": CACHE },

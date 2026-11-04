@@ -189,7 +189,8 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
       ) : (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {paged.map((t) => <TruckCard key={t.slug} truck={t} />)}
+            {/* แถวแรก ๆ โหลดทันที (ไม่ lazy) — ก่อนหน้านี้รูปเริ่มโหลดหลัง hydrate ~2.5 วิ ผู้ใช้เห็นกล่องว่าง */}
+            {paged.map((t, i) => <TruckCard key={t.slug} truck={t} priority={curPage === 1 && i < 6} />)}
           </div>
           <Pager page={curPage} totalPages={totalPages} total={shown.length} onPage={goPage} />
         </>

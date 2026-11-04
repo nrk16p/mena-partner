@@ -1,10 +1,10 @@
-import Image from "next/image"
 import Link from "next/link"
+import { CardPhoto } from "./card-photo"
 import { fmtBaht } from "@/lib/public-seo"
 import type { PublicTruck } from "@/lib/public-trucks"
 import { PrepBadge, ReadyBadge } from "./ready-stars"
 
-export function TruckCard({ truck }: { truck: PublicTruck }) {
+export function TruckCard({ truck, priority = false }: { truck: PublicTruck; priority?: boolean }) {
   const year = truck.registrationYear
   const title = [truck.brand, truck.model].filter(Boolean).join(" ") || "รถผสมปูนมือสอง"
   const kind = truck.vehicleType || truck.characteristic
@@ -14,14 +14,9 @@ export function TruckCard({ truck }: { truck: PublicTruck }) {
       href={`/trucks/${truck.slug}`}
       className="group flex flex-col rounded-2xl border border-[var(--mena-line)] bg-white overflow-hidden transition-shadow hover:shadow-[0_12px_28px_-18px_rgba(2,58,30,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mena-green)]"
     >
-      <div className="relative aspect-[4/3] bg-[var(--mena-paper)]">
+      <div className="relative aspect-[4/3] bg-[var(--mena-paper)] overflow-hidden">
         {truck.photoUrl ? (
-          <Image
-            src={truck.photoUrl}
-            alt={`${title}${year ? ` ปี ${year + 543}` : ""} มือสอง`}
-            fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover"
-          />
+          <CardPhoto src={truck.photoUrl} alt={`${title}${year ? ` ปี ${year + 543}` : ""} มือสอง`} priority={priority} />
         ) : (
           <div className="absolute inset-0 grid place-items-center text-sm text-[var(--mena-ink)]/40">รูปกำลังอัปเดต</div>
         )}

@@ -56,3 +56,11 @@ describe("imageLoader", () => {
     }
   })
 })
+
+describe("renderWidth — ไม่ย่อใหญ่เกินที่ใช้จริง", async () => {
+  const { renderWidth, MAX_RENDER_WIDTH } = await import("./image-proxy")
+  it("ขอ 3840 ได้ 1920 · ขอ 640 ได้ 640", () => {
+    expect(renderWidth(3840)).toBe(MAX_RENDER_WIDTH)
+    expect(renderWidth(640)).toBe(640)
+  })
+})

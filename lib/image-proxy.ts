@@ -28,6 +28,10 @@ export function isProxiable(src: string): boolean {
     && !u.username && !u.password && !u.port && !isSvg(u.pathname)
 }
 
+/** ความกว้างสูงสุดที่ย่อให้จริง — จอ 4K ขอ 3840 ก็ส่ง 1920 (รูปรถต้นฉบับไม่ได้ใหญ่กว่านี้ ไฟล์เล็กลงครึ่ง โหลดเร็วขึ้น) */
+export const MAX_RENDER_WIDTH = 1920
+export const renderWidth = (w: number) => Math.min(w, MAX_RENDER_WIDTH)
+
 export type ImageRequest =
   | { ok: true; source: string; width: number }
   | { ok: false; error: string }
