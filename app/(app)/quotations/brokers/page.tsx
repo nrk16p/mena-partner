@@ -91,7 +91,7 @@ export default function BrokerApplicationsPage() {
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
       setMsg(status === "approved"
-        ? `อนุมัติ ${name} แล้ว${d.addedToSales ? " และเพิ่มเข้าทีมขายแล้ว" : " (มีชื่อในทีมขายอยู่แล้ว)"}`
+        ? `อนุมัติ ${name} แล้ว${d.addedToSales ? " และเพิ่มเข้าทีมฝ่ายขายแล้ว" : " — มีชื่อในทีมฝ่ายขายอยู่แล้ว ผูกใบสมัครให้แล้ว"} · ดูที่หน้าทีมฝ่ายขาย`
         : status === "rejected" ? `ไม่อนุมัติ ${name}` : `ย้าย ${name} กลับไปรอตรวจ`)
       setOpenId("")
       setReloadKey((k) => k + 1)

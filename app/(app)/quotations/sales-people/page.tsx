@@ -14,6 +14,7 @@ interface Person {
   name: string
   email: string
   phone: string
+  brokerApplicationId?: string   // มาจากใบสมัครนายหน้าที่อนุมัติแล้ว
   quotations: number   // จำนวนใบเสนอราคาที่ผูกกับชื่อนี้
   seeded: boolean
 }
@@ -177,6 +178,7 @@ export default function SalesPeoplePage() {
                         : <span className="flex items-center gap-1.5">
                             {p.name}
                             {p.seeded && <span className="text-[9px] font-semibold text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded px-1 py-0.5">ค่าตั้งต้น</span>}
+                            {p.brokerApplicationId && <Link href="/quotations/brokers" className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 rounded px-1 py-0.5" title="มาจากใบสมัครนายหน้าที่อนุมัติแล้ว">นายหน้า</Link>}
                           </span>}
                     </td>
                     <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400">

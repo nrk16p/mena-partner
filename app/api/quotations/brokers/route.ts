@@ -55,18 +55,30 @@ export async function PATCH(req: NextRequest) {
     } as never,
   )
 
+  // อนุมัติ → ต้องไปอยู่ในทีมฝ่ายขายเสมอ: ไม่มีชื่อ = เพิ่มใหม่ · มีชื่ออยู่แล้ว = ผูกใบสมัคร + เติมเบอร์/ไลน์ที่ยังว่าง
   let addedToSales = false
+  let linkedToSales = false
   if (status === "approved") {
     const name = `${cur.firstName ?? ""} ${cur.lastName ?? ""}`.trim()
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    const exists = await db.collection("sales_people").findOne({ name: { $regex: `^${esc}$`, $options: "i" } })
+    const exists = name ? await db.collection("sales_people").findOne({ name: { $regex: `^${esc}$`, $options: "i" } }) : null
     if (name && !exists) {
       await db.collection("sales_people").insertOne({
-        name, email: "", phone: String(cur.phone ?? ""), brokerApplicationId: id,
+        name, email: "", phone: String(cur.phone ?? ""), lineId: String(cur.lineId ?? ""),
+        center: String(cur.center ?? ""), brokerApplicationId: id, source: "broker",
         createdAt: now, createdBy: admin.email,
       })
       addedToSales = true
+    } else if (exists) {
+      await db.collection("sales_people").updateOne({ _id: exists._id }, {
+        $set: {
+          brokerApplicationId: id, source: "broker", updatedAt: now, updatedBy: admin.email,
+          ...(!String(exists.phone ?? "").trim() && cur.phone ? { phone: String(cur.phone) } : {}),
+          ...(!String(exists.lineId ?? "").trim() && cur.lineId ? { lineId: String(cur.lineId) } : {}),
+        },
+      })
+      linkedToSales = true
     }
   }
-  return NextResponse.json({ ok: true, addedToSales })
+  return NextResponse.json({ ok: true, addedToSales, linkedToSales })
 }

@@ -43,12 +43,13 @@ async function listPeople() {
     name: String(r.name ?? ""),
     email: String(r.email ?? ""),
     phone: String(r.phone ?? ""),
+    brokerApplicationId: r.brokerApplicationId ? String(r.brokerApplicationId) : "",
     quotations: countOf(String(r.name ?? "")),
     seeded: false,
   }))
   const fromCode = SALES_PEOPLE
     .filter((n) => !inDb.has(n.trim().toLowerCase()))
-    .map((n) => ({ _id: "", name: n, email: "", phone: "", quotations: countOf(n), seeded: true }))
+    .map((n) => ({ _id: "", name: n, email: "", phone: "", brokerApplicationId: "", quotations: countOf(n), seeded: true }))
   return [...fromDb, ...fromCode].sort((a, b) => a.name.localeCompare(b.name, "th"))
 }
 
