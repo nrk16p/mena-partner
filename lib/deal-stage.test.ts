@@ -124,3 +124,19 @@ describe("การขยับขั้น", () => {
     expect(checkTransition({ stage: "LEAD" }, "SOMETHING", { now: NOW }).error).toContain("ไม่ถูกต้อง")
   })
 })
+
+describe("ข้ามขั้น (skip) + statusOfStage", () => {
+  it("skip: ไปขั้นถัดไปได้แม้ข้อมูลบังคับไม่ครบ แต่ยังข้ามหลายขั้น/ถอยไม่ได้", async () => {
+    const { checkTransition: ct, statusOfStage, WON_STAGES } = await import("@/lib/deal-stage")
+    const d: DealFields = { stage: "QUOTED" }                       // ไม่มีวันนัดดูรถ
+    expect(ct(d, "VIEWING_SCHEDULED").ok).toBe(false)
+    expect(ct(d, "VIEWING_SCHEDULED", { skip: true })).toEqual({ ok: true, to: "VIEWING_SCHEDULED", missing: [] })
+    expect(ct(d, "RESERVED", { skip: true }).ok).toBe(false)
+    expect(ct(d, "LEAD", { skip: true }).ok).toBe(false)
+    expect(statusOfStage("CONTRACT_SIGNED")).toBe("won")
+    expect(statusOfStage("CLOSED_LOST")).toBe("lost")
+    expect(statusOfStage("RESERVED")).toBe("booked")
+    expect(statusOfStage("ON_HOLD")).toBeNull()
+    expect(WON_STAGES).toContain("DELIVERED")
+  })
+})

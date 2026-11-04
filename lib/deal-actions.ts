@@ -1,6 +1,6 @@
 import "server-only"
 import { ObjectId, type Db } from "mongodb"
-import { checkTransition, isOpen, isStage, stageIndex, STAGE_LABEL, type DealFields, type Stage } from "@/lib/deal-stage"
+import { checkTransition, isOpen, isStage, stageIndex, statusOfStage, STAGE_LABEL, type DealFields, type Stage } from "@/lib/deal-stage"
 import { listLossReasons, reasonsForStage } from "@/lib/loss-reason"
 
 /**
@@ -40,23 +40,32 @@ export async function touchDeal(db: Db, id: string, by: string, action: string, 
   })
 }
 
-/** ขยับขั้น (ไปหน้า 1 ขั้น หรือถอยขั้นสำหรับผู้ดูแล) */
-export async function moveStage(db: Db, id: string, to: string, actor: Actor, note?: string): Promise<ActionResult> {
+/** ขยับขั้น (ไปหน้า 1 ขั้น · ถอยขั้นสำหรับผู้ดูแล · skip = ข้ามขั้นโดยไม่ต้องมีข้อมูลบังคับ) */
+export async function moveStage(db: Db, id: string, to: string, actor: Actor, note?: string, opts: { skip?: boolean } = {}): Promise<ActionResult> {
   const deal = await getDeal(db, id)
   if (!deal) return { ok: false, error: "ไม่พบดีล" }
 
-  const check = checkTransition(deal as DealFields, to, { isAdmin: actor.isAdmin })
+  const check = checkTransition(deal as DealFields, to, { isAdmin: actor.isAdmin, skip: opts.skip })
   if (!check.ok) return { ok: false, error: check.error, missing: check.missing }
 
   const from = String(deal.stage)
   const back = stageIndex(to) < stageIndex(from)
   if (back && !note?.trim()) return { ok: false, error: "ถอยขั้นต้องบันทึกเหตุผล" }
 
+  const verb = back ? "ถอยขั้น" : opts.skip ? `ข้ามขั้น ${STAGE_LABEL[from as Stage] ?? from}` : "ขยับขั้น"
+  // สถานะแบบเก่า (won/lost/booked) เดินตามขั้นไปด้วย — หน้าคอม/แดชบอร์ดอ่านจาก status
+  const status = statusOfStage(to)
   await update(db, id, {
-    $set: { stage: to, stageEnteredAt: now(), lastActivityAt: now(), updatedAt: now() },
-    $push: { timeline: { $each: [{ at: now(), by: actor.email, action: `${back ? "ถอยขั้น" : "ขยับขั้น"} → ${STAGE_LABEL[to as Stage]}`, ...(note ? { note } : {}) }] } },
+    $set: {
+      stage: to, stageEnteredAt: now(), lastActivityAt: now(), updatedAt: now(),
+      ...(status ? { status } : {}),
+    },
+    $push: {
+      timeline: { $each: [{ at: now(), by: actor.email, action: `${verb} → ${STAGE_LABEL[to as Stage]}`, ...(note ? { note } : {}) }] },
+      ...(opts.skip ? { skippedStages: { $each: [{ stage: from, at: now(), by: actor.email, ...(note ? { note } : {}) }] } } : {}),
+    },
   })
-  await writeHistory(db, id, from, to, actor.email, note)
+  await writeHistory(db, id, from, to, actor.email, opts.skip ? `ข้ามขั้น${note ? `: ${note}` : ""}` : note)
   return { ok: true }
 }
 
@@ -121,7 +130,7 @@ export async function closeLost(
 
   await update(db, id, {
     $set: {
-      stage: "CLOSED_LOST", lostAtStage: lostAt, lossReasonId: String(reason._id), lossReasonLabel: reason.label,
+      stage: "CLOSED_LOST", status: "lost", lostAtStage: lostAt, lossReasonId: String(reason._id), lossReasonLabel: reason.label,
       ...(lossNote ? { lossNote } : {}), lostAt: now(), lastActivityAt: now(), updatedAt: now(),
     },
     $push: { timeline: { $each: [{ at: now(), by: actor.email, action: `ปิดดีล – ไม่สำเร็จ (${reason.label})`, ...(lossNote ? { note: lossNote } : {}) }] } },

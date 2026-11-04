@@ -71,6 +71,15 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     case "move":
       result = await moveStage(db, id, String(b.to ?? ""), actor, b.note)
       break
+    case "skip": {
+      // ข้ามขั้นปัจจุบันไปขั้นถัดไป ไม่ต้องกรอกของบังคับ — บางขั้นไม่ต้องทำทุกคน
+      const deal = await getDeal(db, id)
+      if (!deal) return NextResponse.json({ error: "ไม่พบดีล" }, { status: 404 })
+      const next = checkAdvance(deal as DealFields)
+      if (!next.to) return NextResponse.json({ error: next.error ?? "ข้ามต่อไม่ได้" }, { status: 400 })
+      result = await moveStage(db, id, next.to, actor, b.note ? String(b.note) : undefined, { skip: true })
+      break
+    }
     case "hold":
       result = await holdDeal(db, id, actor, String(b.holdReason ?? ""), String(b.nextFollowUpDate ?? ""))
       break

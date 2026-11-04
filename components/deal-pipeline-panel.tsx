@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, PauseCircle, PlayCircle, XCircle, Upload, Check } from "lucide-react"
+import { ArrowRight, PauseCircle, PlayCircle, XCircle, Upload, Check, SkipForward } from "lucide-react"
+import { prompt } from "@/components/ui/confirm"
 import { PHASES, STAGES, STAGE_LABEL, STATUS_LABEL, PHASE_COLOR, type Stage } from "@/lib/deal-stage"
 
 /**
@@ -465,6 +466,22 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                   <span className={`text-[13px] font-semibold ${canAdvance ? "text-emerald-700 dark:text-emerald-400" : "text-[#9A6700] dark:text-amber-400"}`}>
                     {canAdvance ? "พร้อมขยับ" : `ขาดอีก ${Math.max(total - done, info.advance.missing.length)} รายการ`}
                   </span>
+                  {/* บางขั้นไม่ต้องทำทุกคน — ข้ามไปขั้นถัดไปได้โดยไม่ต้องกรอกของบังคับ (จดเหตุผลไว้ใน timeline) */}
+                  {!canAdvance && !closed && (
+                    <button disabled={busy}
+                      onClick={async () => {
+                        const note = await prompt({
+                          title: `ข้ามขั้น "${STAGE_LABEL[active as Stage]}"`,
+                          description: `ไปขั้น "${nextLabel}" เลยโดยไม่ต้องกรอกข้อมูลบังคับของขั้นนี้ ใส่เหตุผลสั้น ๆ ไว้ให้ทีมรู้ (เว้นว่างได้)`,
+                          placeholder: "เช่น ลูกค้าเคยดูรถแล้ว / ไม่ต้องฝึกงาน",
+                        })
+                        if (note === null) return
+                        await act({ action: "skip", note: note.trim() })
+                      }}
+                      className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 text-[13px] font-semibold bg-white dark:bg-zinc-900 disabled:opacity-50">
+                      <SkipForward className="w-[15px] h-[15px]" /> ข้ามขั้นนี้
+                    </button>
+                  )}
                 </>
               )}
               {/* ดีลที่เดินครบ 90 วันแล้วถือว่าจบ — ไม่ควรกดพัก/ปิดว่าไม่สำเร็จได้อีก */}

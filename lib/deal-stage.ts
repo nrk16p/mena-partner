@@ -58,6 +58,21 @@ export const isStage = (v: unknown): v is Stage => STAGES.includes(v as Stage)
 export const isOpen = (status: string) => status === "ON_HOLD" || (isStage(status) && status !== "COMPLETED_90D")
 export const nextStage = (stage: Stage): Stage | null => STAGES[stageIndex(stage) + 1] ?? null
 
+/** สถานะแบบเก่า (lead/quoted/booked/won/lost) ที่หน้าคอม/แดชบอร์ดยังใช้ — คิดจากขั้น pipeline
+ *  เซ็นสัญญาแล้ว = ปิดการขาย (won) · ปิด–ไม่สำเร็จ = lost · พักติดตาม = คงสถานะเดิม (คืน null) */
+export function statusOfStage(stage: string): "lead" | "quoted" | "booked" | "won" | "lost" | null {
+  switch (stage) {
+    case "LEAD": return "lead"
+    case "QUALIFIED": case "QUOTED": case "VIEWING_SCHEDULED": return "quoted"
+    case "RESERVED": case "TRAINING": case "CONTRACT_SCHEDULED": return "booked"
+    case "CONTRACT_SIGNED": case "DELIVERED": case "COMPLETED_90D": return "won"
+    case "CLOSED_LOST": return "lost"
+    default: return null
+  }
+}
+/** ขั้นที่นับเป็น "ปิดการขาย" แล้ว (ใช้คิดค่าคอม) */
+export const WON_STAGES: Stage[] = ["CONTRACT_SIGNED", "DELIVERED", "COMPLETED_90D"]
+
 // ─── ข้อมูลของดีลที่กติกาใช้ตัดสิน ─────────────────────────────────────────────
 
 export interface DealScreening {
@@ -221,7 +236,7 @@ export function checkAdvance(d: DealFields, now = new Date()): AdvanceCheck {
 }
 
 /** ตรวจการเปลี่ยนสถานะที่ API ได้รับมา (กันเรียก API ตรงข้ามขั้น) */
-export function checkTransition(d: DealFields, to: string, opts: { isAdmin?: boolean; now?: Date } = {}): AdvanceCheck {
+export function checkTransition(d: DealFields, to: string, opts: { isAdmin?: boolean; skip?: boolean; now?: Date } = {}): AdvanceCheck {
   const now = opts.now ?? new Date()
   const from = d.stage
   if (!isStage(to)) return { ok: false, to: null, missing: [], error: "สถานะปลายทางไม่ถูกต้อง" }
@@ -235,6 +250,8 @@ export function checkTransition(d: DealFields, to: string, opts: { isAdmin?: boo
   if (stageIndex(to) > stageIndex(from) + 1) {
     return { ok: false, to: null, missing: [], error: `ข้ามขั้นไม่ได้ ต้องไป ${STAGE_LABEL[nextStage(from)!]} ก่อน` }
   }
+  // ข้ามขั้น: ไปขั้นถัดไปโดยไม่ต้องมีข้อมูลบังคับ (บางขั้นไม่ต้องทำทุกคน) — ยังเดินทีละขั้นเหมือนเดิม
+  if (opts.skip) return { ok: true, to, missing: [] }
   const missing = missingToAdvance(d, from, now)
   return { ok: missing.length === 0, to, missing }
 }
