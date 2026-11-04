@@ -8,6 +8,8 @@ import Link from "next/link"
 import { ArrowLeft, FileText, Upload, CheckCircle2, Search, Pencil, Copy, Phone, CalendarDays, X } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
+import { DealVehicleOptions } from "@/components/deal-vehicle-options"
+import type { VehicleOption } from "@/lib/deal-vehicles"
 import { COMPANY_BANK } from "@/lib/company-bank"
 import { DealStepper, DealNextStep, useDealStage, activeStageOf, type DealForPanel } from "@/components/deal-pipeline-panel"
 import { STAGE_LABEL, STATUS_LABEL, PHASES, type Stage } from "@/lib/deal-stage"
@@ -32,6 +34,7 @@ interface Quote {
   salesName: string; salesEmail: string; createdAt: string
   createdBy?: { email: string; name: string }
   updatedBy?: { email: string; name: string; at: string }
+  vehicles?: VehicleOption[]
   timeline?: { at: string; by: string; action: string; note?: string }[]
 }
 
@@ -398,7 +401,12 @@ export default function DealPage() {
               ) : (
                 <p className="text-sm text-zinc-500">ยังไม่ได้เลือกรถ (Lead) — เลือกรถเพื่อออกใบเสนอราคา</p>
               )
-            ) : (
+            ) : null}
+            {!editing && q.licensePlate && (
+              <DealVehicleOptions dealId={id} deal={q} prices={prices} busy={busy}
+                onChanged={(d) => setQ(d as Quote)} onError={setErr} />
+            )}
+            {!editing ? null : (
               <div className="space-y-3">
                 <div className="relative">
                   <label className="block text-xs text-zinc-500 mb-1">เลือกรถ (พิมพ์ทะเบียนหรือเบอร์รถ)</label>

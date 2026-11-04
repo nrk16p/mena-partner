@@ -41,6 +41,8 @@ export interface Quotation extends QuotePricing {
   truckNumber?: string
   vehiclePhotoUrl?: string
   vehiclePhotos?: { front?: string; back?: string; left?: string; right?: string; cabin?: string }
+  // รถคันอื่นที่เสนอให้ลูกค้าเลือกในดีลเดียวกัน (คันหลัก = ฟิลด์ด้านบน) — lib/deal-vehicles
+  vehicles?: import("@/lib/deal-vehicles").VehicleOption[]
   // ของแถม/เงื่อนไข
   extras?: string
   note?: string
