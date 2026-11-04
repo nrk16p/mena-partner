@@ -49,11 +49,15 @@ export function nextTierInfo(count: number): { carsToNext: number; nextRate: num
 
 /* ---------- สรุปรายคน ---------- */
 
+/** ร่องรอยว่างวดนี้ทำจ่ายไปแล้ว (เก็บบนเอกสารใบเสนอ commissionPayouts.t1/t2) */
+export type PayoutMark = { paymentId: string; paidAt: string; amount: number; cycle: string }
+
 /** ใบเสนอราคาเท่าที่การคำนวณค่าคอมต้องใช้ */
 export type CommissionQuote = {
   _id?: string
   quotationNo: string
   status: string
+  stage?: string
   salesEmail?: string
   salesName?: string
   customerName?: string
@@ -62,12 +66,28 @@ export type CommissionQuote = {
   totalSalePrice?: number
   updatedAt?: string
   createdAt?: string
+  // วันเริ่มต้นสัญญา — ฐานคิดรอบจ่ายค่าคอม (ตั้งเองได้ > วันที่ขยับเป็นเซ็นสัญญาแล้ว > วันนัดเซ็น > วันปิดการขาย)
+  contractStartDate?: string
+  contractSignedAt?: string
+  contractDate?: string
+  commissionPayouts?: { t1?: PayoutMark; t2?: PayoutMark }
   timeline?: { at: string; by: string; action: string; note?: string }[]
+}
+
+/** งวดจ่ายของคันหนึ่ง — งวด 1 = 1,000 เมื่อครบ 30 วัน · งวด 2 = ส่วนที่เหลือเมื่อครบ 90 วัน */
+export type Payout = {
+  tranche: 1 | 2
+  amount: number
+  due: string            // YYYY-MM-DD วันครบกำหนด
+  cycle: string          // YYYY-MM รอบจ่าย (ตัดรอบวันที่ 20)
+  cycleLabel: string
+  paid?: PayoutMark
 }
 
 export type CommissionSale = {
   nth: number            // คันที่เท่าไหร่ของคนนี้ (นับสะสมตลอดชีพ)
   wonAt: string          // วันปิดการขาย (ISO)
+  contractStart: string  // วันเริ่มต้นสัญญา YYYY-MM-DD (ฐานรอบจ่าย)
   quotationId: string
   quotationNo: string
   customerName: string
@@ -76,6 +96,64 @@ export type CommissionSale = {
   salePrice: number
   commission: number     // ค่าคอมของคันนี้
   cumulative: number     // ค่าคอมสะสมถึงคันนี้
+  payouts: Payout[]
+  paid: number           // จ่ายไปแล้วของคันนี้
+}
+
+/* ---------- รอบจ่าย ---------- */
+
+export const FIRST_TRANCHE = 1000
+export const TRANCHE_DAYS: Record<1 | 2, number> = { 1: 30, 2: 90 }
+export const CYCLE_CUTOFF_DAY = 20
+/** ขั้น pipeline ที่นับเป็นปิดการขายแล้ว (ซ้ำกับ deal-stage.WON_STAGES — ไฟล์นี้ต้อง pure ไม่ import server code) */
+const WON_STAGE_SET = new Set(["CONTRACT_SIGNED", "DELIVERED", "COMPLETED_90D"])
+
+export const isWonQuote = (q: { status?: string; stage?: string }) =>
+  q.status === "won" || WON_STAGE_SET.has(String(q.stage ?? ""))
+
+const ymd = (iso: string) => iso.slice(0, 10)
+const TH_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+
+export function addDays(dateYmd: string, n: number): string {
+  const d = new Date(dateYmd.slice(0, 10) + "T00:00:00Z")
+  if (Number.isNaN(d.getTime())) return ""
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** รอบจ่ายของวันครบกำหนด: ถึงวันที่ 20 = รอบเดือนนั้น · หลังวันที่ 20 = รอบเดือนถัดไป */
+export function cycleOf(dateYmd: string): string {
+  const d = new Date(dateYmd.slice(0, 10) + "T00:00:00Z")
+  if (Number.isNaN(d.getTime())) return ""
+  if (d.getUTCDate() > CYCLE_CUTOFF_DAY) d.setUTCMonth(d.getUTCMonth() + 1, 1)
+  return d.toISOString().slice(0, 7)
+}
+
+/** "2026-11" → "รอบ 20 พ.ย. 69" */
+export function cycleLabel(cycle: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(cycle)
+  if (!m) return cycle || "—"
+  return `รอบ ${CYCLE_CUTOFF_DAY} ${TH_MONTHS[Number(m[2]) - 1]} ${String(Number(m[1]) + 543).slice(-2)}`
+}
+
+/** วันเริ่มต้นสัญญาของใบนี้ (YYYY-MM-DD) — ฐานคิดรอบจ่าย */
+export function contractStartOf(q: CommissionQuote): string {
+  const pick = q.contractStartDate || q.contractSignedAt || q.contractDate || wonDateOf(q)
+  return pick ? ymd(pick) : ""
+}
+
+/** แผนจ่ายของคันหนึ่ง จากค่าคอมกับวันเริ่มต้นสัญญา */
+export function payoutsOf(commission: number, contractStart: string, marks?: { t1?: PayoutMark; t2?: PayoutMark }): Payout[] {
+  if (commission <= 0) return []
+  const first = Math.min(FIRST_TRANCHE, commission)
+  const rest = commission - first
+  const mk = (tranche: 1 | 2, amount: number): Payout => {
+    const due = contractStart ? addDays(contractStart, TRANCHE_DAYS[tranche]) : ""
+    const cycle = due ? cycleOf(due) : ""
+    const paid = tranche === 1 ? marks?.t1 : marks?.t2
+    return { tranche, amount, due, cycle, cycleLabel: cycleLabel(cycle), ...(paid ? { paid } : {}) }
+  }
+  return rest > 0 ? [mk(1, first), mk(2, rest)] : [mk(1, first)]
 }
 
 export type CommissionSummary = {
@@ -85,30 +163,36 @@ export type CommissionSummary = {
   unassigned: boolean    // true = ใบที่ไม่มีผู้ขาย (ข้อมูลไม่สมบูรณ์)
   count: number
   total: number          // ค่าคอมสะสมรวม
+  paidTotal: number      // ทำจ่ายไปแล้ว
+  dueTotal: number       // ถึงกำหนดแล้วแต่ยังไม่จ่าย (นับถึงรอบปัจจุบัน)
   salesValue: number     // มูลค่าขายรวม
   currentRate: number    // อัตราของคันถัดไป
   next: { carsToNext: number; nextRate: number } | null
   sales: CommissionSale[]
 }
 
-const WON = "won"
-
-/** วันปิดการขาย: event ล่าสุดใน timeline ที่ลงท้าย "ปิดการขาย" ไม่มีก็ใช้ updatedAt/createdAt */
+/** วันปิดการขาย: event ล่าสุดใน timeline ที่ลงท้าย "ปิดการขาย" หรือขยับเป็น "เซ็นสัญญาแล้ว" ไม่มีก็ใช้ updatedAt/createdAt */
 export function wonDateOf(q: CommissionQuote): string {
-  const events = (q.timeline ?? []).filter((t) => /ปิดการขาย\s*$/.test(t.action ?? ""))
+  const events = (q.timeline ?? []).filter((t) => /ปิดการขาย\s*$|→ เซ็นสัญญาแล้ว/.test(t.action ?? ""))
   const last = events[events.length - 1]
-  return last?.at || q.updatedAt || q.createdAt || ""
+  return last?.at || q.contractSignedAt || q.updatedAt || q.createdAt || ""
 }
 
-/** สรุปค่าคอมรายคนจากใบเสนอราคาทั้งหมด (กรอง won ให้เอง) */
-export function buildSalesCommission(quotes: CommissionQuote[]): CommissionSummary[] {
+/** สรุปค่าคอมรายคนจากใบเสนอราคาทั้งหมด (กรองใบที่ปิดการขายให้เอง)
+ *  จับกลุ่มด้วยอีเมลก่อน ใบที่ไม่มีอีเมล (คนอื่นคีย์ให้สมัยก่อน) เทียบชื่อเข้ากลุ่มเดิม
+ *  @param today ใช้ตัดสินว่างวดไหน "ถึงกำหนดแล้ว" (YYYY-MM-DD) */
+export function buildSalesCommission(quotes: CommissionQuote[], today = new Date().toISOString().slice(0, 10)): CommissionSummary[] {
   const groups = new Map<string, { name: string; email: string; unassigned: boolean; rows: CommissionQuote[] }>()
+  const keyOfName = new Map<string, string>()
+  const norm = (n: string) => n.trim().replace(/\s+/g, " ").toLowerCase()
 
-  for (const q of quotes) {
-    if (q.status !== WON) continue
+  // ใบที่มีอีเมลก่อน ให้ชื่อผูกกับกลุ่มอีเมลไว้ แล้วใบชื่ออย่างเดียวค่อยตามเข้ากลุ่ม
+  const won = quotes.filter(isWonQuote)
+  const ordered = [...won.filter((q) => (q.salesEmail ?? "").trim()), ...won.filter((q) => !(q.salesEmail ?? "").trim())]
+  for (const q of ordered) {
     const email = (q.salesEmail ?? "").trim().toLowerCase()
     const name = (q.salesName ?? "").trim()
-    const key = email || name || "__unassigned__"
+    const key = email || (name && keyOfName.get(norm(name))) || name || "__unassigned__"
     const g = groups.get(key) ?? {
       name: name || email || "ไม่ระบุผู้ขาย",
       email,
@@ -116,7 +200,7 @@ export function buildSalesCommission(quotes: CommissionQuote[]): CommissionSumma
       rows: [],
     }
     // ชื่อล่าสุดชนะ (กันเคสเปลี่ยนชื่อ/สะกดต่างกันในใบเก่า)
-    if (name) g.name = name
+    if (name) { g.name = name; if (!keyOfName.has(norm(name))) keyOfName.set(norm(name), key) }
     g.rows.push(q)
     groups.set(key, g)
   }
@@ -124,7 +208,7 @@ export function buildSalesCommission(quotes: CommissionQuote[]): CommissionSumma
   const out: CommissionSummary[] = []
   for (const [key, g] of groups) {
     const sorted = [...g.rows].sort((a, b) => {
-      const d = wonDateOf(a).localeCompare(wonDateOf(b))
+      const d = (contractStartOf(a) || wonDateOf(a)).localeCompare(contractStartOf(b) || wonDateOf(b))
       return d !== 0 ? d : (a.quotationNo ?? "").localeCompare(b.quotationNo ?? "")
     })
     let cumulative = 0
@@ -132,9 +216,12 @@ export function buildSalesCommission(quotes: CommissionQuote[]): CommissionSumma
       const nth = i + 1
       const commission = commissionForNth(nth)
       cumulative += commission
+      const contractStart = contractStartOf(q)
+      const payouts = payoutsOf(commission, contractStart, q.commissionPayouts)
       return {
         nth,
         wonAt: wonDateOf(q),
+        contractStart,
         quotationId: String(q._id ?? ""),
         quotationNo: q.quotationNo ?? "",
         customerName: q.customerName ?? "",
@@ -143,8 +230,11 @@ export function buildSalesCommission(quotes: CommissionQuote[]): CommissionSumma
         salePrice: Number(q.totalSalePrice) || 0,
         commission,
         cumulative,
+        payouts,
+        paid: payouts.reduce((a, p) => a + (p.paid ? p.amount : 0), 0),
       }
     })
+    const todayCycle = cycleOf(today)
     out.push({
       key,
       name: g.name,
@@ -152,6 +242,8 @@ export function buildSalesCommission(quotes: CommissionQuote[]): CommissionSumma
       unassigned: g.unassigned,
       count: sales.length,
       total: cumulative,
+      paidTotal: sales.reduce((a, s) => a + s.paid, 0),
+      dueTotal: sales.reduce((a, s) => a + s.payouts.filter((p) => !p.paid && p.cycle && p.cycle <= todayCycle).reduce((b, p) => b + p.amount, 0), 0),
       salesValue: sales.reduce((a, s) => a + s.salePrice, 0),
       currentRate: commissionForNth(sales.length + 1),
       next: nextTierInfo(sales.length),

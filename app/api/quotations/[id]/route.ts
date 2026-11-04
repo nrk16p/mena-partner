@@ -55,8 +55,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (b.customerName !== undefined) {
     events.push({ at: now, by: email, action: `แก้ชื่อลูกค้า → ${String(b.customerName)}` })
   }
+  // contractStartDate = วันเริ่มต้นสัญญา (ฐานรอบจ่ายค่าคอม) แก้จากหน้าคอมโดยการเงิน/แอดมิน
+  if (b.contractStartDate !== undefined) events.push({ at: now, by: email, action: `ตั้งวันเริ่มต้นสัญญา → ${String(b.contractStartDate || "—")}` })
   for (const k of ["depositSlipUrl", "depositPaidAt", "extras", "note", "validUntil", "customerName", "customerPhone",
-                   "licensePlate", "vehicleBrand", "vehicleModel", "truckNumber", "vehiclePhotoUrl", "salesName"]) {
+                   "licensePlate", "vehicleBrand", "vehicleModel", "truckNumber", "vehiclePhotoUrl", "salesName", "contractStartDate"]) {
     if (b[k] !== undefined) $set[k] = b[k]
   }
   if (b.depositSlips !== undefined && Array.isArray(b.depositSlips)) $set.depositSlips = b.depositSlips.slice(0, 10)

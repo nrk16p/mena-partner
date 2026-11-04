@@ -59,6 +59,8 @@ export async function moveStage(db: Db, id: string, to: string, actor: Actor, no
     $set: {
       stage: to, stageEnteredAt: now(), lastActivityAt: now(), updatedAt: now(),
       ...(status ? { status } : {}),
+      // วันเริ่มต้นสัญญา = วันที่ขยับเป็นเซ็นสัญญาแล้ว (ครั้งแรก) — ฐานคิดรอบจ่ายค่าคอม แก้ทับได้ที่หน้าคอม
+      ...(to === "CONTRACT_SIGNED" && !deal.contractSignedAt ? { contractSignedAt: now() } : {}),
     },
     $push: {
       timeline: { $each: [{ at: now(), by: actor.email, action: `${verb} → ${STAGE_LABEL[to as Stage]}`, ...(note ? { note } : {}) }] },
