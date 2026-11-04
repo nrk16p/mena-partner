@@ -83,6 +83,7 @@ export default function DealPage() {
   const [noteText, setNoteText] = useState("")
   const [copiedBank, setCopiedBank] = useState(false)
   const [reschedule, setReschedule] = useState(false)
+  const [salesEditing, setSalesEditing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const [photoSlot, setPhotoSlot] = useState<string>("")
@@ -294,7 +295,20 @@ export default function DealPage() {
                 <Pencil className="w-3 h-3" /> แก้ชื่อ
               </button>
               {q.customerPhone && <><span>·</span><a href={`tel:${q.customerPhone.replace(/[^\d+]/g, "")}`} className="tabular-nums hover:underline">{q.customerPhone}</a></>}
-              <span>·</span><span>เซลล์ {q.salesName}</span>
+              <span>·</span>
+              {salesEditing ? (
+                <span className="inline-flex items-center gap-1">
+                  <SalesPersonSelect value={q.salesName ?? ""} onChange={async (name) => { setSalesEditing(false); if (name && name !== q.salesName) await patch({ salesName: name }) }}
+                    className="h-7 text-[13px] border border-zinc-300 dark:border-zinc-600 rounded-md px-1.5 bg-white dark:bg-zinc-900" />
+                  <button onClick={() => setSalesEditing(false)} className="text-xs text-zinc-500 px-1">ยกเลิก</button>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1">เซลล์ {q.salesName || "—"}
+                  {/* เปลี่ยนเซลล์เจ้าของดีลได้ตรงนี้ ไม่ต้องเข้าตัวแก้รถ/ราคา */}
+                  <button onClick={() => setSalesEditing(true)} disabled={busy} aria-label="แก้เซลล์เจ้าของดีล" title="แก้เซลล์เจ้าของดีล"
+                    className="h-6 w-6 inline-flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><Pencil className="w-3 h-3" /></button>
+                </span>
+              )}
               {q.createdBy?.name && q.createdBy.name !== q.salesName && (
                 <><span>·</span><span className="text-xs">คีย์โดย {q.createdBy.name}</span></>
               )}
