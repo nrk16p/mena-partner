@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { QUOTE_COLL, QUOTE_STATUSES, QUOTE_STATUS_LABEL, type QuoteStatus } from "@/lib/quotation"
+import { actorOf, resolveSalesEmail } from "@/lib/sales-owner"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 type Ctx = { params: Promise<{ id: string }> }
@@ -24,12 +25,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const b = await req.json()
-  const email = session.user?.email ?? "unknown"
+  const actor = actorOf(session)
+  const email = actor.email
   const now = new Date().toISOString()
+  const client = await clientPromise
+  const db = client.db(DB)
 
   // lastActivityAt ด้วย ไม่งั้นแก้ดีลจากการ์ดการเงิน/ราคา แล้วยังถูกนับว่าเงียบจนโดนปิดอัตโนมัติ
+  // updatedBy = คนที่กดบันทึกจริง (แยกจากเซลล์เจ้าของดีล)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const $set: any = { updatedAt: now, lastActivityAt: now }
+  const $set: any = { updatedAt: now, lastActivityAt: now, updatedBy: { ...actor, at: now } }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const events: any[] = []
 
@@ -41,10 +46,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   for (const k of ["depositAmount", "totalSalePrice", "downPayment", "cashDown", "savingsUsed", "downInstallmentCount", "downInstallmentAmt", "financeAmount", "financeInstallments", "monthlyPayment"]) {
     if (b[k] !== undefined) $set[k] = Number(b[k]) || 0
   }
-  // เปลี่ยนผู้ขาย: ยอดคอมจับกลุ่มด้วยชื่อ จึงล้าง salesEmail ของผู้สร้างออก กันไปรวมกับยอดคนอื่น
+  // เปลี่ยนเซลล์เจ้าของดีล: ผูกอีเมลจาก sales_people (ใครคีย์ให้ก็ยังเป็นดีลของเซลล์คนนั้น)
   if (b.salesName !== undefined) {
-    $set.salesEmail = b.salesName === session.user?.name ? (session.user?.email ?? "") : ""
-    events.push({ at: now, by: email, action: `เปลี่ยนผู้ขาย → ${b.salesName}` })
+    $set.salesEmail = await resolveSalesEmail(db, String(b.salesName ?? ""), actor)
+    events.push({ at: now, by: email, action: `เปลี่ยนเซลล์เจ้าของดีล → ${b.salesName}` })
   }
   // แก้ชื่อลูกค้า (สะกดผิด) — เก็บร่องรอยไว้ใน timeline
   if (b.customerName !== undefined) {
@@ -66,11 +71,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
   if (b.note && b.status === undefined && b.depositAmount === undefined) events.push({ at: now, by: email, action: "บันทึกกิจกรรม", note: b.note })
 
-  const client = await clientPromise
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const update: any = { $set }
   if (events.length) update.$push = { timeline: { $each: events } }
-  await client.db(DB).collection(QUOTE_COLL).updateOne({ _id: new ObjectId(id) }, update)
-  const doc = await client.db(DB).collection(QUOTE_COLL).findOne({ _id: new ObjectId(id) })
+  await db.collection(QUOTE_COLL).updateOne({ _id: new ObjectId(id) }, update)
+  const doc = await db.collection(QUOTE_COLL).findOne({ _id: new ObjectId(id) })
   return NextResponse.json({ ...doc, _id: String(doc?._id) })
 }

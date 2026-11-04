@@ -50,10 +50,12 @@ export interface Quotation extends QuotePricing {
   depositSlipUrl?: string          // (เดิม — ใบเดียว)
   depositSlips?: string[]          // สลิปหลายใบ (สูงสุด 10)
   depositPaidAt?: string
-  // ขายโดย (ผู้ใช้ login)
+  // เซลล์เจ้าของดีล (ไม่จำเป็นต้องเป็นคนที่กดบันทึก — บางคนฝากคนอื่นคีย์ให้)
   salesEmail: string
   salesName: string
-  // audit
+  // audit — คนที่กดบันทึก/แก้ไขจริง เก็บแยกจากเซลล์
+  createdBy?: { email: string; name: string }
+  updatedBy?: { email: string; name: string; at: string }
   createdAt: string
   updatedAt: string
   timeline?: { at: string; by: string; action: string; note?: string }[]

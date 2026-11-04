@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import { actorOf, resolveSalesEmail } from "@/lib/sales-owner"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { QUOTE_COLL, nextQuotationNo, type QuoteStatus } from "@/lib/quotation"
@@ -44,9 +45,12 @@ export async function POST(req: NextRequest) {
   const client = await clientPromise
   const db = client.db(DB)
   const now = new Date().toISOString()
-  const email = session.user?.email ?? "unknown"
-  const salesName = (typeof b.salesName === "string" && b.salesName.trim()) || session.user?.name || email.split("@")[0]
+  const actor = actorOf(session)
+  const email = actor.email
+  const salesName = (typeof b.salesName === "string" && b.salesName.trim()) || actor.name
   const quotationNo = await nextQuotationNo(db)
+  // เซลล์เจ้าของดีลกับคนกดบันทึกเป็นคนละช่อง — ฝากคนอื่นคีย์ให้ ดีลก็ยังเป็นของเซลล์ที่เลือก
+  const salesEmail = await resolveSalesEmail(db, salesName, actor)
 
   const doc = {
     quotationNo,
@@ -72,9 +76,10 @@ export async function POST(req: NextRequest) {
     financeAmount: n(b.financeAmount), financeInstallments: n(b.financeInstallments), monthlyPayment: n(b.monthlyPayment),
     extras: (b.extras ?? "").trim(), note: (b.note ?? "").trim(),
     validUntil: b.validUntil || null,
-    // เลือกผู้ขายคนอื่นจากลิสต์ → ไม่ผูกอีเมลผู้สร้าง กันยอดคอมไปรวมผิดคน
-    salesEmail: salesName === session.user?.name ? email : "",
+    salesEmail,
     salesName,
+    createdBy: actor,
+    updatedBy: { ...actor, at: now },
     createdAt: now, updatedAt: now,
     timeline: [{ at: now, by: email, action: "สร้างใบเสนอ" }],
   }

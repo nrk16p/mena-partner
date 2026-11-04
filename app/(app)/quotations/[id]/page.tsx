@@ -30,6 +30,8 @@ interface Quote {
   extras?: string; note?: string; validUntil?: string
   depositAmount?: number; depositSlipUrl?: string; depositSlips?: string[]; depositPaidAt?: string
   salesName: string; salesEmail: string; createdAt: string
+  createdBy?: { email: string; name: string }
+  updatedBy?: { email: string; name: string; at: string }
   timeline?: { at: string; by: string; action: string; note?: string }[]
 }
 
@@ -290,6 +292,9 @@ export default function DealPage() {
               </button>
               {q.customerPhone && <><span>·</span><a href={`tel:${q.customerPhone.replace(/[^\d+]/g, "")}`} className="tabular-nums hover:underline">{q.customerPhone}</a></>}
               <span>·</span><span>เซลล์ {q.salesName}</span>
+              {q.createdBy?.name && q.createdBy.name !== q.salesName && (
+                <><span>·</span><span className="text-xs">คีย์โดย {q.createdBy.name}</span></>
+              )}
             </div>
           </div>
         </div>
@@ -420,8 +425,9 @@ export default function DealPage() {
                 </div>
                 {/* ผู้ขายอยู่นอกบล็อกรถ — เปลี่ยนเซลได้เสมอ ไม่ต้องรอเลือกรถ */}
                 <div>
-                  <label className="block text-xs text-zinc-500 mb-1">ผู้ขาย (Sale)</label>
+                  <label className="block text-xs text-zinc-500 mb-1">เซลล์เจ้าของดีล</label>
                   <SalesPersonSelect value={eSales} onChange={setESales} />
+                  <p className="text-[11px] text-zinc-500 mt-1">ไม่ต้องเป็นคนเดียวกับคนที่กดบันทึก — ระบบจดชื่อคนคีย์แยกไว้ให้</p>
                 </div>
                 {eSel && (
                   <div className="text-sm space-y-1">
@@ -579,6 +585,9 @@ export default function DealPage() {
               <dt className="text-zinc-500">อายุ</dt><dd>{screening.find((c) => c.key === "age")?.detail ?? "—"}</dd>
               <dt className="text-zinc-500">ใบขับขี่</dt><dd>{screening.find((c) => c.key === "license")?.detail ?? "—"}</dd>
               <dt className="text-zinc-500">เซลล์</dt><dd>{q.salesName}</dd>
+              <dt className="text-zinc-500">คีย์โดย</dt><dd>{q.createdBy?.name || "—"}</dd>
+              <dt className="text-zinc-500">แก้ล่าสุด</dt>
+              <dd>{q.updatedBy?.name ? `${q.updatedBy.name} · ${new Date(q.updatedBy.at).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}` : "—"}</dd>
             </dl>
             {screening.length > 0 && (
               <details className="mt-3 group">

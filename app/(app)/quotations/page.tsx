@@ -521,9 +521,10 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
               </div>
             )}
             <input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="เบอร์โทร" className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 mt-2" />
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 mt-3">พนักงานขาย (เซล)</label>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 mt-3">เซลล์เจ้าของดีล</label>
             <SalesPersonSelect value={salesName} onChange={setSalesName}
               className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
+            <p className="text-[11px] text-zinc-500 mt-1">คีย์แทนเซลล์คนอื่นได้ เลือกชื่อเซลล์ตัวจริง ระบบจดชื่อคนคีย์แยกให้เอง</p>
             {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
           </div>
 

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import { ObjectId } from "mongodb"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { moveStage, holdDeal, resumeDeal, closeLost, attachFile, saveFields, getDeal, type Actor, setLossReason } from "@/lib/deal-actions"
 import { checkAdvance, screeningChecklist, type DealFields } from "@/lib/deal-stage"
 import { listLossReasons, reasonsForStage } from "@/lib/loss-reason"
+import { QUOTE_COLL } from "@/lib/quotation"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -96,6 +98,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const error = result.error ?? (missing.length ? `ข้อมูลบังคับยังไม่ครบ: ${missing.join(" · ")}` : "ทำรายการไม่ได้")
     return NextResponse.json({ error, missing }, { status: 400 })
   }
+  // คนที่กดจริง (แยกจากเซลล์เจ้าของดีล) — ขยับขั้น/แนบไฟล์ก็นับเป็นการแก้ไข
+  await db.collection(QUOTE_COLL).updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { updatedBy: { email: session.user.email, name: (session.user.name ?? "").trim() || session.user.email.split("@")[0], at: new Date().toISOString() } } },
+  )
   const deal = await getDeal(db, id)
   return NextResponse.json({ ok: true, deal: { ...deal, _id: String(deal?._id) } })
 }
