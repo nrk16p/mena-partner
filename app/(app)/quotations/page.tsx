@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { Plus, Search, X, LayoutGrid, List, Phone, Clock, FileDown, UserPlus } from "lucide-react"
+import { Plus, Search, X, LayoutGrid, List, Phone, Clock, FileDown, UserPlus, FileSpreadsheet, AlertTriangle } from "lucide-react"
 import { formatMoney } from "@/lib/utils"
 import { SalesPersonSelect } from "@/components/sales-person-select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -15,6 +15,7 @@ import {
   badgeKind, bucketOf, bucketStats, daysIn, filterDeals, followTone, kpis, stageOfDeal,
   progressSegments, sortDeals, stuckClass, type Quick,
 } from "@/lib/deal-list"
+import { dealExportRows, dealExportFilename } from "@/lib/deal-export"
 
 const stageLabel = (s?: string) => STATUS_LABEL[(s ?? "LEAD") as keyof typeof STATUS_LABEL] ?? s ?? "—"
 const millions = (v: number) => `฿${(v / 1e6).toFixed(2)}M`
@@ -91,6 +92,18 @@ function QuotationsInner() {
   const shown = useMemo(() => sortDeals(filterDeals(base, { bucket, quick })), [base, bucket, quick])
 
   const pg = usePagination(shown, 50, [qSent, bucket, quick, mine, view])
+  // Excel = รายการตามตัวกรองที่เห็นอยู่ (ไม่ใช่แค่หน้าปัจจุบัน) — โหลด xlsx ตอนกดเท่านั้น
+  const [exporting, setExporting] = useState(false)
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const XLSX = await import("xlsx")
+      const ws = XLSX.utils.json_to_sheet(dealExportRows(shown))
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "ดีล")
+      XLSX.writeFile(wb, dealExportFilename())
+    } finally { setExporting(false) }
+  }
   const quickLabel = quick === "followup" ? "ต้องติดตามวันนี้" : "ค้างขั้นเกิน 30 วัน"
   const toggle = (next: Quick) => setQuick((cur) => (cur === next ? "" : next))
 
@@ -190,6 +203,10 @@ function QuotationsInner() {
             </button>
           )}
           <div className="ml-auto flex items-center gap-2">
+            <button onClick={exportExcel} disabled={exporting || shown.length === 0} title="โหลดรายการที่กรองอยู่เป็น Excel"
+              className="h-9 px-3 inline-flex items-center gap-1.5 text-[13px] font-semibold border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 disabled:opacity-50">
+              <FileSpreadsheet className="w-4 h-4" /> Excel{shown.length ? ` (${shown.length})` : ""}
+            </button>
             <span className="text-[13px] text-zinc-500 hidden sm:inline">เรียง: ติดตามถัดไป</span>
             <div role="group" aria-label="มุมมอง" className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
               <button onClick={() => setView("list")} aria-label="มุมมองตาราง" aria-pressed={view === "list"}
@@ -400,6 +417,18 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
   const [validUntil, setValidUntil] = useState("")
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState("")
+  // ลูกค้า 1 คน = 1 ดีลเปิด — เช็กล่วงหน้าตอนพิมพ์ชื่อ/เบอร์/เลือกลูกค้าเดิม แล้วบอกว่าเซลล์ใครดูแลอยู่ สถานะไหน
+  type Dup = { _id: string; quotationNo: string; salesName: string; stageLabel: string }
+  const [dup, setDup] = useState<Dup | null>(null)
+  useEffect(() => {
+    const name = custName.trim(), phone = custPhone.trim()
+    const t = setTimeout(() => {
+      if (!custId && name.length < 2 && phone.replace(/\D/g, "").length < 9) { setDup(null); return }
+      const p = new URLSearchParams({ customerId: custId, phone, name })
+      fetch(`/api/quotations/open-deal?${p}`).then((r) => r.ok ? r.json() : null).then((d) => setDup(d?.existing ?? null)).catch(() => {})
+    }, 300)
+    return () => clearTimeout(t)
+  }, [custId, custName, custPhone])
 
   useEffect(() => { fetch("/api/price-list").then((r) => r.ok ? r.json() : []).then((d: PriceRow[]) => setPrices(d)) }, [])
   useEffect(() => {
@@ -457,7 +486,7 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
       }
       const r = await fetch("/api/quotations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const d = await r.json()
-      if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
+      if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); if (d.existing) setDup(d.existing); return }
       if (!isLead) window.open(`/api/quotations/${d._id}/pdf`, "_blank")
       onSaved()
     } finally { setSaving(false) }
@@ -525,7 +554,16 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
             <SalesPersonSelect value={salesName} onChange={setSalesName}
               className="w-full h-10 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
             <p className="text-[11px] text-zinc-500 mt-1">คีย์แทนเซลล์คนอื่นได้ เลือกชื่อเซลล์ตัวจริง ระบบจดชื่อคนคีย์แยกให้เอง</p>
-            {custId && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
+            {custId && !dup && <p className="text-[11px] text-emerald-600 mt-1">✓ ลูกค้าเดิมในระบบ</p>}
+            {dup && (
+              <div className="mt-2 flex gap-2 rounded-lg border border-amber-300 bg-[#FFF8C5] dark:bg-amber-950/20 px-3 py-2 text-[13px] text-[#7A4E00] dark:text-amber-300">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">ลูกค้าคนนี้มีเซลล์ {dup.salesName || "ไม่ระบุ"} ดูแลอยู่ · สถานะ {dup.stageLabel}</p>
+                  <p>เปิดใบใหม่ไม่ได้จนกว่าใบเดิมจะปิด — ดูใบ <Link href={`/quotations/${dup._id}`} className="underline font-semibold">{dup.quotationNo}</Link></p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ราคา — แก้ได้แค่ดาวน์ชำระเลย ที่เหลือ read-only + คำนวณดาวน์/งวด */}
@@ -589,7 +627,7 @@ function QuoteForm({ mode, presetPlate, onClose, onSaved }: { mode: "lead" | "qu
         </div>
         <div className="sticky bottom-0 bg-white dark:bg-zinc-900 border-t px-5 py-3 flex justify-end gap-2">
           <button onClick={onClose} className="text-sm text-zinc-500 dark:text-zinc-400 px-4 py-2">ยกเลิก</button>
-          <button onClick={submit} disabled={saving} className="bg-emerald-600 text-white text-sm font-semibold px-5 py-2 rounded-lg disabled:opacity-50">
+          <button onClick={submit} disabled={saving || !!dup} className="bg-emerald-600 text-white text-sm font-semibold px-5 py-2 rounded-lg disabled:opacity-50">
             {saving ? "กำลังบันทึก..." : isLead ? "บันทึกลูกค้าสนใจ" : "สร้าง + เปิด PDF"}
           </button>
         </div>

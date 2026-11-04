@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { actorOf, resolveSalesEmail } from "@/lib/sales-owner"
+import { openDealOfCustomer } from "@/app/api/quotations/open-deal/route"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { QUOTE_COLL, nextQuotationNo, type QuoteStatus } from "@/lib/quotation"
@@ -40,6 +41,15 @@ export async function POST(req: NextRequest) {
   // lead บันทึกได้โดยยังไม่ต้องเลือกรถ — บังคับเฉพาะชื่อลูกค้า (รถบังคับเมื่อไม่ใช่ lead)
   if (!String(b.customerName ?? "").trim() || (!isLead && !b.licensePlate)) {
     return NextResponse.json({ error: isLead ? "กรุณาระบุชื่อลูกค้า" : "ต้องเลือกรถและลูกค้า" }, { status: 400 })
+  }
+
+  // ลูกค้า 1 คน = 1 ดีลที่ยังเปิด — มีเซลล์ดูแลอยู่แล้วต้องปิดใบเดิมก่อน (หน้าเว็บเตือนล่วงหน้า API กันซ้ำอีกชั้น)
+  const existing = await openDealOfCustomer({ customerId: b.customerId ? String(b.customerId) : "", phone: b.customerPhone, name: b.customerName })
+  if (existing) {
+    return NextResponse.json({
+      error: `ลูกค้าคนนี้มีดีลเปิดอยู่แล้ว (${existing.quotationNo} · เซลล์ ${existing.salesName || "ไม่ระบุ"} · ${existing.stageLabel}) ต้องปิดใบเดิมก่อนจึงเปิดใหม่ได้`,
+      existing,
+    }, { status: 409 })
   }
 
   const client = await clientPromise
