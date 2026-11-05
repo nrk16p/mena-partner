@@ -38,18 +38,32 @@ async function listPeople() {
   const quoteCount = new Map(counts.map((c) => [String(c._id ?? "").trim().toLowerCase(), c.n as number]))
   const countOf = (name: string) => quoteCount.get(name.trim().toLowerCase()) ?? 0
 
+  // บัญชีรับเงิน: ที่กรอกในนี้ก่อน ถ้าว่างแต่มาจากใบสมัครนายหน้า ดึงจากใบสมัครมาแสดง (ไม่เขียนกลับ)
+  const appIds = rows.map((r) => String(r.brokerApplicationId ?? "")).filter((id) => ObjectId.isValid(id))
+  const apps = appIds.length
+    ? await db.collection("broker_applications").find({ _id: { $in: appIds.map((id) => new ObjectId(id)) } }, { projection: { bankName: 1, bankAccountNo: 1, bankAccountName: 1 } }).toArray()
+    : []
+  const appBank = new Map(apps.map((a) => [String(a._id), a]))
+  const bankOf = (r: Record<string, unknown>) => {
+    const own = { bankName: String(r.bankName ?? ""), bankAccountNo: String(r.bankAccountNo ?? ""), bankAccountName: String(r.bankAccountName ?? "") }
+    if (own.bankAccountNo.trim()) return { ...own, bankFromApplication: false }
+    const a = appBank.get(String(r.brokerApplicationId ?? ""))
+    if (!a) return { ...own, bankFromApplication: false }
+    return { bankName: String(a.bankName ?? ""), bankAccountNo: String(a.bankAccountNo ?? ""), bankAccountName: String(a.bankAccountName ?? ""), bankFromApplication: true }
+  }
   const fromDb = rows.map((r) => ({
     _id: String(r._id),
     name: String(r.name ?? ""),
     email: String(r.email ?? ""),
     phone: String(r.phone ?? ""),
+    ...bankOf(r as Record<string, unknown>),
     brokerApplicationId: r.brokerApplicationId ? String(r.brokerApplicationId) : "",
     quotations: countOf(String(r.name ?? "")),
     seeded: false,
   }))
   const fromCode = SALES_PEOPLE
     .filter((n) => !inDb.has(n.trim().toLowerCase()))
-    .map((n) => ({ _id: "", name: n, email: "", phone: "", brokerApplicationId: "", quotations: countOf(n), seeded: true }))
+    .map((n) => ({ _id: "", name: n, email: "", phone: "", bankName: "", bankAccountNo: "", bankAccountName: "", bankFromApplication: false, brokerApplicationId: "", quotations: countOf(n), seeded: true }))
   return [...fromDb, ...fromCode].sort((a, b) => a.name.localeCompare(b.name, "th"))
 }
 
@@ -92,13 +106,16 @@ export async function POST(req: NextRequest) {
     name,
     email: String(body?.email ?? "").trim(),
     phone: String(body?.phone ?? "").trim(),
+    bankName: String(body?.bankName ?? "").trim(),
+    bankAccountNo: String(body?.bankAccountNo ?? "").replace(/\D/g, ""),
+    bankAccountName: String(body?.bankAccountName ?? "").trim(),
     createdAt: new Date().toISOString(),
     createdBy: email,
   })
   return NextResponse.json({ ok: true, name, names: await listNames() }, { status: 201 })
 }
 
-/** PATCH — แก้ชื่อ/email/เบอร์ (admin) · เปลี่ยนชื่อจะ rename salesName ในใบเสนอราคาเดิมตามไปด้วย
+/** PATCH — แก้ชื่อ/email/เบอร์/บัญชีรับเงิน (admin) · เปลี่ยนชื่อจะ rename salesName ในใบเสนอราคาเดิมตามไปด้วย
  *  เพราะยอดคอมจับกลุ่มด้วยชื่อ (lib/commission.ts) ไม่ตามไปด้วยยอดจะแตกเป็นสองก้อน */
 export async function PATCH(req: NextRequest) {
   const admin = await adminOnly()
@@ -126,6 +143,9 @@ export async function PATCH(req: NextRequest) {
   const $set: Record<string, unknown> = { name, updatedAt: new Date().toISOString(), updatedBy: admin.email }
   if (body?.email !== undefined) $set.email = String(body.email).trim()
   if (body?.phone !== undefined) $set.phone = String(body.phone).trim()
+  if (body?.bankName !== undefined) $set.bankName = String(body.bankName).trim()
+  if (body?.bankAccountNo !== undefined) $set.bankAccountNo = String(body.bankAccountNo).replace(/\D/g, "")
+  if (body?.bankAccountName !== undefined) $set.bankAccountName = String(body.bankAccountName).trim()
   await db.collection(COLL).updateOne({ _id: new ObjectId(id) }, { $set })
 
   // ชื่อเปลี่ยน → ตามไปแก้ salesName ในใบเสนอราคาเดิม ยอดคอมจะได้ไม่แตก

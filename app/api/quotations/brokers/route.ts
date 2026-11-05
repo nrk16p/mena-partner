@@ -66,6 +66,7 @@ export async function PATCH(req: NextRequest) {
       await db.collection("sales_people").insertOne({
         name, email: String(cur.email ?? "").trim().toLowerCase(), phone: String(cur.phone ?? ""), lineId: String(cur.lineId ?? ""),
         center: String(cur.center ?? ""), brokerApplicationId: id, source: "broker",
+        bankName: String(cur.bankName ?? ""), bankAccountNo: String(cur.bankAccountNo ?? ""), bankAccountName: String(cur.bankAccountName ?? ""),
         createdAt: now, createdBy: admin.email,
       })
       addedToSales = true
@@ -76,6 +77,8 @@ export async function PATCH(req: NextRequest) {
           ...(!String(exists.email ?? "").trim() && cur.email ? { email: String(cur.email).trim().toLowerCase() } : {}),
           ...(!String(exists.phone ?? "").trim() && cur.phone ? { phone: String(cur.phone) } : {}),
           ...(!String(exists.lineId ?? "").trim() && cur.lineId ? { lineId: String(cur.lineId) } : {}),
+          ...(!String(exists.bankAccountNo ?? "").trim() && cur.bankAccountNo
+            ? { bankName: String(cur.bankName ?? ""), bankAccountNo: String(cur.bankAccountNo), bankAccountName: String(cur.bankAccountName ?? "") } : {}),
         },
       })
       linkedToSales = true

@@ -7,9 +7,8 @@ import clientPromise from "@/lib/mongo"
 import { resolveRole } from "@/lib/roles"
 import { hasPerm } from "@/lib/rbac"
 import { renderPdfmake } from "@/lib/pdfmake-printer"
-import { PAYMENT_COLL, type CommissionPayment } from "@/lib/commission-payment"
+import { PAYMENT_COLL, enrichPayment, loadCommissionSummaries, type CommissionPayment } from "@/lib/commission-payment"
 import { commissionPaymentDocDef } from "@/lib/commission-payment-pdf"
-import { loadCommissionSummaries } from "@/lib/commission-payment"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -27,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const db = (await clientPromise).db(DB)
   const doc = await db.collection(PAYMENT_COLL).findOne({ _id: new ObjectId(id) })
   if (!doc) return NextResponse.json({ error: "ไม่พบรายการทำจ่าย" }, { status: 404 })
-  const p = { ...doc, _id: String(doc._id) } as unknown as CommissionPayment
+  const p = await enrichPayment(db, { ...doc, _id: String(doc._id) } as unknown as CommissionPayment)
   // ฝ่ายขายโหลดได้เฉพาะของตัวเอง
   if (role === "salesperson") {
     const mine = (await loadCommissionSummaries(db)).find((s) => s.email && s.email === email)
@@ -43,13 +42,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })
   }
   const rows = p.items.map((it, i) => ({
-    "ลำดับ": i + 1, "พนักงานขาย": p.salesName, "รอบจ่าย": p.cycleLabel, "วันที่จ่าย": p.paidAt,
-    "ใบเสนอราคา": it.quotationNo, "ลูกค้า": it.customerName, "ทะเบียน": it.licensePlate, "เบอร์รถ": it.truckNumber,
+    "ลำดับ": i + 1, "พนักงานขาย": p.salesName, "บัญชีรับเงิน": p.bankAccount ?? "", "รอบจ่าย": p.cycleLabel, "วันที่จ่าย": p.paidAt,
+    "ใบเสนอราคา": it.quotationNo, "รหัสสัญญา": it.contractCode ?? "", "ลูกค้า": it.customerName, "ทะเบียน": it.licensePlate, "เบอร์รถ": it.truckNumber,
     "คันที่": it.nth, "วันเริ่มต้นสัญญา": it.contractStart, "งวด": it.tranche === 1 ? "งวด 1 (30 วัน)" : "งวด 2 (90 วัน)",
     "ครบกำหนด": it.due, "จำนวนเงิน": it.amount, "หมายเหตุ": p.note,
   }))
   const ws = XLSX.utils.json_to_sheet(rows)
-  XLSX.utils.sheet_add_aoa(ws, [["", "", "", "", "", "", "", "", "", "", "", "รวม", p.total]], { origin: -1 })
+  XLSX.utils.sheet_add_aoa(ws, [["", "", "", "", "", "", "", "", "", "", "", "", "", "รวม", p.total]], { origin: -1 })
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "ทำจ่าย")
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer

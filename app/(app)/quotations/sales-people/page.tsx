@@ -14,6 +14,10 @@ interface Person {
   name: string
   email: string
   phone: string
+  bankName: string
+  bankAccountNo: string
+  bankAccountName: string
+  bankFromApplication: boolean   // บัญชียังไม่ได้กรอกในนี้ แสดงจากใบสมัครนายหน้า
   brokerApplicationId?: string   // มาจากใบสมัครนายหน้าที่อนุมัติแล้ว
   quotations: number   // จำนวนใบเสนอราคาที่ผูกกับชื่อนี้
   seeded: boolean
@@ -38,6 +42,9 @@ export default function SalesPeoplePage() {
   const [eName, setEName] = useState("")
   const [eEmail, setEEmail] = useState("")
   const [ePhone, setEPhone] = useState("")
+  const [eBankName, setEBankName] = useState("")
+  const [eBankNo, setEBankNo] = useState("")
+  const [eBankAcc, setEBankAcc] = useState("")
 
   const load = useCallback(async () => {
     const r = await fetch("/api/quotations/sales-people?full=1")
@@ -64,7 +71,8 @@ export default function SalesPeoplePage() {
   }
 
   function startEdit(p: Person) {
-    setEditId(p._id); setEName(p.name); setEEmail(p.email); setEPhone(p.phone); setErr(""); setMsg("")
+    setEditId(p._id); setEName(p.name); setEEmail(p.email); setEPhone(p.phone)
+    setEBankName(p.bankName); setEBankNo(p.bankAccountNo); setEBankAcc(p.bankAccountName); setErr(""); setMsg("")
   }
 
   async function saveEdit(p: Person) {
@@ -81,7 +89,7 @@ export default function SalesPeoplePage() {
     try {
       const r = await fetch("/api/quotations/sales-people", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ _id: p._id, name: eName.trim(), email: eEmail.trim(), phone: ePhone.trim() }),
+        body: JSON.stringify({ _id: p._id, name: eName.trim(), email: eEmail.trim(), phone: ePhone.trim(), bankName: eBankName.trim(), bankAccountNo: eBankNo.trim(), bankAccountName: eBankAcc.trim() }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(d.error ?? "บันทึกไม่สำเร็จ"); return }
@@ -159,15 +167,15 @@ export default function SalesPeoplePage() {
         <div className="overflow-auto max-h-[65vh]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10"><tr className="text-zinc-400 dark:text-zinc-500">
-              {["ชื่อ", "Email", "เบอร์โทร", "ใบเสนอราคา", ""].map((h) => (
+              {["ชื่อ", "Email", "เบอร์โทร", "บัญชีรับเงิน", "ใบเสนอราคา", ""].map((h) => (
                 <th key={h} className="text-left px-3 py-2 font-medium bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-100 dark:border-zinc-800 whitespace-nowrap">{h}</th>
               ))}
             </tr></thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
               {loading ? Array.from({ length: 5 }).map((_, i) => (
-                <tr key={`sk${i}`}>{Array.from({ length: 5 }).map((_, c) => (<td key={c} className="px-3 py-2"><Skeleton className="h-4" /></td>))}</tr>
+                <tr key={`sk${i}`}>{Array.from({ length: 6 }).map((_, c) => (<td key={c} className="px-3 py-2"><Skeleton className="h-4" /></td>))}</tr>
               )) : rows.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีรายชื่อ</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-zinc-300 text-xs">ยังไม่มีรายชื่อ</td></tr>
               ) : rows.map((p) => {
                 const editingThis = editId === p._id && p._id !== ""
                 return (
@@ -190,6 +198,20 @@ export default function SalesPeoplePage() {
                       {editingThis
                         ? <Input value={ePhone} onChange={(e) => setEPhone(e.target.value)} className="h-8 text-sm" />
                         : (p.phone || <span className="text-zinc-300 dark:text-zinc-600">—</span>)}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400 min-w-[220px]">
+                      {editingThis ? (
+                        <div className="grid gap-1">
+                          <Input value={eBankName} onChange={(e) => setEBankName(e.target.value)} placeholder="ธนาคาร" className="h-8 text-sm" />
+                          <Input value={eBankNo} onChange={(e) => setEBankNo(e.target.value)} placeholder="เลขบัญชี" inputMode="numeric" className="h-8 text-sm" />
+                          <Input value={eBankAcc} onChange={(e) => setEBankAcc(e.target.value)} placeholder="ชื่อบัญชี" className="h-8 text-sm" />
+                        </div>
+                      ) : p.bankAccountNo ? (
+                        <span>
+                          {[p.bankName, p.bankAccountNo, p.bankAccountName].filter(Boolean).join(" · ")}
+                          {p.bankFromApplication && <span className="ml-1.5 text-[9px] font-semibold text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded px-1 py-0.5" title="ดึงจากใบสมัครนายหน้า กดแก้ไขเพื่อยืนยัน/เปลี่ยน">จากใบสมัคร</span>}
+                        </span>
+                      ) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
                     </td>
                     <td className="px-3 py-2 tabular-nums text-zinc-500 dark:text-zinc-400">{p.quotations || "—"}</td>
                     <td className="px-3 py-2">

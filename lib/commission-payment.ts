@@ -1,7 +1,8 @@
 import "server-only"
 import { ObjectId, type Db } from "mongodb"
 import { QUOTE_COLL } from "@/lib/quotation"
-import { buildSalesCommission, cycleLabel, type CommissionQuote, type CommissionSummary } from "@/lib/commission"
+import { buildSalesCommission, cycleEnd, cycleLabel, type CommissionQuote, type CommissionSummary } from "@/lib/commission"
+import { bankAccountOfSales, contractCodeFor, contractCodesByPlate } from "@/lib/sales-bank"
 
 /**
  * ทำจ่ายค่าคอม — บันทึกว่าจ่ายคันไหน งวดไหน เท่าไหร่ รอบไหน
@@ -20,12 +21,14 @@ export interface PaymentItem {
   amount: number
   due: string
   contractStart: string
+  contractCode?: string    // รหัสสัญญาจาก contracts (ตามทะเบียน)
 }
 export interface CommissionPayment {
   _id?: string
   salesKey: string
   salesName: string
   salesEmail: string
+  bankAccount?: string     // "ธนาคาร · เลขบัญชี · ชื่อบัญชี" ณ วันทำจ่าย
   cycle: string
   cycleLabel: string
   paidAt: string          // YYYY-MM-DD
@@ -76,12 +79,16 @@ export async function createPayment(
       tranche: it.tranche, amount: payout.amount, due: payout.due, contractStart: sale.contractStart,
     })
   }
-  // รอบ: ที่ส่งมา หรือรอบที่พบมากสุดในงวดที่เลือก
+  // รอบ: ที่ส่งมา หรือรอบที่พบมากสุดในงวดที่เลือก · วันที่จ่าย = สิ้นเดือนของรอบเสมอ (การเงินกำหนด 2026-11-05)
   const cycle = input.cycle && /^\d{4}-\d{2}$/.test(input.cycle) ? input.cycle : mostCommonCycle(group, items)
+  const paidAt = cycleEnd(cycle) || input.paidAt
+  const codes = await contractCodesByPlate(db, items.map((x) => x.licensePlate))
+  for (const it of items) it.contractCode = contractCodeFor(codes, it.licensePlate)
+  const bankAccount = await bankAccountOfSales(db, { email: group.email, name: group.name })
   const now = new Date().toISOString()
   const payment: Omit<CommissionPayment, "_id"> = {
-    salesKey: group.key, salesName: group.name, salesEmail: group.email,
-    cycle, cycleLabel: cycleLabel(cycle), paidAt: input.paidAt, note: String(input.note ?? "").trim(),
+    salesKey: group.key, salesName: group.name, salesEmail: group.email, bankAccount,
+    cycle, cycleLabel: cycleLabel(cycle), paidAt, note: String(input.note ?? "").trim(),
     items, total: items.reduce((a, x) => a + x.amount, 0), createdBy: actor, createdAt: now,
   }
   const r = await db.collection(PAYMENT_COLL).insertOne({ ...payment })
@@ -90,7 +97,7 @@ export async function createPayment(
     // driver type ของ $push เข้มเกินไปกับ schema แบบหลวม (ที่อื่นในโปรเจกต์ก็ใช้ any)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const u: any = {
-      $set: { [`commissionPayouts.t${it.tranche}`]: { paymentId, paidAt: input.paidAt, amount: it.amount, cycle }, updatedAt: now },
+      $set: { [`commissionPayouts.t${it.tranche}`]: { paymentId, paidAt, amount: it.amount, cycle }, updatedAt: now },
       $push: { timeline: { at: now, by: actor.email, action: `ทำจ่ายค่าคอมงวดที่ ${it.tranche} ${it.amount.toLocaleString()} บาท (${cycleLabel(cycle)})` } },
     }
     await db.collection(QUOTE_COLL).updateOne({ _id: new ObjectId(it.quotationId) }, u)
@@ -105,4 +112,15 @@ function mostCommonCycle(group: CommissionSummary, items: PaymentItem[]): string
     if (c) count.set(c, (count.get(c) ?? 0) + 1)
   }
   return [...count.entries()].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] ?? new Date().toISOString().slice(0, 7)
+}
+
+/** ใบทำจ่ายเก่าที่บันทึกก่อนมีช่องรหัสสัญญา/บัญชี → เติมตอนโหลดออก Excel/PDF (ไม่เขียนกลับ) */
+export async function enrichPayment(db: Db, p: CommissionPayment): Promise<CommissionPayment> {
+  const out = { ...p, items: p.items.map((x) => ({ ...x })) }
+  if (out.items.some((x) => x.contractCode === undefined)) {
+    const codes = await contractCodesByPlate(db, out.items.map((x) => x.licensePlate))
+    for (const it of out.items) if (it.contractCode === undefined) it.contractCode = contractCodeFor(codes, it.licensePlate)
+  }
+  if (!out.bankAccount) out.bankAccount = await bankAccountOfSales(db, { email: out.salesEmail, name: out.salesName })
+  return out
 }

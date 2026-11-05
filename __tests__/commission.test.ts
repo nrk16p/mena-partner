@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
-  commissionForNth, commissionTotal, nextTierInfo, buildSalesCommission, wonDateOf,
+  commissionForNth, commissionTotal, nextTierInfo, buildSalesCommission, wonDateOf, cycleEnd,
   type CommissionQuote,
 } from "@/lib/commission"
 
@@ -180,5 +180,14 @@ describe("รอบจ่ายค่าคอม — 30 วัน 1,000 · 90 �
     expect(rows[0].paidTotal).toBe(1000)
     // Q1 งวด2 ครบ 2026-10-30 → รอบ 11 (ถึงกำหนด) · Q2 งวด1 ครบ 2026-10-01 → รอบ 10 · งวด2 ครบ 2026-11-30 → รอบ 12 (ยังไม่ถึง)
     expect(rows[0].dueTotal).toBe(2000)
+  })
+})
+
+describe("cycleEnd — วันที่จ่าย = สิ้นเดือนของรอบ", () => {
+  it("เดือน 30/31 วัน และ ก.พ. ปีอธิกสุรทิน", () => {
+    expect(cycleEnd("2026-11")).toBe("2026-11-30")
+    expect(cycleEnd("2026-12")).toBe("2026-12-31")
+    expect(cycleEnd("2028-02")).toBe("2028-02-29")
+    expect(cycleEnd("")).toBe("")
   })
 })

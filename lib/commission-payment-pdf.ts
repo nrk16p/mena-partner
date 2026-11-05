@@ -20,6 +20,7 @@ export function commissionPaymentDocDef(p: CommissionPayment): any {
   const rows = p.items.map((it, i) => [
     cell(String(i + 1), { alignment: "center" }),
     cell(it.quotationNo),
+    cell(it.contractCode || "—"),
     cell(seg(it.customerName || "—")),
     cell([it.licensePlate, it.truckNumber].filter(Boolean).join(" · ") || "—"),
     cell(String(it.nth), { alignment: "center" }),
@@ -57,6 +58,7 @@ export function commissionPaymentDocDef(p: CommissionPayment): any {
         { width: "*", stack: [
           { text: [{ text: seg("พนักงานขาย  "), color: MUTED }, { text: seg(p.salesName), bold: true }] },
           ...(p.salesEmail ? [{ text: p.salesEmail, fontSize: 9, color: MUTED }] : []),
+          { text: [{ text: seg("บัญชีรับเงิน  "), color: MUTED }, { text: seg(p.bankAccount || "— (ยังไม่ระบุ)") }], fontSize: 9.5, margin: [0, 2, 0, 0] },
         ] },
         { width: "*", stack: [
           { text: [{ text: seg("จำนวน  "), color: MUTED }, { text: seg(`${p.items.length} งวด`), bold: true }] },
@@ -69,12 +71,12 @@ export function commissionPaymentDocDef(p: CommissionPayment): any {
       ], margin: [0, 0, 0, 12] },
       { table: {
         headerRows: 1,
-        widths: [22, 78, "*", 110, 32, 70, 74, 70, 70],
+        widths: [22, 70, 72, "*", 100, 30, 64, 70, 64, 66],
         body: [
-          [head("#", { alignment: "center" }), head("ใบเสนอราคา"), head("ลูกค้า"), head("รถ"), head("คันที่", { alignment: "center" }),
+          [head("#", { alignment: "center" }), head("ใบเสนอราคา"), head("รหัสสัญญา"), head("ลูกค้า"), head("รถ"), head("คันที่", { alignment: "center" }),
            head("เริ่มสัญญา", { alignment: "center" }), head("งวด", { alignment: "center" }), head("ครบกำหนด", { alignment: "center" }), head("จำนวนเงิน", { alignment: "right" })],
           ...rows,
-          [cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(seg("รวม"), { bold: true, alignment: "right" }),
+          [cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(seg("รวม"), { bold: true, alignment: "right" }),
            cell(formatMoney(p.total), { alignment: "right", bold: true, color: GOLD_DK })],
         ],
       }, layout: {

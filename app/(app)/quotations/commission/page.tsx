@@ -6,7 +6,7 @@ import { ArrowLeft, Trophy, Coins, TrendingUp, AlertTriangle, FileSpreadsheet, F
 import { formatMoney } from "@/lib/utils"
 import { Skeleton, TableSkeleton, StatsSkeleton } from "@/components/ui/skeleton"
 import { confirm } from "@/components/ui/confirm"
-import { COMMISSION_TIERS, FIRST_TRANCHE, cycleLabel, cycleOf, tierLabel, type CommissionSummary, type CommissionSale, type Payout } from "@/lib/commission"
+import { COMMISSION_TIERS, FIRST_TRANCHE, cycleEnd, cycleLabel, cycleOf, tierLabel, type CommissionSummary, type CommissionSale, type Payout } from "@/lib/commission"
 
 type Payment = {
   _id: string; salesKey: string; salesName: string; cycle: string; cycleLabel: string; paidAt: string; note: string
@@ -39,7 +39,6 @@ export default function CommissionPage() {
   const [pick, setPick] = useState<string>("")   // key ของเซลที่แอดมินเลือกดู
   const [cycle, setCycle] = useState<string>("") // กรองรอบจ่าย ("" = ทุกรอบ)
   const [sel, setSel] = useState<Set<string>>(new Set())
-  const [paidAt, setPaidAt] = useState(today())
   const [payCycle, setPayCycle] = useState<string>("") // รอบ/เดือนที่จ่าย ("" = ตามตัวกรอง หรือรอบของวันที่จ่าย)
   const [note, setNote] = useState("")
   const [saving, setSaving] = useState(false)
@@ -63,10 +62,10 @@ export default function CommissionPage() {
 
   // รอบที่มีในรายการของคนนี้ (เรียงใหม่→เก่า) + รอบปัจจุบัน
   const cycles = useMemo(() => {
-    const set = new Set<string>([cycleOf(today()), cycleOf(paidAt || today())])
+    const set = new Set<string>([cycleOf(today())])
     for (const s of shown?.sales ?? []) for (const p of s.payouts) if (p.cycle) set.add(p.cycle)
     return [...set].sort().reverse()
-  }, [shown, paidAt])
+  }, [shown])
 
   const rows = useMemo(() => {
     const list = shown?.sales ?? []
@@ -93,7 +92,8 @@ export default function CommissionPage() {
   }
 
   // รอบที่บันทึกลงใบทำจ่าย: เลือกเองในแถบล่าง > ตัวกรองรอบ > รอบของวันที่จ่าย
-  const effectivePayCycle = payCycle || cycle || cycleOf(paidAt || today())
+  const effectivePayCycle = payCycle || cycle || cycleOf(today())
+  const paidAt = cycleEnd(effectivePayCycle)   // วันที่จ่าย = สิ้นเดือนของรอบเสมอ
 
   async function savePayment() {
     if (!shown || !selectedItems.length) return
@@ -389,15 +389,13 @@ export default function CommissionPage() {
             <p className="text-sm">
               <span className="font-semibold">{shown.name}</span> · เลือก {selectedItems.length} งวด · รวม <span className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatMoney(selTotal)}</span> บาท
             </p>
-            <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">วันที่จ่าย
-              <input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
-            </label>
             <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">เดือนที่จ่าย
               <select value={effectivePayCycle} onChange={(e) => setPayCycle(e.target.value)} aria-label="เดือนที่จ่าย"
                 className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
                 {cycles.map((c) => <option key={c} value={c}>{cycleLabel(c)}</option>)}
               </select>
             </label>
+            <span className="text-[13px] text-zinc-500">วันที่จ่าย <span className="font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{fmtDate(paidAt)}</span> <span className="text-[11px]">(สิ้นเดือน)</span></span>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="หมายเหตุ (ไม่บังคับ)"
               className="h-9 flex-1 min-w-[160px] text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 bg-white dark:bg-zinc-900" />
             {saveErr && <span className="text-[13px] text-red-600">{saveErr}</span>}

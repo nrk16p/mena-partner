@@ -136,6 +136,13 @@ export function cycleLabel(cycle: string): string {
   return `รอบ ${CYCLE_CUTOFF_DAY} ${TH_MONTHS[Number(m[2]) - 1]} ${String(Number(m[1]) + 543).slice(-2)}`
 }
 
+/** วันที่จ่ายของรอบ = วันสิ้นเดือนของรอบนั้นเสมอ ("2026-11" → "2026-11-30") */
+export function cycleEnd(cycle: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(cycle)
+  if (!m) return ""
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]), 0)).toISOString().slice(0, 10)
+}
+
 /** วันเริ่มต้นสัญญาของใบนี้ (YYYY-MM-DD) — ฐานคิดรอบจ่าย */
 export function contractStartOf(q: CommissionQuote): string {
   const pick = q.contractStartDate || q.contractSignedAt || q.contractDate || wonDateOf(q)
