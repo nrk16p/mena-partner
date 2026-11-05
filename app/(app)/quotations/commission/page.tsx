@@ -12,12 +12,13 @@ type Payment = {
   _id: string; salesKey: string; salesName: string; cycle: string; cycleLabel: string; paidAt: string; note: string
   items: { quotationNo: string; tranche: 1 | 2; amount: number }[]; total: number; createdBy: { name: string }
 }
+type Summary = CommissionSummary & { bankAccount?: string }
 type Resp = {
   role: string
   myEmail: string
   myName: string
-  me: CommissionSummary | null
-  all: CommissionSummary[]
+  me: Summary | null
+  all: Summary[]
   canSeeAll: boolean
   canPay: boolean
   payments: Payment[]
@@ -45,6 +46,8 @@ export default function CommissionPage() {
   const [saveErr, setSaveErr] = useState("")
   const [lastPayment, setLastPayment] = useState<Payment | null>(null)
   const [editingStart, setEditingStart] = useState<string>("")  // quotationId ที่กำลังแก้วันเริ่มสัญญา
+  const [bankEdit, setBankEdit] = useState<{ bankName: string; bankAccountNo: string; bankAccountName: string } | null>(null)
+  const [bankErr, setBankErr] = useState("")
 
   // ไม่ setLoading(true) ตอนรีเฟรช — โชว์ skeleton เฉพาะโหลดครั้งแรก (state ตั้งต้นเป็น true อยู่แล้ว)
   const load = (keepPick = true) => {
@@ -120,6 +123,19 @@ export default function CommissionPage() {
     } finally { setSaving(false) }
   }
 
+  async function saveBank() {
+    if (!shown || !bankEdit) return
+    setBankErr("")
+    const res = await fetch("/api/quotations/commission/bank", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: shown.email, name: shown.name, ...bankEdit }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) { setBankErr(j.error ?? "บันทึกไม่สำเร็จ"); return }
+    setBankEdit(null)
+    await load()
+  }
+
   async function saveContractStart(s: CommissionSale, value: string) {
     setEditingStart("")
     if (value === s.contractStart) return
@@ -171,12 +187,36 @@ export default function CommissionPage() {
       {shown ? (
         <>
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {isMe ? "ของฉัน · " : ""}<span className="font-semibold text-zinc-800 dark:text-zinc-100">{shown.name}</span>
-            </p>
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p>{isMe ? "ของฉัน · " : ""}<span className="font-semibold text-zinc-800 dark:text-zinc-100">{shown.name}</span></p>
+              {/* บัญชีรับเงิน — ขึ้นใน Excel/PDF ใบทำจ่าย กรอกได้ตรงนี้เลยไม่ต้องไปหน้าทีมขาย */}
+              {bankEdit ? (
+                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                  <input value={bankEdit.bankName} onChange={(e) => setBankEdit({ ...bankEdit, bankName: e.target.value })} placeholder="ธนาคาร" className="h-8 w-[120px] text-[13px] border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
+                  <input value={bankEdit.bankAccountNo} onChange={(e) => setBankEdit({ ...bankEdit, bankAccountNo: e.target.value })} placeholder="เลขบัญชี" inputMode="numeric" className="h-8 w-[140px] text-[13px] border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900 tabular-nums" />
+                  <input value={bankEdit.bankAccountName} onChange={(e) => setBankEdit({ ...bankEdit, bankAccountName: e.target.value })} placeholder="ชื่อบัญชี" className="h-8 w-[170px] text-[13px] border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
+                  <button onClick={saveBank} className="h-8 px-3 text-[13px] font-semibold rounded-lg bg-emerald-600 text-white">บันทึก</button>
+                  <button onClick={() => { setBankEdit(null); setBankErr("") }} className="h-8 px-2 text-[13px] text-zinc-500">ยกเลิก</button>
+                  {bankErr && <span className="text-[12px] text-red-600">{bankErr}</span>}
+                </div>
+              ) : (
+                <p className="text-[13px] mt-0.5">
+                  บัญชีรับเงิน{" "}
+                  {shown.bankAccount
+                    ? <span className="text-zinc-700 dark:text-zinc-200">{shown.bankAccount}</span>
+                    : <span className="text-amber-700 dark:text-amber-400">ยังไม่ระบุ (ใบทำจ่ายจะเว้นว่าง)</span>}
+                  {canPay && (
+                    <button onClick={() => { const [bankName = "", bankAccountNo = "", bankAccountName = ""] = (shown.bankAccount ?? "").split(" · "); setBankEdit({ bankName, bankAccountNo, bankAccountName }) }}
+                      className="ml-2 text-[12px] text-emerald-700 dark:text-emerald-400 underline underline-offset-2">
+                      {shown.bankAccount ? "แก้ไข" : "กรอกบัญชี"}
+                    </button>
+                  )}
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {d?.canSeeAll && d.all.length > 1 && (
-                <select value={pick} onChange={(e) => { setPick(e.target.value); setSel(new Set()) }} aria-label="เลือกพนักงานขาย"
+                <select value={pick} onChange={(e) => { setPick(e.target.value); setSel(new Set()); setBankEdit(null) }} aria-label="เลือกพนักงานขาย"
                   className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
                   {d.all.map((r) => <option key={r.key} value={r.key}>{r.name} ({r.count} คัน)</option>)}
                 </select>

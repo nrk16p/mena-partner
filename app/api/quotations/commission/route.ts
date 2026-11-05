@@ -5,6 +5,7 @@ import clientPromise from "@/lib/mongo"
 import { resolveRole } from "@/lib/roles"
 import { hasPerm, isAdminRole } from "@/lib/rbac"
 import { loadCommissionSummaries, PAYMENT_COLL } from "@/lib/commission-payment"
+import { bankAccountIndex } from "@/lib/sales-bank"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -26,7 +27,8 @@ export async function GET() {
   const onlyMine = role === "salesperson"
 
   const db = (await clientPromise).db(DB)
-  const all = await loadCommissionSummaries(db)
+  const bankOf = await bankAccountIndex(db)
+  const all = (await loadCommissionSummaries(db)).map((r) => ({ ...r, bankAccount: bankOf({ email: r.email, name: r.name }) }))
   const me = all.find((r) => r.email && r.email === email) ?? null
 
   const payFilter = onlyMine ? { salesKey: me?.key ?? "__none__" } : {}

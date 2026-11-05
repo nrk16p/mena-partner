@@ -37,6 +37,9 @@ export default function SalesPeoplePage() {
   const [nName, setNName] = useState("")
   const [nEmail, setNEmail] = useState("")
   const [nPhone, setNPhone] = useState("")
+  const [nBankName, setNBankName] = useState("")
+  const [nBankNo, setNBankNo] = useState("")
+  const [nBankAcc, setNBankAcc] = useState("")
 
   const [editId, setEditId] = useState("")
   const [eName, setEName] = useState("")
@@ -60,12 +63,12 @@ export default function SalesPeoplePage() {
     try {
       const r = await fetch("/api/quotations/sales-people", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nName.trim(), email: nEmail.trim(), phone: nPhone.trim() }),
+        body: JSON.stringify({ name: nName.trim(), email: nEmail.trim(), phone: nPhone.trim(), bankName: nBankName.trim(), bankAccountNo: nBankNo.trim(), bankAccountName: nBankAcc.trim() }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(d.error ?? "เพิ่มไม่สำเร็จ"); return }
       setMsg(`✓ เพิ่ม ${nName.trim()} แล้ว`)
-      setNName(""); setNEmail(""); setNPhone("")
+      setNName(""); setNEmail(""); setNPhone(""); setNBankName(""); setNBankNo(""); setNBankAcc("")
       await load()
     } finally { setBusy(false) }
   }
@@ -130,7 +133,7 @@ export default function SalesPeoplePage() {
         <div>
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-0.5">ระบบขาย</p>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="w-6 h-6 text-[#C9A227]" /> ทีมขาย</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">ชื่อ / email / เบอร์โทร พนักงานขาย — ชื่อในลิสต์นี้คือตัวเลือกในใบเสนอราคา และเป็นตัวจับกลุ่มยอดคอม</p>
+          <p className="text-xs text-zinc-400 mt-0.5">ชื่อ / email / เบอร์โทร / บัญชีรับเงิน พนักงานขาย — ชื่อในลิสต์นี้คือตัวเลือกในใบเสนอราคา เป็นตัวจับกลุ่มยอดคอม และบัญชีขึ้นในใบทำจ่าย</p>
         </div>
         <Link href="/quotations" className="flex items-center gap-1.5 text-sm border border-zinc-300 dark:border-zinc-700 px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
           <ArrowLeft className="w-4 h-4" /> กลับหน้าขาย
@@ -152,6 +155,20 @@ export default function SalesPeoplePage() {
           <div className="flex-1 min-w-[130px]">
             <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">เบอร์โทร</label>
             <Input value={nPhone} onChange={(e) => setNPhone(e.target.value)} placeholder="08x-xxx-xxxx" className="h-9 text-sm" />
+          </div>
+          <div className="basis-full grid gap-2 sm:grid-cols-3">
+            <div>
+              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ธนาคาร</label>
+              <Input value={nBankName} onChange={(e) => setNBankName(e.target.value)} placeholder="เช่น กสิกรไทย" className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">เลขบัญชี</label>
+              <Input value={nBankNo} onChange={(e) => setNBankNo(e.target.value)} placeholder="ตัวเลข 10–15 หลัก" inputMode="numeric" className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">ชื่อบัญชี</label>
+              <Input value={nBankAcc} onChange={(e) => setNBankAcc(e.target.value)} placeholder="ชื่อตามหน้าสมุดบัญชี" className="h-9 text-sm" />
+            </div>
           </div>
           <Button onClick={add} disabled={busy || !nName.trim()} className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
             <Plus className="w-4 h-4" /> เพิ่ม
