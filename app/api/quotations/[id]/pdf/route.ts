@@ -5,6 +5,7 @@ import { renderPdfmake } from "@/lib/pdfmake-printer"
 import { quotationDocDef } from "@/lib/quotation-pdf"
 import { QUOTE_COLL, type Quotation } from "@/lib/quotation"
 import { findVehicle, withVehicle } from "@/lib/deal-vehicles"
+import { salesDisplayName } from "@/lib/sales-display"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -14,8 +15,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   if (!ObjectId.isValid(id)) return NextResponse.json({ error: "bad id" }, { status: 400 })
   const client = await clientPromise
-  const doc = await client.db(DB).collection(QUOTE_COLL).findOne({ _id: new ObjectId(id) })
+  const db = client.db(DB)
+  const doc = await db.collection(QUOTE_COLL).findOne({ _id: new ObjectId(id) })
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  // ผู้เสนอราคาในเอกสารต้องเป็นชื่อ-นามสกุลจริง ไม่ใช่อีเมล (ใบเก่าบางใบเก็บชื่อเซลล์มาเป็นอีเมล)
+  doc.salesName = await salesDisplayName(db, String(doc.salesName ?? ""), String(doc.salesEmail ?? ""))
   // ?plate= → ใบเสนอของคันนั้นในดีลเดียวกัน (ดีลเสนอได้หลายคัน) — ไม่ระบุ = คันหลัก
   const plate = req.nextUrl.searchParams.get("plate") ?? ""
   let q = { ...doc, _id: String(doc._id) } as unknown as Quotation

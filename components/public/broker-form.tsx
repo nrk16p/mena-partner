@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { BROKER_CENTERS, THAI_BANKS, isThaiNationalId, phoneError, bankAccountError } from "@/lib/broker-application"
+import { BROKER_CENTERS, THAI_BANKS, isThaiNationalId, phoneError, bankAccountError, emailError } from "@/lib/broker-application"
 import { telHref } from "./thai-text"
 
 /** ช่องที่ server บอกว่าผิด → id ของช่องในฟอร์ม (ไว้เลื่อน+โฟกัสไปที่ช่องนั้น) */
 const FIELD_ID: Record<string, string> = {
-  firstName: "b-first", lastName: "b-last", nationalId: "b-nid", address: "b-addr", phone: "b-phone",
+  firstName: "b-first", lastName: "b-last", nationalId: "b-nid", address: "b-addr", phone: "b-phone", email: "b-email",
   bankName: "b-bank", bankAccountNo: "b-accno", bankAccountName: "b-accname", centerOther: "b-center-other",
   confirmTrue: "b-confirm", consentPdpa: "b-pdpa",
 }
 /** ช่องที่มีที่โชว์ข้อความผิดใต้ช่อง — ช่องอื่นโชว์รวมที่ปุ่มส่ง */
-const INLINE = new Set(["nationalId", "address", "phone", "bankAccountNo", "centerOther", "confirmTrue", "consentPdpa"])
+const INLINE = new Set(["nationalId", "address", "phone", "email", "bankAccountNo", "centerOther", "confirmTrue", "consentPdpa"])
 
 /** ฟอร์มสมัครนายหน้า — ช่องตามใบกระดาษข้อ 1–3 และ 6 + ชื่อบัญชี + ยินยอม PDPA · ส่งเข้า /api/public/broker-applications */
 export function BrokerForm({ phone }: { phone?: string }) {
@@ -46,7 +46,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         firstName: first, lastName: last, nationalId: nid,
-        address: fd.get("address"), phone: fd.get("phone"), lineId: fd.get("lineId") || "",
+        address: fd.get("address"), phone: fd.get("phone"), email: fd.get("email") || "", lineId: fd.get("lineId") || "",
         position: fd.get("position") || "", company: fd.get("company") || "",
         bankAccountNo: fd.get("bankAccountNo"), bankName: bank === "อื่น ๆ" ? fd.get("bankOther") : bank,
         bankAccountName: shownAccName,
@@ -128,6 +128,14 @@ export function BrokerForm({ phone }: { phone?: string }) {
               onBlur={(e) => setErr("phone", e.target.value ? phoneError(e.target.value) : "")}
               onChange={() => setErr("phone", "")} />
             {errText("phone")}
+          </div>
+          <div>
+            <label htmlFor="b-email" className={label}>อีเมล{req}</label>
+            <input id="b-email" name="email" type="email" required inputMode="email" autoComplete="email" placeholder="somchai@gmail.com"
+              {...errProps("email")} className={`${field} ${bad("email")}`}
+              onBlur={(e) => setErr("email", e.target.value ? emailError(e.target.value) : "")}
+              onChange={() => setErr("email", "")} />
+            {errText("email")}
           </div>
           <div>
             <label htmlFor="b-line" className={label}>LINE ID</label>

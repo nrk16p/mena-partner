@@ -40,6 +40,7 @@ export default function CommissionPage() {
   const [cycle, setCycle] = useState<string>("") // กรองรอบจ่าย ("" = ทุกรอบ)
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [paidAt, setPaidAt] = useState(today())
+  const [payCycle, setPayCycle] = useState<string>("") // รอบ/เดือนที่จ่าย ("" = ตามตัวกรอง หรือรอบของวันที่จ่าย)
   const [note, setNote] = useState("")
   const [saving, setSaving] = useState(false)
   const [saveErr, setSaveErr] = useState("")
@@ -62,10 +63,10 @@ export default function CommissionPage() {
 
   // รอบที่มีในรายการของคนนี้ (เรียงใหม่→เก่า) + รอบปัจจุบัน
   const cycles = useMemo(() => {
-    const set = new Set<string>([cycleOf(today())])
+    const set = new Set<string>([cycleOf(today()), cycleOf(paidAt || today())])
     for (const s of shown?.sales ?? []) for (const p of s.payouts) if (p.cycle) set.add(p.cycle)
     return [...set].sort().reverse()
-  }, [shown])
+  }, [shown, paidAt])
 
   const rows = useMemo(() => {
     const list = shown?.sales ?? []
@@ -91,12 +92,15 @@ export default function CommissionPage() {
     setSel(n)
   }
 
+  // รอบที่บันทึกลงใบทำจ่าย: เลือกเองในแถบล่าง > ตัวกรองรอบ > รอบของวันที่จ่าย
+  const effectivePayCycle = payCycle || cycle || cycleOf(paidAt || today())
+
   async function savePayment() {
     if (!shown || !selectedItems.length) return
     setSaveErr("")
     const ok = await confirm({
       title: `บันทึกทำจ่ายค่าคอม ${shown.name}`,
-      description: `${selectedItems.length} งวด รวม ${formatMoney(selTotal)} บาท · วันที่จ่าย ${fmtDate(paidAt)} — บันทึกแล้วงวดเหล่านี้จะถูกล็อกว่าจ่ายแล้ว`,
+      description: `${selectedItems.length} งวด รวม ${formatMoney(selTotal)} บาท · วันที่จ่าย ${fmtDate(paidAt)} · ${cycleLabel(effectivePayCycle)} — บันทึกแล้วงวดเหล่านี้จะถูกล็อกว่าจ่ายแล้ว`,
     })
     if (!ok) return
     setSaving(true)
@@ -104,7 +108,7 @@ export default function CommissionPage() {
       const res = await fetch("/api/quotations/commission/payments", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          salesKey: shown.key, paidAt, note, cycle: cycle || undefined,
+          salesKey: shown.key, paidAt, note, cycle: effectivePayCycle,
           items: selectedItems.map((x) => ({ quotationId: x.sale.quotationId, tranche: x.payout.tranche })),
         }),
       })
@@ -387,6 +391,12 @@ export default function CommissionPage() {
             </p>
             <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">วันที่จ่าย
               <input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
+            </label>
+            <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">เดือนที่จ่าย
+              <select value={effectivePayCycle} onChange={(e) => setPayCycle(e.target.value)} aria-label="เดือนที่จ่าย"
+                className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
+                {cycles.map((c) => <option key={c} value={c}>{cycleLabel(c)}</option>)}
+              </select>
             </label>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="หมายเหตุ (ไม่บังคับ)"
               className="h-9 flex-1 min-w-[160px] text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 bg-white dark:bg-zinc-900" />

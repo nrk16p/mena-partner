@@ -11,7 +11,7 @@ const ID = withCheck("110170023070")
 
 const good = {
   firstName: "สมชาย", lastName: "ใจดี", nationalId: ID, address: "99 หมู่ 1 ต.หน้าพระลาน อ.เฉลิมพระเกียรติ จ.สระบุรี",
-  phone: "081-234-5678", lineId: "somchai", position: "", company: "",
+  phone: "081-234-5678", email: "Somchai@Gmail.com", lineId: "somchai", position: "", company: "",
   bankAccountNo: "123-4-56789-0", bankName: "กสิกรไทย", bankAccountName: "สมชาย ใจดี",
   center: "ssb", centerOther: "", consentPdpa: true, confirmTrue: true,
 }
@@ -67,5 +67,13 @@ describe("แจ้งช่องที่ผิด", () => {
   })
   it("ไม่กรอกที่อยู่ → field address", () => {
     expect(parseBrokerApplication({ ...good, address: "" })).toMatchObject({ ok: false, field: "address" })
+  })
+  it("อีเมลบังคับกรอก → field email", () => {
+    expect(parseBrokerApplication({ ...good, email: "" })).toMatchObject({ ok: false, field: "email" })
+    expect(parseBrokerApplication({ ...good, email: "somchai" })).toMatchObject({ ok: false, field: "email" })
+  })
+  it("อีเมลเก็บเป็นตัวพิมพ์เล็ก", () => {
+    const r = parseBrokerApplication(good)
+    expect(r.ok && r.data.email).toBe("somchai@gmail.com")
   })
 })

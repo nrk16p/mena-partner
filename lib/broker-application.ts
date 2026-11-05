@@ -53,6 +53,9 @@ export const bankAccountError = (v: string) => {
 }
 export const nationalIdError = (v: string) =>
   isThaiNationalId(digits(v)) ? "" : "เลขบัตรประชาชนไม่ถูกต้อง ลองเช็กอีกรอบ"
+/** อีเมลผู้สมัคร — ใช้ผูกบัญชีล็อกอิน/ดีลของฉัน/ยอดคอม หลังอนุมัติ (ฝ่ายขายขอให้บังคับกรอก 2026-11-05) */
+export const emailError = (v: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? "" : "อีเมลไม่ถูกต้อง เช่น somchai@gmail.com"
 
 const schema = z.object({
   firstName: z.string().trim().min(1).max(80),
@@ -60,6 +63,7 @@ const schema = z.object({
   nationalId: z.string().trim().max(30),
   address: z.string().trim().min(1).max(500),
   phone: z.string().trim().max(30),
+  email: z.string().trim().max(160),
   lineId: z.string().trim().max(60).default(""),
   position: z.string().trim().max(120).default(""),
   company: z.string().trim().max(160).default(""),
@@ -79,6 +83,7 @@ export interface BrokerApplicationInput {
   nationalId: string
   address: string
   phone: string
+  email: string
   lineId: string
   position: string
   company: string
@@ -101,7 +106,7 @@ export function parseBrokerApplication(body: unknown):
   if (!parsed.success) {
     const field = String(parsed.error.issues[0]?.path[0] ?? "")
     const name: Record<string, string> = {
-      firstName: "ชื่อ", lastName: "นามสกุล", address: "ที่อยู่", bankName: "ธนาคาร",
+      firstName: "ชื่อ", lastName: "นามสกุล", address: "ที่อยู่", email: "อีเมล", bankName: "ธนาคาร",
       bankAccountName: "ชื่อบัญชี", center: "ศูนย์ที่สังกัด",
     }
     return { ok: false, error: name[field] ? `กรุณากรอก${name[field]}` : "ข้อมูลไม่ครบ ลองเช็กอีกรอบ", field }
@@ -110,9 +115,11 @@ export function parseBrokerApplication(body: unknown):
   const nationalId = digits(v.nationalId)
   const phone = digits(v.phone)
   const bankAccountNo = digits(v.bankAccountNo)
+  const email = v.email.toLowerCase()
   for (const [field, err] of [
     ["nationalId", nationalIdError(nationalId)],
     ["phone", phoneError(phone)],
+    ["email", emailError(email)],
     ["bankAccountNo", bankAccountError(bankAccountNo)],
   ] as const) if (err) return { ok: false, error: err, field }
   if (v.center === "other" && !v.centerOther) return { ok: false, error: "เลือกศูนย์ อื่น ๆ แล้ว กรุณาพิมพ์ชื่อศูนย์ด้วย", field: "centerOther" }
@@ -121,7 +128,7 @@ export function parseBrokerApplication(body: unknown):
     ok: true,
     data: {
       firstName: v.firstName, lastName: v.lastName, nationalId, address: v.address,
-      phone, lineId: v.lineId, position: v.position, company: v.company,
+      phone, email, lineId: v.lineId, position: v.position, company: v.company,
       bankAccountNo, bankName: v.bankName, bankAccountName: v.bankAccountName,
       center: v.center, centerOther: v.center === "other" ? v.centerOther : "",
     },

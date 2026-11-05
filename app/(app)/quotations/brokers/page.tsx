@@ -16,6 +16,7 @@ interface Application {
   nationalId: string
   address: string
   phone: string
+  email?: string
   lineId: string
   position: string
   company: string
@@ -168,6 +169,7 @@ export default function BrokerApplicationsPage() {
                     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                       <dt className="text-zinc-400">เลขบัตรประชาชน</dt><dd className="tabular-nums">{fmtNid(a.nationalId)}</dd>
                       <dt className="text-zinc-400">ที่อยู่ตามบัตร</dt><dd>{a.address}</dd>
+                      <dt className="text-zinc-400">อีเมล</dt><dd>{a.email || "—"}</dd>
                       <dt className="text-zinc-400">LINE ID</dt><dd>{a.lineId || "—"}</dd>
                       <dt className="text-zinc-400">ตำแหน่ง / บริษัท</dt><dd>{[a.position, a.company].filter(Boolean).join(" · ") || "—"}</dd>
                       <dt className="text-zinc-400">บัญชีรับเงิน</dt>
