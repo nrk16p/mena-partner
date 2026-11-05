@@ -43,6 +43,7 @@ export async function GET() {
     all: onlyMine ? [] : all,
     canSeeAll: !onlyMine,
     canPay: canPayCommission(role),
-    payments: payments.map((p) => ({ ...p, _id: String(p._id) })),
+    // ใบทำจ่ายเก่าที่บันทึกก่อนมีช่องบัญชี → ดึงบัญชีปัจจุบันของเซลล์มาแสดง (ไม่เขียนกลับ)
+    payments: payments.map((p) => ({ ...p, _id: String(p._id), bankAccount: p.bankAccount || bankOf({ email: p.salesEmail, name: p.salesName }) })),
   })
 }

@@ -9,7 +9,7 @@ import { confirm } from "@/components/ui/confirm"
 import { COMMISSION_TIERS, FIRST_TRANCHE, cycleEnd, cycleLabel, cycleOf, tierLabel, type CommissionSummary, type CommissionSale, type Payout } from "@/lib/commission"
 
 type Payment = {
-  _id: string; salesKey: string; salesName: string; cycle: string; cycleLabel: string; paidAt: string; note: string
+  _id: string; salesKey: string; salesName: string; cycle: string; cycleLabel: string; paidAt: string; note: string; bankAccount?: string
   items: { quotationNo: string; tranche: 1 | 2; amount: number }[]; total: number; createdBy: { name: string }
 }
 type Summary = CommissionSummary & { bankAccount?: string }
@@ -325,13 +325,14 @@ export default function CommissionPage() {
               <p className="px-4 py-5 text-sm text-zinc-400 text-center">ยังไม่เคยทำจ่าย</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[640px]">
+                <table className="w-full text-sm min-w-[820px]">
                   <thead className="text-[11px] uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-50/60 dark:bg-zinc-900/40">
                     <tr>
                       <th className="text-left px-4 py-2 font-semibold">รอบจ่าย</th>
                       <th className="text-left px-3 py-2 font-semibold">วันที่จ่าย</th>
                       <th className="text-left px-3 py-2 font-semibold">รายการ</th>
                       <th className="text-right px-3 py-2 font-semibold">ยอดรวม</th>
+                      <th className="text-left px-3 py-2 font-semibold">บัญชีรับเงิน</th>
                       <th className="text-left px-3 py-2 font-semibold">บันทึกโดย</th>
                       <th className="text-right px-4 py-2 font-semibold">ไฟล์</th>
                     </tr>
@@ -346,6 +347,9 @@ export default function CommissionPage() {
                           {p.note && <span className="block text-xs">{p.note}</span>}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold">{formatMoney(p.total)}</td>
+                        <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                          {p.bankAccount || <span className="text-amber-700 dark:text-amber-400">ยังไม่ระบุ</span>}
+                        </td>
                         <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400">{p.createdBy?.name ?? "—"}</td>
                         <td className="px-4 py-2">
                           <span className="flex justify-end gap-1.5">
