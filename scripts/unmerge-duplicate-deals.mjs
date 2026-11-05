@@ -34,7 +34,8 @@ for (const [keepId, group] of byKeep) {
 
   let set = {}, unset = {}
   if (keep) {
-    const timeline = (keep.timeline ?? []).filter((t) => !(t.from && nos.has(t.from)) && !(t.by === "system@merge" && group.some((o) => String(t.action ?? "").includes(o.quotationNo || "§"))))
+    // ถอดทุกรายการที่สคริปต์รวบใส่ไว้: มี key from (รวม lead เปล่าที่ from = undefined) หรือ by system@merge (ไม่มีใครอื่นเขียน by นี้)
+    const timeline = (keep.timeline ?? []).filter((t) => !("from" in t) && t.by !== "system@merge")
     const vehicles = (keep.vehicles ?? []).filter((v) => !(String(v.addedBy ?? "").startsWith("merge:") && nos.has(String(v.addedBy).slice(6))))
     const oldSlips = new Set(group.flatMap((o) => [...(o.depositSlips ?? []), ...(o.depositSlipUrl ? [o.depositSlipUrl] : [])]))
     const depositSlips = (keep.depositSlips ?? []).filter((s) => !oldSlips.has(s) || s === keep.depositSlipUrl)
