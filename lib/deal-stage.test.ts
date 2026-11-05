@@ -140,3 +140,12 @@ describe("ข้ามขั้น (skip) + statusOfStage", () => {
     expect(WON_STAGES).toContain("DELIVERED")
   })
 })
+
+describe("ขั้นเซ็นสัญญาแล้ว → ส่งมอบ: รูปส่งมอบไม่บังคับ", () => {
+  it("มีวันส่งมอบจริงก็ขยับได้ แม้ยังไม่แนบรูป", () => {
+    expect(missingToAdvance({ stage: "CONTRACT_SIGNED", deliveredAt: "2026-11-05", attachments: [] }, "CONTRACT_SIGNED", NOW)).toEqual([])
+  })
+  it("ไม่มีวันส่งมอบจริง ยังขาด", () => {
+    expect(missingToAdvance({ stage: "CONTRACT_SIGNED", attachments: [] }, "CONTRACT_SIGNED", NOW)).toContain("วันที่ส่งมอบจริง")
+  })
+})

@@ -197,7 +197,7 @@ export function missingToAdvance(d: DealFields, from: Stage, now = new Date()): 
       if (!d.deliveryDate) miss.push("วันนัดรับรถ")
       break
     case "CONTRACT_SIGNED":
-      if (!hasFile(d, "DELIVERY_PHOTO")) miss.push("รูปลูกค้าคู่กับรถตอนส่งมอบ")
+      // รูปลูกค้าคู่กับรถ (DELIVERY_PHOTO) ไม่บังคับแล้ว — ฝ่ายขายขอ 2026-11-05 บางงานถ่ายไม่ได้ ให้แนบทีหลังได้
       if (!d.deliveredAt) miss.push("วันที่ส่งมอบจริง")
       break
     case "DELIVERED": {

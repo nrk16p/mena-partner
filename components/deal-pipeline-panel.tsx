@@ -68,7 +68,7 @@ type FieldType = "date" | "number" | "select"
 interface StageField { key: string; label: string; type: FieldType; help: string }
 
 /** ข้อมูล + ไฟล์ที่ต้องมีในแต่ละขั้น (ตรงกับกติกาใน lib/deal-stage) */
-const STAGE_FORM: Record<string, { fields: StageField[]; attach?: string }> = {
+const STAGE_FORM: Record<string, { fields: StageField[]; attach?: string; attachOptional?: boolean }> = {
   QUALIFIED: {
     fields: [{ key: "quotationSentAt", label: "วันที่ส่งใบเสนอราคา", type: "date", help: "วันที่ส่งให้ลูกค้าจริง" }],
     attach: "QUOTATION",
@@ -96,6 +96,7 @@ const STAGE_FORM: Record<string, { fields: StageField[]; attach?: string }> = {
   CONTRACT_SIGNED: {
     fields: [{ key: "deliveredAt", label: "วันที่ส่งมอบจริง", type: "date", help: "นับ 90 วันแรกจากวันนี้" }],
     attach: "DELIVERY_PHOTO",
+    attachOptional: true,   // ไม่บังคับ ขยับขั้นได้โดยไม่ต้องแนบ แนบทีหลังได้
   },
 }
 
@@ -409,11 +410,14 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                 ))}
                 {form.attach && (
                   <li className="grid grid-cols-[28px_minmax(0,1fr)_220px] gap-3 items-center py-3">
-                    <ReqIcon ok={attachDone(deal, form.attach)} />
+                    <ReqIcon ok={attachDone(deal, form.attach)} optional={form.attachOptional} />
                     <div>
-                      <div className="text-sm font-semibold">{ATTACH_LABEL[form.attach]}</div>
+                      <div className="text-sm font-semibold">
+                        {ATTACH_LABEL[form.attach]}
+                        {form.attachOptional && <span className="ml-1.5 text-[10px] font-semibold text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded px-1 py-0.5 align-middle">ไม่บังคับ</span>}
+                      </div>
                       <div className="text-xs text-zinc-500">
-                        {attachDone(deal, form.attach) ? "แนบแล้ว · " : "ยังไม่แนบ — "}{ATTACH_HELP[form.attach]}
+                        {attachDone(deal, form.attach) ? "แนบแล้ว · " : form.attachOptional ? "ยังไม่แนบ (ข้ามได้ แนบทีหลังได้) — " : "ยังไม่แนบ — "}{ATTACH_HELP[form.attach]}
                       </div>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {(deal.attachments ?? []).filter((a) => a.type === form.attach).map((a, i) => (
@@ -524,14 +528,15 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
   )
 }
 
-function ReqIcon({ ok }: { ok: boolean }) {
-  return ok ? (
+function ReqIcon({ ok, optional }: { ok: boolean; optional?: boolean }) {
+  if (ok) return (
     <span aria-label="ครบแล้ว" className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center">
       <Check className="w-3 h-3" strokeWidth={3} />
     </span>
-  ) : (
-    <span aria-label="ยังขาด" className="w-6 h-6 rounded-full border-2 border-dashed border-[#D4A72C]" />
   )
+  // ไม่บังคับ = วงเทา ไม่ใช่วงทองที่แปลว่า "ยังขาด"
+  if (optional) return <span aria-label="ไม่บังคับ" className="w-6 h-6 rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-600" />
+  return <span aria-label="ยังขาด" className="w-6 h-6 rounded-full border-2 border-dashed border-[#D4A72C]" />
 }
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
