@@ -119,3 +119,22 @@ export async function runDealDailyJobs(db: Db, now = new Date(), opts: { apply?:
 
   return report
 }
+
+/**
+ * ขยับดีลที่ส่งมอบครบ 90 วันให้จบเอง "ตอนมีคนเปิดดู" — ไม่ต้องรอ cron ตอน 08:00 (และกันกรณี cron ไม่ได้ยิงเพราะไม่มี CRON_SECRET)
+ * เรียกจากตอนโหลดลิสต์/หน้าดีล · idempotent · ดีลขั้นส่งมอบมีไม่กี่ใบ จึงถูกมาก · ล้มเหลวก็ไม่ทำให้หน้าเว็บพัง
+ */
+export async function promoteDeliveredDeals(db: Db, now = new Date()): Promise<number> {
+  let n = 0
+  try {
+    const rows = await db.collection(DEAL_COLL)
+      .find({ stage: "DELIVERED" }, { projection: { quotationNo: 1, stage: 1, deliveredAt: 1 }, maxTimeMS: 5000 })
+      .limit(200).toArray()
+    for (const d of rows) {
+      if (!dealDailyActions(d as DealForCron, now).complete) continue
+      const r = await moveStage(db, String(d._id), "COMPLETED_90D", SYSTEM, "ครบ 90 วันนับจากวันส่งมอบ (ระบบขยับอัตโนมัติ)")
+      if (r.ok) n++
+    }
+  } catch { /* งานเสริม ไม่ให้ล้มหน้า */ }
+  return n
+}

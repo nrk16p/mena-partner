@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { QUOTE_COLL, QUOTE_STATUSES, QUOTE_STATUS_LABEL, type QuoteStatus } from "@/lib/quotation"
+import { promoteDeliveredDeals } from "@/lib/deal-cron"
 import { actorOf, resolveSalesEmail } from "@/lib/sales-owner"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
@@ -13,6 +14,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   const { id } = await params
   if (!ObjectId.isValid(id)) return NextResponse.json({ error: "bad id" }, { status: 400 })
   const client = await clientPromise
+  await promoteDeliveredDeals(client.db(DB))   // ส่งมอบครบ 90 วัน → จบดีลให้เองก่อนแสดง
   const doc = await client.db(DB).collection(QUOTE_COLL).findOne({ _id: new ObjectId(id) })
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 })
   return NextResponse.json({ ...doc, _id: String(doc._id) })

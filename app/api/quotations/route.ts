@@ -5,6 +5,7 @@ import { openDealOfCustomer } from "@/app/api/quotations/open-deal/route"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { QUOTE_COLL, nextQuotationNo, type QuoteStatus } from "@/lib/quotation"
+import { promoteDeliveredDeals } from "@/lib/deal-cron"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 const n = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0)
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest) {
   const q = sp.get("q")?.trim()
   const client = await clientPromise
   const db = client.db(DB)
+  // ส่งมอบครบ 90 วัน → จบดีลให้เองก่อนส่งลิสต์ (ไม่ต้องรอ cron)
+  await promoteDeliveredDeals(db)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: any = {}
   if (status) filter.status = status
