@@ -43,7 +43,9 @@ const now = new Date().toISOString()
 let merged = 0, skipped = 0, removed = 0
 for (const g of dupGroups.sort((a, b) => b.length - a.length)) {
   g.sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
-  const keep = g[0], olds = g.slice(1)
+  // ยึดใบล่าสุด "ที่มีเลขใบเสนอ" — lead เปล่าจากหน้าเว็บ (ไม่มีเลข/รถ/เซลล์) ที่มาทีหลัง ให้ถูกรวบเข้าใบจริงแทน ไม่ใช่กลายเป็นใบหลัก
+  const keep = g.find((d) => d.quotationNo) ?? g[0]
+  const olds = g.filter((d) => d !== keep)
   const label = `${keep.customerName ?? "?"} (${keep.customerPhone ?? "-"})`
   const risky = olds.filter((o) => (isWon(o) && !isWon(keep)) || o.commissionPayouts)
   console.log(`▶ ${label} · ${g.length} ใบ → ยึด ${keep.quotationNo} (${keep.stage ?? keep.status} · ${String(keep.createdAt).slice(0, 10)} · เซลล์ ${keep.salesName || "-"})`)
