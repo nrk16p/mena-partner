@@ -131,7 +131,7 @@ export async function planTrainerPhotos(db: Db, months?: string[]): Promise<Trai
   const priced = new Set((await db.collection("master_price_list").find({}, { projection: { licensePlate: 1 } }).toArray())
     .map((p) => normPlate(String(p.licensePlate ?? ""))))
   const vehicles = await db.collection("vehicle_master")
-    .find({ licensePlate: { $in: [...priced] } }, { projection: { licensePlate: 1, photos: 1, photoUrl: 1 } }).toArray()
+    .find({ licensePlate: { $in: [...priced] } }, { projection: { licensePlate: 1, photos: 1, photoUrl: 1, photosTaskId: 1 } }).toArray()
   const vByPlate = new Map(vehicles.map((v) => [normPlate(String(v.licensePlate ?? "")), v]))
 
   // ต่อทะเบียน: เรียงรอบล่าสุดก่อน — รอบล่าสุดไม่มีรูปค่อยถอยไปรอบก่อน
@@ -140,26 +140,29 @@ export async function planTrainerPhotos(db: Db, months?: string[]): Promise<Trai
   for (const list of byPlate.values()) list.sort((a, b) => b.inspectedAt.localeCompare(a.inspectedAt))
 
   const noPhotoFolder: string[] = []
-  const plans = (await pool([...byPlate.entries()], 6, async ([plate, list]) => {
+  const plansAll = (await pool([...byPlate.entries()], 6, async ([plate, list]) => {
     for (const r of list) {
       const sides = await listSides(r)
       if (!Object.keys(sides).length) continue
       const v = vByPlate.get(plate)!
       const cur = (v.photos ?? {}) as Record<string, string>
-      const replace = SIDES.filter((s) => sides[s] && !isManualPhoto(cur[s]))
+      // รอบตรวจเดิมที่ดึงไปแล้ว + ลิงก์ยังเป็นของรอบนั้น → ข้าม (cron รันทุกวันไม่ต้อง copy ซ้ำ)
+      const already = (s: Side) => v.photosTaskId === r.taskId && String(cur[s] ?? "").includes(`/trainer/`)
+      const replace = SIDES.filter((s) => sides[s] && !isManualPhoto(cur[s]) && !already(s))
       const keptManual = SIDES.filter((s) => sides[s] && isManualPhoto(cur[s]))
       return {
         plate: String(v.licensePlate), taskId: r.taskId, inspectedAt: r.inspectedAt, sides, replace, keptManual,
-        setPhotoUrl: !isManualPhoto(v.photoUrl) && !!(sides.front || sides.left),
+        setPhotoUrl: !isManualPhoto(v.photoUrl) && !!(sides.front || sides.left) && !(v.photosTaskId === r.taskId),
       } satisfies TrainerPhotoPlan
     }
     noPhotoFolder.push(plate)
     return null
   })).filter((p): p is TrainerPhotoPlan => !!p)
+  const plans = plansAll.filter((p) => p.replace.length > 0)
 
   return {
     months: used, inspections: rows.length, platesInPriceList: byPlate.size,
-    withPhotos: plans.length, noPhotoFolder: noPhotoFolder.sort(), plans,
+    withPhotos: plansAll.length, noPhotoFolder: noPhotoFolder.sort(), plans,
   }
 }
 
