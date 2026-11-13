@@ -33,6 +33,7 @@ export async function GET() {
       return {
         licensePlate:         plate,
         status,
+        sizeGroup:            d.sizeGroup === "MS" ? "MS" : "ML",   // ไม่มีค่า = ชุดเดิม 10 ล้อ
         vehicleBrand:         (vi?.brand as string) ?? "",
         vehicleModel:         (vi?.model as string) ?? "",
         truckNumber:          (vi?.truckNumber as string) ?? "",
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
   const dup = await col.findOne({ licensePlate: plate }, { projection: { _id: 1 } })
   if (dup) return NextResponse.json({ error: "ทะเบียนนี้มีราคาขายอยู่แล้ว" }, { status: 409 })
 
-  const doc: Record<string, unknown> = { licensePlate: plate }
+  const doc: Record<string, unknown> = { licensePlate: plate, sizeGroup: body.sizeGroup === "MS" ? "MS" : "ML" }
   for (const k of NUM_FIELDS) {
     const v = body[k]
     doc[k] = v === null || v === undefined || v === "" ? null : Number(v)

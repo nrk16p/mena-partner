@@ -41,6 +41,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       next[k] = v === null || v === undefined || v === "" ? null : Number(v)
     }
   }
+  if (body.sizeGroup === "MS" || body.sizeGroup === "ML") next.sizeGroup = body.sizeGroup
   if (Object.keys(next).length === 0)
     return NextResponse.json({ error: "no fields to update" }, { status: 400 })
 

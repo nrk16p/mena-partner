@@ -14,10 +14,17 @@ import { hasPerm } from "@/lib/rbac"
 import { effectiveSaleKey, countBySaleKey } from "@/lib/sale-readiness"
 
 type SaleStatus = "ready" | "repair15" | "repair30" | "review"
+/** กลุ่มรถ: ML = Mixer 10 ล้อ (ชุดเดิม) · MS = Mixer 6 ล้อ (เพิ่ม 2026-11-13) */
+type SizeGroup = "ML" | "MS"
+const SIZE_GROUPS: { key: SizeGroup; label: string; cls: string }[] = [
+  { key: "ML", label: "ML · 10 ล้อ", cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300" },
+  { key: "MS", label: "MS · 6 ล้อ",  cls: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300" },
+]
 
 interface PriceRow {
   licensePlate:         string
   status:               "contract" | "active" | "inactive"
+  sizeGroup:            SizeGroup
   saleStatus:           SaleStatus | null
   repairStart:          string | null
   repairEnd:            string | null
@@ -202,6 +209,7 @@ function PriceFormPanel({ mode, row, existingPlates, onClose, onSaved }: {
   onSaved: () => void
 }) {
   const [plate, setPlate] = useState(row?.licensePlate ?? "")
+  const [sizeGroup, setSizeGroup] = useState<SizeGroup>(row?.sizeGroup ?? "ML")
   const [plateOptions, setPlateOptions] = useState<string[]>([])
   const [f, setF] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
@@ -256,7 +264,7 @@ function PriceFormPanel({ mode, row, existingPlates, onClose, onSaved }: {
     if (!plate) { setErr("เลือกทะเบียนรถก่อน"); return }
     setSaving(true)
     try {
-      const payload: Record<string, unknown> = { licensePlate: plate }
+      const payload: Record<string, unknown> = { licensePlate: plate, sizeGroup }
       for (const { key } of PRICE_FIELDS) payload[key] = num(key)
       const res = mode === "add"
         ? await fetch("/api/price-list", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
@@ -309,6 +317,21 @@ function PriceFormPanel({ mode, row, existingPlates, onClose, onSaved }: {
               มีผลเฉพาะสัญญาใหม่เท่านั้น
             </div>
           )}
+          <div className="space-y-1">
+            <label className="text-xs text-zinc-500">กลุ่มรถ</label>
+            <div className="flex gap-1">
+              {SIZE_GROUPS.map((g) => (
+                <button key={g.key} type="button" onClick={() => setSizeGroup(g.key)}
+                  className={`flex-1 h-9 rounded-md border text-xs font-semibold ${
+                    sizeGroup === g.key
+                      ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 dark:border-zinc-700 text-zinc-500"
+                  }`}>
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             {PRICE_FIELDS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
@@ -368,6 +391,7 @@ export default function PriceListPage() {
   const [installFilter, setInstallFilter] = useState<number | null>(null)
   const [statusFilter,  setStatusFilter]  = useState("")
   const [saleFilter,    setSaleFilter]    = useState("")
+  const [groupFilter,   setGroupFilter]   = useState<SizeGroup | "">("")
   const [editingPlate,  setEditingPlate]  = useState<string | null>(null)
   const [historyPlate,  setHistoryPlate]  = useState<string | null>(null)
   const [priceForm, setPriceForm] = useState<{ mode: "add" } | { mode: "edit"; row: PriceRow } | null>(null)
@@ -388,13 +412,14 @@ export default function PriceListPage() {
 
   const filtered = useMemo(() => {
     let res = rows
+    if (groupFilter)         res = res.filter((r) => r.sizeGroup === groupFilter)
     if (statusFilter)        res = res.filter((r) => r.status === statusFilter)
     // รถติดสัญญา = ขายแล้ว ไม่นับในกลุ่มพร้อมขาย/รอซ่อม/ยังไม่ระบุ (lib/sale-readiness)
     if (saleFilter)          res = res.filter((r) => effectiveSaleKey(r) === saleFilter)
     if (installFilter !== null) res = res.filter((r) => r.financeInstallments === installFilter)
     if (q) res = res.filter((r) => r.licensePlate.toLowerCase().includes(q.toLowerCase()))
     return res
-  }, [rows, q, installFilter, statusFilter, saleFilter])
+  }, [rows, q, installFilter, statusFilter, saleFilter, groupFilter])
 
   // ── แจ้งเตือนรถรอซ่อมถึง/ใกล้ถึงกำหนด ──
   const repairRows = useMemo(() =>
@@ -414,7 +439,7 @@ export default function PriceListPage() {
   const sumDown     = filtered.reduce((s, r) => s + r.downPayment, 0)
   const avgMonthlyF = filtered.length ? Math.round(filtered.reduce((s, r) => s + r.monthlyPayment, 0) / filtered.length) : 0
 
-  const pg = usePagination(filtered, 50, [q, installFilter, statusFilter, saleFilter])
+  const pg = usePagination(filtered, 50, [q, installFilter, statusFilter, saleFilter, groupFilter])
 
   const saleCounts     = useMemo(() => countBySaleKey(rows), [rows])
   const contractCount  = rows.filter((r) => r.status === "contract").length
@@ -424,6 +449,7 @@ export default function PriceListPage() {
   async function handleExportExcel() {
     const rows_ = filtered.map((r) => ({
       "ทะเบียน":            r.licensePlate,
+      "กลุ่มรถ":            r.sizeGroup,
       "สถานะ":             STATUS_CONFIG[r.status]?.label ?? r.status,
       "ความพร้อมขาย":       r.status === "contract" ? "ขายแล้ว" : r.saleStatus ? SALE_STATUS_CONFIG[r.saleStatus].label : "",
       "ราคาขายรวม":         r.totalSalePrice,
@@ -599,6 +625,29 @@ export default function PriceListPage() {
         </div>
       </div>
 
+      {/* ── กลุ่มรถ ML / MS ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">กลุ่มรถ</span>
+        <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+          {[{ key: "" as const, label: "ทั้งหมด" }, ...SIZE_GROUPS].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setGroupFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                groupFilter === tab.key
+                  ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-1 text-[10px] opacity-60">
+                ({tab.key === "" ? rows.length : rows.filter((r) => r.sizeGroup === tab.key).length})
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Status tabs ── */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">สถานะ</span>
@@ -691,7 +740,7 @@ export default function PriceListPage() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
           <p className="text-xs font-semibold text-zinc-500">
             {filtered.length} ทะเบียน
-            {(q || installFilter !== null || statusFilter) && (
+            {(q || installFilter !== null || statusFilter || saleFilter || groupFilter) && (
               <span className="text-zinc-400 font-normal"> (จาก {rows.length})</span>
             )}
           </p>
@@ -737,6 +786,9 @@ export default function PriceListPage() {
                       {r.licensePlate}
                       <ExternalLink className="w-3 h-3 text-zinc-300 dark:text-zinc-600 opacity-0 group-hover/plate:opacity-100 transition-opacity" />
                     </Link>
+                    <div className="mt-0.5">
+                      <span className={`inline-block px-1.5 rounded text-[9px] font-bold ${SIZE_GROUPS.find((g) => g.key === r.sizeGroup)?.cls ?? ""}`}>{r.sizeGroup}</span>
+                    </div>
                   </td>
 
                   {/* ดาวน์รวม / ชำระแล้ว (เงินสด) */}
