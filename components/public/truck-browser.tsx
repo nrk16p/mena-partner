@@ -36,6 +36,7 @@ const normSearch = (v: string) => v.toLowerCase().replace(/[\s.\-_/]/g, "")
 /** กรอง+แบ่งหน้าในหน่วยความจำ — สต็อกหลักร้อยคัน ไม่ต้อง server pagination (หน้ารถทุกคันอยู่ใน sitemap แล้ว Google ไม่ต้องไล่หน้า); ตัวกรอง/เลขหน้าไม่เขียนลง query (กันหน้าซ้ำถูก index) ยกเว้นระดับดาวที่อยู่ใน #hash */
 export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   const [brand, setBrand] = useState("")
+  const [vType, setVType] = useState("")
   const [characteristic, setChar] = useState("")
   const [maxPrice, setMaxPrice] = useState(0)
   const [yearFrom, setYearFrom] = useState(0)
@@ -62,6 +63,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   }
 
   const brands = useMemo(() => [...new Set(trucks.map((t) => t.brand).filter(Boolean))].sort(), [trucks])
+  const vTypes = useMemo(() => [...new Set(trucks.map((t) => t.vehicleType).filter(Boolean))].sort(), [trucks])
   const chars  = useMemo(() => [...new Set(trucks.map((t) => t.characteristic).filter(Boolean))].sort(), [trucks])
   // ปีในตัวเลือก = ปีที่มีรถจริง (เก็บเป็น ค.ศ. แสดงเป็น พ.ศ.)
   const years  = useMemo(
@@ -78,6 +80,7 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
       return (!q || normSearch(t.truckNumber).includes(q) || normSearch(t.licensePlate).includes(q)) &&
         (!tier || (tier === "ready") === t.isReady) &&
         (!brand || t.brand === brand) &&
+        (!vType || t.vehicleType === vType) &&
         (!characteristic || t.characteristic === characteristic) &&
         (!maxPrice || t.display.price <= maxPrice) &&
         (!yearFrom || (y ?? 0) >= yearFrom) &&
@@ -86,11 +89,11 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     if (sort === "price-asc") return [...out].sort((a, b) => a.display.price - b.display.price)
     if (sort === "year-desc") return [...out].sort((a, b) => (b.registrationYear ?? 0) - (a.registrationYear ?? 0))
     return out
-  }, [trucks, q, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort])
+  }, [trucks, q, tier, brand, vType, characteristic, maxPrice, yearFrom, yearTo, sort])
 
   // เปลี่ยนตัวกรอง/การเรียง → กลับหน้า 1 (ปรับ state ระหว่าง render เหมือน hash ด้านบน)
   const [page, setPage] = useState(1)
-  const filterKey = [q, tier, brand, characteristic, maxPrice, yearFrom, yearTo, sort].join("|")
+  const filterKey = [q, tier, brand, vType, characteristic, maxPrice, yearFrom, yearTo, sort].join("|")
   const [seenFilterKey, setSeenFilterKey] = useState(filterKey)
   if (filterKey !== seenFilterKey) {
     setSeenFilterKey(filterKey)
@@ -107,8 +110,8 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
-  const reset = () => { setQuery(""); chooseTier(""); setBrand(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
-  const filtered = !!(q || tier || brand || characteristic || maxPrice || yearFrom || yearTo)
+  const reset = () => { setQuery(""); chooseTier(""); setBrand(""); setVType(""); setChar(""); setMaxPrice(0); setYearFrom(0); setYearTo(0); setSort("recommended") }
+  const filtered = !!(q || tier || brand || vType || characteristic || maxPrice || yearFrom || yearTo)
   const sel = "rounded-full border border-[var(--mena-line)] bg-white px-4 py-2.5 text-sm hover:border-[var(--mena-green-soft)] focus-visible:outline-2 focus-visible:outline-[var(--mena-green)]"
 
   return (
@@ -134,6 +137,12 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
             {label} ({count})
           </button>
         ))}
+        {vTypes.length > 1 && (
+          <select className={sel} value={vType} onChange={(e) => setVType(e.target.value)} aria-label="ประเภทรถ">
+            <option value="">ประเภทรถทั้งหมด</option>
+            {vTypes.map((v) => <option key={v} value={v}>{v} ({trucks.filter((t) => t.vehicleType === v).length})</option>)}
+          </select>
+        )}
         <select className={sel} value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="ยี่ห้อ">
           <option value="">ยี่ห้อทั้งหมด</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}
