@@ -591,6 +591,23 @@ export default function VehiclesPage() {
     } finally { setSyncing(false) }
   }
 
+  // ดึงรูปรถ 5 ด้านจาก Trainer App (lib/trainer-photos) — ไม่ทับรูปที่ทีมอัปเอง
+  const [syncingPhotos, setSyncingPhotos] = useState(false)
+  async function syncTrainerPhotos() {
+    setSyncingPhotos(true); setSyncResult("")
+    try {
+      const res = await fetch("/api/vehicles/sync-trainer-photos", { method: "POST" })
+      if (!res.ok) { setSyncResult("ดึงรูปไม่สำเร็จ"); return }
+      const r = await res.json()
+      setSyncResult(
+        `✓ ดึงรูปจาก Trainer App (${(r.months ?? []).join(", ")}) — อัปเดต ${r.written ?? 0} คัน · ${r.copied ?? 0} รูป` +
+        (r.keptManual?.length ? ` · คงรูปที่ทีมอัปเอง ${r.keptManual.length} คัน` : "") +
+        (r.errors?.length ? ` · ผิดพลาด ${r.errors.length} คัน` : "")
+      )
+      await load()
+    } finally { setSyncingPhotos(false) }
+  }
+
   // truckType: default "mixer" ถ้ายังไม่ได้ระบุ (fleet เป็น Mixer)
   const vType = (v: Vehicle) => (v.truckType === "trailer" ? "trailer" : "mixer")
 
@@ -668,6 +685,19 @@ export default function VehiclesPage() {
               <><div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />กำลังดึง...</>
             ) : (
               <>⟳ ดึงข้อมูลจาก ATMS</>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            className="h-9 text-sm gap-1.5"
+            disabled={syncingPhotos}
+            onClick={syncTrainerPhotos}
+            title="ดึงรูปรถ 5 ด้านจากการตรวจรถ Trainer App เดือนล่าสุด (ไม่ทับรูปที่ทีมอัปเอง)"
+          >
+            {syncingPhotos ? (
+              <><div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />กำลังดึงรูป...</>
+            ) : (
+              <>📷 ดึงรูปจาก Trainer App</>
             )}
           </Button>
           <button
