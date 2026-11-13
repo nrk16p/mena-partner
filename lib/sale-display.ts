@@ -13,6 +13,8 @@ const n = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0) || 0)
 export const ceilTo = (v: number, unit: number) => (v > 0 ? Math.ceil(v / unit) * unit : 0)
 
 export interface SalePriceInput {
+  /** "MS" (Mixer 6 ล้อ) = โชว์ตัวเลขจริงตามชีตไม่ปัด — ผู้ใช้สั่ง 2026-11-13 ("★ สรุปสำหรับเซลล์" เช่น 60 งวด × 9,640) */
+  sizeGroup?: unknown
   totalSalePrice?: unknown
   downPayment?: unknown
   monthlyPayment?: unknown
@@ -20,6 +22,8 @@ export interface SalePriceInput {
 }
 
 export function displaySalePrice(p: SalePriceInput): { price: number; monthlyPayment: number; downPayment: number } {
+  if (p.sizeGroup === "MS" && n(p.monthlyPayment) > 0 && n(p.financeInstallments) > 0)
+    return { price: n(p.totalSalePrice), monthlyPayment: n(p.monthlyPayment), downPayment: n(p.downPayment) }
   const monthly = ceilTo(n(p.monthlyPayment), 250)
   const count = n(p.financeInstallments)
   if (monthly > 0 && count > 0) {

@@ -40,4 +40,9 @@ describe("displaySalePrice — ปัดเลข + ลงตัว", () => {
   it("ไม่มีราคา → 0", () => {
     expect(displaySalePrice({})).toEqual({ price: 0, monthlyPayment: 0, downPayment: 0 })
   })
+
+  it("MS (6 ล้อ): โชว์ตัวเลขจริงไม่ปัด — 60 งวด × 9,640 · ราคา 608,400", () => {
+    expect(displaySalePrice({ sizeGroup: "MS", totalSalePrice: 608400, downPayment: 30000, monthlyPayment: 9640, financeInstallments: 60 }))
+      .toEqual({ price: 608400, monthlyPayment: 9640, downPayment: 30000 })
+  })
 })

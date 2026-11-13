@@ -50,6 +50,7 @@ export interface CatalogVehicle {
   financeInstallments?: number
   monthlyPayment?: number
   saleStatus?: string | null
+  sizeGroup?: string
   hasPrice: boolean
   // โปรโมชั่น (promotion_master)
   promo?: { pro1Condition: string; pro1FreeCount: number; pro1TotalValue: number; pro2RepairBudget: number; pro3AnnualPm: number }
@@ -93,6 +94,7 @@ export async function loadCatalogVehicles(db: Db, plates?: string[]): Promise<Ca
       totalSalePrice: n(p?.totalSalePrice), downPayment: n(p?.downPayment), cashDown: n(p?.cashDown),
       downInstallmentCount: n(p?.downInstallmentCount), downInstallmentAmt: n(p?.downInstallmentAmt),
       financeAmount: n(p?.financeAmount), financeInstallments: n(p?.financeInstallments), monthlyPayment: n(p?.monthlyPayment),
+      sizeGroup: p?.sizeGroup === "MS" ? "MS" : "ML",
       saleStatus: (p?.saleStatus as string | null) ?? null, hasPrice: !!p,
       promo: m ? { pro1Condition: String(m.pro1Condition ?? ""), pro1FreeCount: n(m.pro1FreeCount), pro1TotalValue: n(m.pro1TotalValue), pro2RepairBudget: n(m.pro2RepairBudget), pro3AnnualPm: n(m.pro3AnnualPm) } : undefined,
     }
