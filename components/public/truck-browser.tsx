@@ -117,6 +117,23 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
   return (
     <>
       <div ref={topRef} className="flex flex-wrap items-center gap-2 border-b border-[var(--mena-line)] pb-5 mb-8 scroll-mt-24">
+        {vTypes.length > 1 && (
+          // ประเภทรถ = ปุ่มกดเลือก (ผู้ใช้สั่ง 2026-11-13) · กดซ้ำ = ยกเลิก
+          <div className="w-full flex flex-wrap items-center gap-2" role="group" aria-label="ประเภทรถ">
+            {[["", "ทั้งหมด", trucks.length] as const, ...vTypes.map((v) => [v, v, trucks.filter((t) => t.vehicleType === v).length] as const)]
+              .map(([key, label, count]) => (
+                <button
+                  key={key || "all"} type="button" aria-pressed={vType === key}
+                  onClick={() => setVType(key && vType === key ? "" : key)}
+                  className={vType === key
+                    ? "rounded-full border border-[var(--mena-green)] bg-[var(--mena-green)] text-white px-4 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mena-green)]"
+                    : `${sel} font-medium`}
+                >
+                  {label} ({count})
+                </button>
+              ))}
+          </div>
+        )}
         <input
           type="search" value={query} onChange={(e) => setQuery(e.target.value)}
           placeholder="ค้นหาเบอร์รถ หรือทะเบียน" aria-label="ค้นหาเบอร์รถ หรือทะเบียน"
@@ -137,12 +154,6 @@ export function TruckBrowser({ trucks }: { trucks: PublicTruck[] }) {
             {label} ({count})
           </button>
         ))}
-        {vTypes.length > 1 && (
-          <select className={sel} value={vType} onChange={(e) => setVType(e.target.value)} aria-label="ประเภทรถ">
-            <option value="">ประเภทรถทั้งหมด</option>
-            {vTypes.map((v) => <option key={v} value={v}>{v} ({trucks.filter((t) => t.vehicleType === v).length})</option>)}
-          </select>
-        )}
         <select className={sel} value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="ยี่ห้อ">
           <option value="">ยี่ห้อทั้งหมด</option>
           {brands.map((b) => <option key={b} value={b}>{b}</option>)}
