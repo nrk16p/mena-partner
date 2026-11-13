@@ -13,7 +13,7 @@ import { exportToExcel, todayStamp } from "@/lib/export-excel"
 import { hasPerm } from "@/lib/rbac"
 import { effectiveSaleKey, countBySaleKey } from "@/lib/sale-readiness"
 
-type SaleStatus = "ready" | "repair15" | "repair30" | "review"
+type SaleStatus = "ready" | "repair15" | "repair30" | "review" | "paused"
 /** กลุ่มรถ: ML = Mixer 10 ล้อ (ชุดเดิม) · MS = Mixer 6 ล้อ (เพิ่ม 2026-11-13) */
 type SizeGroup = "ML" | "MS"
 const SIZE_GROUPS: { key: SizeGroup; label: string; cls: string }[] = [
@@ -71,6 +71,8 @@ const SALE_STATUS_CONFIG: Record<SaleStatus, { label: string; cls: string; days?
   repair15: { label: "รอซ่อม 15 วัน", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", days: 15 },
   repair30: { label: "รอซ่อม 30 วัน", cls: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400", days: 30 },
   review:   { label: "ยังไม่ได้เริ่มดำเนินการ",     cls: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400" },
+  // พักการขาย = ไม่ขึ้นหน้าเว็บ /trucks (2026-11-13)
+  paused:   { label: "พักการขาย",     cls: "bg-zinc-200 text-zinc-700 dark:bg-zinc-700/60 dark:text-zinc-200" },
 }
 
 // ── inline editor: ตั้งสถานะความพร้อมขาย + ช่วงซ่อม ──
@@ -472,6 +474,7 @@ export default function PriceListPage() {
     { key: "ready",  label: "พร้อมขาย",               count: saleCounts.ready,                         cls: "bg-emerald-500" },
     { key: "repair", label: "รอซ่อม",                 count: saleCounts.repair15 + saleCounts.repair30, cls: "bg-amber-500" },
     { key: "review", label: "ยังไม่ได้เริ่มดำเนินการ", count: saleCounts.review,                        cls: "bg-violet-500" },
+    { key: "paused", label: "พักการขาย",              count: saleCounts.paused,                        cls: "bg-zinc-500" },
     { key: "unset",  label: "ยังไม่ระบุ",             count: saleCounts.none,                          cls: "bg-zinc-300 dark:bg-zinc-600" },
   ]
 
@@ -682,6 +685,7 @@ export default function PriceListPage() {
             { key: "repair15", label: "รอซ่อม 15 วัน" },
             { key: "repair30", label: "รอซ่อม 30 วัน" },
             { key: "review",   label: "ยังไม่ได้เริ่มดำเนินการ" },
+            { key: "paused",   label: "พักการขาย" },
             { key: "none",     label: "ยังไม่ระบุ" },
           ].map((tab) => (
             <button

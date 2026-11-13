@@ -510,7 +510,7 @@ const FLEET_META: Record<string, { label: string; cls: string; dot: string }> = 
   inactive:  { label: "ไม่ใช้งาน",            cls: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",               dot: "bg-zinc-400" },
 }
 const SALE_SUB: Record<string, string> = {
-  ready: "", repair15: "รอซ่อม 15 วัน", repair30: "รอซ่อม 30 วัน", review: "ยังไม่ได้เริ่มดำเนินการ",
+  ready: "", repair15: "รอซ่อม 15 วัน", repair30: "รอซ่อม 30 วัน", review: "ยังไม่ได้เริ่มดำเนินการ", paused: "พักการขาย",
 }
 
 export default function VehiclesPage() {

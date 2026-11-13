@@ -10,7 +10,7 @@ import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "master_price_list"
 
-const SALE_STATUSES = new Set(["ready", "repair15", "repair30", "review"])
+const SALE_STATUSES = new Set(["ready", "repair15", "repair30", "review", "paused"])
 
 // field ที่แก้ได้จากหน้า price-list = field ที่เก็บ audit log
 const TRACKED = ["saleStatus", "repairStart", "repairEnd"]

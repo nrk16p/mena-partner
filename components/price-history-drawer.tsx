@@ -18,6 +18,7 @@ const SALE_LABEL: Record<string, string> = {
   repair15: "รอซ่อม 15 วัน",
   repair30: "รอซ่อม 30 วัน",
   review:   "ยังไม่ได้เริ่มดำเนินการ",
+  paused:   "พักการขาย",
 }
 const FIELD_LABEL: Record<string, string> = {
   saleStatus:  "สถานะ",

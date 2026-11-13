@@ -26,7 +26,7 @@ describe("countBySaleKey", () => {
       { status: "active", saleStatus: null },
     ]
     const c = countBySaleKey(rows)
-    expect(c).toEqual({ sold: 2, ready: 1, repair15: 0, repair30: 1, review: 0, none: 1 })
+    expect(c).toEqual({ sold: 2, ready: 1, repair15: 0, repair30: 1, review: 0, paused: 0, none: 1 })
     expect(Object.values(c).reduce((a, b) => a + b, 0)).toBe(rows.length)
   })
 })

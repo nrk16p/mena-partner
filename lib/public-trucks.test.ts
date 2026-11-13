@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { makeSlug, uniqueSlug, registrationYear, toPublicTruck, isReadyForSale, isAvailable } from "@/lib/public-trucks"
+import { makeSlug, uniqueSlug, registrationYear, toPublicTruck, isReadyForSale, isAvailable, isPaused } from "@/lib/public-trucks"
 
 describe("makeSlug", () => {
   it("สร้างจาก เบอร์รถ-ยี่ห้อ-รุ่น-ปีพ.ศ.", () => {
@@ -141,5 +141,14 @@ describe("isReadyForSale", () => {
   })
   it("ไม่มีแถวราคาเลย → ไม่ขึ้นเว็บ", () => {
     expect(isReadyForSale({ status: "active", licensePlate: "สบ.71-1956" }, undefined, new Set())).toBe(false)
+  })
+})
+
+describe("isPaused — พักการขาย ไม่ขึ้น /trucks", () => {
+  it("saleStatus paused เท่านั้น", () => {
+    expect(isPaused({ saleStatus: "paused" })).toBe(true)
+    expect(isPaused({ saleStatus: "ready" })).toBe(false)
+    expect(isPaused({})).toBe(false)
+    expect(isPaused(undefined)).toBe(false)
   })
 })

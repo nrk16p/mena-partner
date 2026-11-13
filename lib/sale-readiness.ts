@@ -4,14 +4,14 @@
  * (เคยมีรถตั้ง "พร้อมขาย" ไว้ก่อนขาย พอติดสัญญาแล้วยังถูกนับเป็นพร้อมขายในตัวกรอง — 2026-10-22)
  */
 
-export type SaleKey = "sold" | "ready" | "repair15" | "repair30" | "review" | "none"
+export type SaleKey = "sold" | "ready" | "repair15" | "repair30" | "review" | "paused" | "none"
 
 export interface SaleRow {
   status: string
   saleStatus: string | null
 }
 
-const SET_KEYS = new Set(["ready", "repair15", "repair30", "review"])
+const SET_KEYS = new Set(["ready", "repair15", "repair30", "review", "paused"])
 
 export function effectiveSaleKey(r: SaleRow): SaleKey {
   if (r.status === "contract") return "sold"
@@ -19,7 +19,7 @@ export function effectiveSaleKey(r: SaleRow): SaleKey {
 }
 
 export function countBySaleKey(rows: SaleRow[]): Record<SaleKey, number> {
-  const c: Record<SaleKey, number> = { sold: 0, ready: 0, repair15: 0, repair30: 0, review: 0, none: 0 }
+  const c: Record<SaleKey, number> = { sold: 0, ready: 0, repair15: 0, repair30: 0, review: 0, paused: 0, none: 0 }
   for (const r of rows) c[effectiveSaleKey(r)]++
   return c
 }

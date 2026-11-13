@@ -106,7 +106,8 @@ export function toPublicTruck(
   }
 }
 
-/** รถ "ว่าง" ตามหน้า /price-list: มีแถวราคา + ไม่ inactive + ไม่มีสัญญา active — เกณฑ์ขึ้นหน้าเว็บ /trucks */
+/** รถ "ว่าง" ตามหน้า /price-list: มีแถวราคา + ไม่ inactive + ไม่มีสัญญา active — เกณฑ์ขึ้นหน้าเว็บ /trucks
+ *  (สถานะ "พักการขาย" เช็กแยกด้วย isPaused — ไม่ขึ้นเว็บเลย) */
 export function isAvailable(
   vehicle: Record<string, unknown>,
   price: Record<string, unknown> | undefined,
@@ -116,6 +117,9 @@ export function isAvailable(
   const key = normPlate(String(vehicle.licensePlate ?? ""))
   return vehicle.status !== "inactive" && !underContract.has(key)
 }
+
+/** พักการขาย (ตั้งที่ /price-list) → ไม่ขึ้น /trucks และเปิดหน้ารถตรง ๆ ไม่ได้ (2026-11-13) */
+export const isPaused = (price: Record<string, unknown> | undefined) => price?.saleStatus === "paused"
 
 /** เกณฑ์เดียวกับ catalog PDF: รถว่าง + saleStatus ready */
 export function isReadyForSale(
@@ -168,7 +172,7 @@ export async function loadPublicTrucks(): Promise<PublicTruck[]> {
   const out: PublicTruck[] = []
   for (const v of vehicles) {
     const key = normPlate(String(v.licensePlate ?? ""))
-    if (!isAvailable(v, priceBy.get(key), underContract)) continue
+    if (!isAvailable(v, priceBy.get(key), underContract) || isPaused(priceBy.get(key))) continue
     const slug = slugOf(v, taken)
     taken.add(slug)
     out.push(toPublicTruck(v, priceBy.get(key), promoCopy(promoBy.get(key)), slug, false))
@@ -189,6 +193,7 @@ export async function loadPublicTruckBySlug(slug: string): Promise<PublicTruck |
     const key = normPlate(String(v.licensePlate ?? ""))
     const price = priceBy.get(key)
     const available = isAvailable(v, price, underContract)
+    if (available && isPaused(price)) return null
     // รถที่ขายแล้ว/เข้าสัญญาแล้ว ยังเปิดหน้าได้ (ริบบิ้น "ขายแล้ว" + noindex)
     return toPublicTruck(v, price, promoCopy(promoBy.get(key)), s2, !available)
   }
