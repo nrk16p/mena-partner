@@ -11,21 +11,20 @@ const vehicle = (p: Partial<CatalogVehicle>): CatalogVehicle => ({
 })
 
 describe("toPosterData — ตัวเลขบนโปสเตอร์", () => {
-  it("ราคาเป็นหลักพัน และ ดาวน์ + ค่างวด × งวด = ราคา", () => {
+  it("ตัวเลขตรงกับ price-list ไม่ปัด (เลิกปัด 2026-11-13)", () => {
     const d = toPosterData(vehicle({
       totalSalePrice: 1335728, downPayment: 100000, monthlyPayment: 17163, financeInstallments: 72,
     }), cfg)
-    expect(d.price).toBe(1342000)
-    expect(d.monthlyPayment).toBe(17250)
+    expect(d.price).toBe(1335728)
+    expect(d.monthlyPayment).toBe(17163)
     expect(d.downPayment).toBe(100000)
-    expect(d.price).toBe((d.downPayment ?? 0) + (d.monthlyPayment ?? 0) * (d.installments ?? 0))
   })
 
   it("ไม่มีดาวน์จริง → ไม่โชว์บรรทัดดาวน์", () => {
     const d = toPosterData(vehicle({
       totalSalePrice: 1238400, downPayment: 0, monthlyPayment: 17200, financeInstallments: 72,
     }), cfg)
-    expect(d.price % 1000).toBe(0)
+    expect(d.price).toBe(1238400)
     expect(d.downPayment).toBeUndefined()
   })
 })
