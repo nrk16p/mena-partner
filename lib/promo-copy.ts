@@ -19,6 +19,8 @@ export interface PromoFigures {
   [k: string]: unknown   // รับ doc ดิบจาก promotion_master ได้ตรง ๆ
   pro1Condition?: unknown; pro1FreeCount?: unknown; pro1TotalValue?: unknown
   pro2RepairBudget?: unknown; pro3AnnualPm?: unknown
+  /** แยก PM ต่อปีรายประเภท (มีเฉพาะรถ MS 6 ล้อ, 2026-11-13) — มีค่าเมื่อไหร่โชว์บรรทัดแยกบนการ์ด */
+  pro3Pm1?: unknown; pro3Pm2?: unknown; pro3Pm3?: unknown
 }
 
 const n = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0) || 0)
@@ -56,6 +58,9 @@ export function promoCopy(m: PromoFigures | null | undefined): PromoCopy[] {
         ["และของเหลวสำคัญตามระยะ"],
         ["ทุก ๆ ", { b: "6 เดือน" }, " *"],
         ["PM (บำรุงรักษาเชิงป้องกัน)"],
+        ...([["PM1", m.pro3Pm1], ["PM2", m.pro3Pm2], ["PM3", m.pro3Pm3]] as const)
+          .filter(([, v]) => n(v) > 0)
+          .map(([k, v]): PromoSeg[] => [`${k} `, { b: `${fm(n(v))} บาท/ปี` }]),
         ["มูลค่ารวม ", { b: `${fm(pm)} บาท/ปี` }],
       ],
       note: "*เงื่อนไขอาจมีการเปลี่ยนแปลง เป็นไปตามที่บริษัทกำหนด",

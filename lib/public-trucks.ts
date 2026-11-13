@@ -140,7 +140,7 @@ async function loadAll() {
   const [vehicles, prices, promos, contracts] = await Promise.all([
     db.collection("vehicle_master").find({}, { projection: VEHICLE_PROJECTION }).toArray(),
     db.collection("master_price_list").find({}, { projection: { licensePlate: 1, saleStatus: 1, totalSalePrice: 1, downPayment: 1, cashDown: 1, monthlyPayment: 1, financeInstallments: 1, sizeGroup: 1 } }).toArray(),
-    db.collection("promotion_master").find({}, { projection: { licensePlate: 1, pro1Condition: 1, pro1FreeCount: 1, pro1TotalValue: 1, pro2RepairBudget: 1, pro3AnnualPm: 1 } }).toArray(),
+    db.collection("promotion_master").find({}, { projection: { licensePlate: 1, pro1Condition: 1, pro1FreeCount: 1, pro1TotalValue: 1, pro2RepairBudget: 1, pro3AnnualPm: 1, pro3Pm1: 1, pro3Pm2: 1, pro3Pm3: 1 } }).toArray(),
     db.collection("contracts").find({ status: "active" }, { projection: { licensePlate: 1 } }).toArray(),
   ])
   return {

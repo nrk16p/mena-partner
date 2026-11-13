@@ -62,14 +62,29 @@ def read_rows():
             },
             "promo": {
                 "pro2RepairBudget": float(g(r, "🔧 โปร1 ฟรีซ่อม(บาท)")),
-                "pro3AnnualPm":     float(g(r, "🛠️ PM รวม 1+2 /ปี")),
+                # PM ครบ 3 ประเภท (ผู้ใช้สั่ง "เอาโปรโมชั่นให้ครบ" 2026-11-13): รวม/ปี = PM1 + PM2 + PM3
+                "pro3Pm1":          float(g(r, "🛠️ PM1/ปี")),
+                "pro3Pm2":          float(g(r, "🛠️ PM2/ปี")),
+                "pro3Pm3":          float(g(r, "🛠️ PM 3 / ปี")),
             },
         })
     return rows
 
 
+def pm_details(pr):
+    return {"annualPm": pr["pro3AnnualPm"], "pm1": pr["pro3Pm1"], "pm2": pr["pro3Pm2"], "pm3": pr["pro3Pm3"]}
+
+
+def pm_label(pr):
+    return (f"PM รวม/ปี ฿{pr['pro3AnnualPm']:,.0f} "
+            f"(PM1 {pr['pro3Pm1']:,.0f} · PM2 {pr['pro3Pm2']:,.0f} · PM3 {pr['pro3Pm3']:,.0f})")
+
+
 def main():
     rows = read_rows()
+    for x in rows:
+        pr = x["promo"]
+        pr["pro3AnnualPm"] = pr["pro3Pm1"] + pr["pro3Pm2"] + pr["pro3Pm3"]
     assert len(rows) == 54, f"expected 54 rows, got {len(rows)}"
     for x in rows:  # sanity: ยอดรวม = ยอดจัด + ดาวน์, ยอดจัด = งวด × ค่างวด
         p = x["price"]
@@ -145,7 +160,7 @@ def main():
     for x in rows:
         rb, pm = x["promo"]["pro2RepairBudget"], x["promo"]["pro3AnnualPm"]
         for pt, det, label in (("pro2", {"repairBudget": rb}, f"ฟรีซ่อม ฿{rb:,.0f}"),
-                               ("pro3", {"annualPm": pm},     f"PM รวม/ปี ฿{pm:,.0f}")):
+                               ("pro3", pm_details(x["promo"]), pm_label(x["promo"]))):
             if (x["licensePlate"], pt) not in have_entry:
                 entry_docs.append({"licensePlate": x["licensePlate"], "proType": pt, "active": True, "details": det,
                                    "label": label, "disabledAt": None, "disabledReason": None,
@@ -162,9 +177,22 @@ def main():
     print("sample veh   :", veh_ops[0]._doc if veh_ops else None)
     print("sample promo :", promo_ops[0]._doc if promo_ops else None)
 
+    # ซิงก์ PM ของแถวที่มีอยู่แล้วให้ตรงชีต (อัปเดตทับเฉพาะช่อง PM — รอบแรกลงไว้แค่ PM1+2 = 11,600)
+    pm_master = [UpdateOne({"licensePlate": x["licensePlate"]}, {"$set": {k: x["promo"][k] for k in
+                 ("pro3AnnualPm", "pro3Pm1", "pro3Pm2", "pro3Pm3")} | {"updatedAt": now}}) for x in rows]
+    pm_entry  = [UpdateOne({"licensePlate": x["licensePlate"], "proType": "pro3"},
+                 {"$set": {"details": pm_details(x["promo"]), "label": pm_label(x["promo"]), "updatedAt": now}}) for x in rows]
+    pm_cfg    = [UpdateOne({"licensePlate": x["licensePlate"]}, {"$set": {"annualPmCap": x["promo"]["pro3AnnualPm"]}}) for x in rows]
+    print("PM sync sample :", pm_label(rows[0]["promo"]))
+
     if not APPLY:
         print("\nDRY-RUN — nothing written. Re-run with --apply")
         return
+
+    print("PM master/entry/config modified:",
+          db.promotion_master.bulk_write(pm_master, ordered=False).modified_count,
+          db.promotion_entries.bulk_write(pm_entry, ordered=False).modified_count,
+          db.promo_config.bulk_write(pm_cfg, ordered=False).modified_count)
 
     r0 = db.master_price_list.update_many({"sizeGroup": {"$exists": False}, "licensePlate": {"$nin": plates}},
                                           {"$set": {"sizeGroup": "ML"}})
