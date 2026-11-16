@@ -10,7 +10,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow auth API and login page through
-  if (pathname.startsWith("/api/auth") || pathname === "/login") {
+  // revalidate-hook ตรวจ session เองใน route (backend ส่งคุกกี้ของผู้ใช้มาด้วย) — ไม่ผูกกับสิทธิ์ราย domain
+  if (pathname.startsWith("/api/auth") || pathname === "/login" || pathname === "/api/revalidate-hook") {
     return NextResponse.next()
   }
 
