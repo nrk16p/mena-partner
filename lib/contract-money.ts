@@ -23,9 +23,12 @@ export interface MoneyDerived {
 const n = (v?: number) => Number(v ?? 0) || 0
 const round2 = (v: number) => Math.round(v * 100) / 100
 
+/** ราคาขายรถในสัญญา = บาทเต็ม ไม่มีสตางค์ (ผู้ใช้สั่ง 2026-11-23 ให้ตรงกับหน้าราคาขาย) */
+export const wholeBaht = (v?: number | null) => Math.round(n(v ?? 0))
+
 export function computeMoney(f: MoneyInput): MoneyDerived {
   const remainingInstallment = round2(Math.max(0, n(f.downPayment) - n(f.cashDown)))
-  const financeAmount = round2(Math.max(0, n(f.totalPrice) - n(f.downPayment)))
+  const financeAmount = round2(Math.max(0, wholeBaht(f.totalPrice) - n(f.downPayment)))
   return {
     remainingInstallment,
     downInstallmentAmt: n(f.downInstallmentCount) ? round2(remainingInstallment / n(f.downInstallmentCount)) : 0,

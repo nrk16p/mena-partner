@@ -28,3 +28,8 @@ describe("computeMoney — สูตรการเงินในสัญญ�
     expect(m.monthlyInstallment).toBe(0)
   })
 })
+
+it("ราคาขายมีสตางค์ → ปัดเป็นบาทเต็ม ส่วนที่ 2 ก็เต็มตาม", () => {
+  const r = computeMoney({ totalPrice: 1_759_986.54, downPayment: 100_000, cashDown: 20_000, downInstallmentCount: 36, totalInstallments: 96 })
+  expect(r.financeAmount).toBe(1_659_987)
+})

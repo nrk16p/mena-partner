@@ -4,6 +4,7 @@
  */
 import type { Contract } from "@/types"
 import { buyerFullName } from "@/lib/contract-doc"
+import { computeMoney, wholeBaht } from "@/lib/contract-money"
 import {
   bahtText,
   money,
@@ -36,6 +37,8 @@ const bt = (v: number | null | undefined) => (v == null ? DOTS : bahtText(v))
 
 /** ค่าทุก placeholder ของ template สัญญาซื้อขาย (templates/sale.docx) */
 export function saleDocxData(c: Contract, promo: PromoMasterData | null): Record<string, string> {
+  // ส่วนที่ 2 = ราคาขาย(บาทเต็ม) − ดาวน์ — คิดใหม่จากราคาที่ปัดแล้ว สัญญาเก่าที่เก็บสตางค์ไว้จะได้ตรงกัน
+  const financeWhole = c.totalPrice ? computeMoney(c).financeAmount : c.financeAmount
   const dp = thaiDateParts(c.contractDate)
   const age = ageFromBirthDate(c.birthDate, c.contractDate)
   const plate = normPlate(c.licensePlate) || c.licensePlate || ""
@@ -75,8 +78,9 @@ export function saleDocxData(c: Contract, promo: PromoMasterData | null): Record
     engineSize: s(c.engineSize),
     mileage: c.mileage ? money(c.mileage) : DOTS, // ว่าง = เส้นประให้เติมมือ (เหมือนช่องอื่น)
     // ข้อ 2 price
-    totalPrice: m(c.totalPrice),
-    totalPriceText: bt(c.totalPrice),
+    // ราคาขายเป็นบาทเต็มเสมอ — สัญญาเก่าที่ snapshot มามีสตางค์ก็พิมพ์เป็นเลขกลม
+    totalPrice: m(c.totalPrice == null ? c.totalPrice : wholeBaht(c.totalPrice)),
+    totalPriceText: bt(c.totalPrice == null ? c.totalPrice : wholeBaht(c.totalPrice)),
     downPayment: m(c.downPayment),
     downPaymentText: bt(c.downPayment),
     cashDown: m(c.cashDown),
@@ -88,8 +92,8 @@ export function saleDocxData(c: Contract, promo: PromoMasterData | null): Record
     downInstallmentCount: s(c.downInstallmentCount),
     firstPayDate: firstPay ? thaiDate(firstPay) : DOTS,
     payDueText,
-    financeAmount: m(c.financeAmount),
-    financeAmountText: bt(c.financeAmount),
+    financeAmount: m(financeWhole),
+    financeAmountText: bt(financeWhole),
     totalInstallments: s(c.totalInstallments),
     monthlyInstallment: m(c.monthlyInstallment),
     monthlyInstallmentText: bt(c.monthlyInstallment),

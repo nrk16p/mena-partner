@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { confirm } from "@/components/ui/confirm"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { computeMoney, DERIVED_KEYS } from "@/lib/contract-money"
+import { computeMoney, DERIVED_KEYS, wholeBaht } from "@/lib/contract-money"
 import { useSession } from "next-auth/react"
 import { Truck, ClipboardList, BarChart3, FileText, AlertTriangle, CheckCircle2, Upload, X, Clock } from "lucide-react"
 import { SearchCombobox } from "@/components/search-combobox"
@@ -115,7 +115,7 @@ export default function ContractDetailPage() {
   const [creatingLedger, setCreatingLedger] = useState(false)
 
   function reloadContract() {
-    fetch(`/api/contracts/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d) setForm(d) })
+    fetch(`/api/contracts/${id}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d) setForm({ ...d, totalPrice: wholeBaht(d.totalPrice) }) })
   }
 
   // สร้างรายการผ่อนรถใน ledger จากสัญญานี้
@@ -302,7 +302,7 @@ export default function ContractDetailPage() {
   useEffect(() => {
     fetch(`/api/contracts/${id}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d) setForm(d) })
+      .then((d) => { if (d) setForm({ ...d, totalPrice: wholeBaht(d.totalPrice) }) })
     fetch("/api/promotions/master")
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setPromoList(d))

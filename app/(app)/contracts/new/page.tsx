@@ -15,7 +15,7 @@ import { GuaranteeContractDocument } from "@/components/guarantee-contract-docum
 import { VendorDocDocument } from "@/components/vendor-doc-document"
 import { missingDocFields, missingHireDocFields, missingGuaranteeDocFields, missingVendorDocFields } from "@/lib/contract-doc"
 import { useDebounced } from "@/lib/use-debounced"
-import { computeMoney } from "@/lib/contract-money"
+import { computeMoney, wholeBaht } from "@/lib/contract-money"
 import type { Contract, Driver, Vehicle } from "@/types"
 
 // ─── types ─────────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const MONEY_DEPENDS: Record<MoneyBaseKey, (keyof ReturnType<typeof computeMoney>
   totalInstallments:    ["monthlyInstallment"],
 }
 const PRICE_ROW_KEY: Record<MoneyBaseKey, (p: PriceRow) => number> = {
-  totalPrice:           (p) => p.totalSalePrice,
+  totalPrice:           (p) => wholeBaht(p.totalSalePrice),
   downPayment:          (p) => p.downPayment,
   cashDown:             (p) => p.cashDown,
   downInstallmentCount: (p) => p.downInstallmentCount,
@@ -264,7 +264,7 @@ export default function NewContractPage() {
     lastAutoFilledPlate.current = plate
     setForm((prev) => ({
       ...prev,
-      totalPrice:           pr.totalSalePrice,
+      totalPrice:           wholeBaht(pr.totalSalePrice),
       downPayment:          pr.downPayment,
       cashDown:             pr.cashDown,
       remainingInstallment: pr.remainingInstallment,
@@ -398,7 +398,7 @@ export default function NewContractPage() {
     if (!priceRow) return
     setForm((prev) => ({
       ...prev,
-      totalPrice:           priceRow.totalSalePrice,
+      totalPrice:           wholeBaht(priceRow.totalSalePrice),
       downPayment:          priceRow.downPayment,
       cashDown:             priceRow.cashDown,
       remainingInstallment: priceRow.remainingInstallment,
@@ -410,7 +410,7 @@ export default function NewContractPage() {
     }))
   }
   const moneyEdited = !!priceRow && (
-    form.totalPrice !== priceRow.totalSalePrice || form.downPayment !== priceRow.downPayment ||
+    form.totalPrice !== wholeBaht(priceRow.totalSalePrice) || form.downPayment !== priceRow.downPayment ||
     form.cashDown !== priceRow.cashDown || form.downInstallmentCount !== priceRow.downInstallmentCount ||
     form.totalInstallments !== priceRow.financeInstallments)
 
