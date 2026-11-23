@@ -130,6 +130,25 @@ export function isReadyForSale(
   return isAvailable(vehicle, price, underContract) && price?.saleStatus === "ready"
 }
 
+/** ขั้นดีลที่ถือว่ารถ "ติดจอง" แล้ว — วางเงินจองขึ้นไป (รถที่มีสัญญา active ตัดออกอยู่แล้วด้วย underContract) */
+export const RESERVED_STAGES = ["RESERVED", "TRAINING", "CONTRACT_SCHEDULED", "CONTRACT_SIGNED", "DELIVERED", "COMPLETED_90D"]
+
+/** ทะเบียนรถที่ติดจอง (คันหลักของดีล) → ไม่ขึ้นหน้า /trucks (ผู้ใช้สั่ง 2026-11-23)
+ *  ดีลพักติดตามที่พักจากขั้นจองขึ้นไปยังนับว่าติดจอง · ใบเก่าที่ไม่มี stage ดูจาก status booked/won */
+export function reservedPlates(deals: Record<string, unknown>[]): Set<string> {
+  const out = new Set<string>()
+  for (const d of deals) {
+    const stage = String(d.stage ?? "")
+    const held = stage === "ON_HOLD" && RESERVED_STAGES.includes(String(d.stageBeforeHold ?? ""))
+    const legacy = !stage && ["booked", "won"].includes(String(d.status ?? ""))
+    if (RESERVED_STAGES.includes(stage) || held || legacy) {
+      const key = normPlate(String(d.licensePlate ?? ""))
+      if (key) out.add(key)
+    }
+  }
+  return out
+}
+
 /** projection = field ที่เปิดเผยได้เท่านั้น (ไม่ดึงเลขตัวถัง/เลขเครื่องออกจาก DB ตั้งแต่ต้น) */
 const VEHICLE_PROJECTION = {
   licensePlate: 1, truckNumber: 1, brand: 1, model: 1, vehicleType: 1,
@@ -141,17 +160,22 @@ async function loadAll() {
   // import แบบ lazy — lib/mongo throw ตอน import ถ้าไม่มี MONGO_URI ทำให้เทสต์ pure function รันไม่ได้
   const { default: clientPromise } = await import("@/lib/mongo")
   const db = (await clientPromise).db(DB)
-  const [vehicles, prices, promos, contracts] = await Promise.all([
+  const [vehicles, prices, promos, contracts, deals] = await Promise.all([
     db.collection("vehicle_master").find({}, { projection: VEHICLE_PROJECTION }).toArray(),
     db.collection("master_price_list").find({}, { projection: { licensePlate: 1, saleStatus: 1, totalSalePrice: 1, downPayment: 1, cashDown: 1, monthlyPayment: 1, financeInstallments: 1, sizeGroup: 1 } }).toArray(),
     db.collection("promotion_master").find({}, { projection: { licensePlate: 1, pro1Condition: 1, pro1FreeCount: 1, pro1TotalValue: 1, pro2RepairBudget: 1, pro3AnnualPm: 1, pro3Pm1: 1, pro3Pm2: 1, pro3Pm3: 1 } }).toArray(),
     db.collection("contracts").find({ status: "active" }, { projection: { licensePlate: 1 } }).toArray(),
+    db.collection("quotations").find(
+      { $or: [{ stage: { $in: [...RESERVED_STAGES, "ON_HOLD"] } }, { stage: { $exists: false }, status: { $in: ["booked", "won"] } }] },
+      { projection: { licensePlate: 1, stage: 1, stageBeforeHold: 1, status: 1 } },
+    ).toArray(),
   ])
   return {
     vehicles,
     priceBy: new Map(prices.map((p) => [normPlate(String(p.licensePlate ?? "")), p])),
     promoBy: new Map(promos.map((p) => [normPlate(String(p.licensePlate ?? "")), p])),
     underContract: new Set(contracts.map((c) => normPlate(String(c.licensePlate ?? "")))),
+    reserved: reservedPlates(deals),
   }
 }
 
@@ -167,12 +191,12 @@ function slugOf(v: Record<string, unknown>, taken: Set<string>): string {
 }
 
 export async function loadPublicTrucks(): Promise<PublicTruck[]> {
-  const { vehicles, priceBy, promoBy, underContract } = await loadAll()
+  const { vehicles, priceBy, promoBy, underContract, reserved } = await loadAll()
   const taken = new Set<string>()
   const out: PublicTruck[] = []
   for (const v of vehicles) {
     const key = normPlate(String(v.licensePlate ?? ""))
-    if (!isAvailable(v, priceBy.get(key), underContract) || isPaused(priceBy.get(key))) continue
+    if (!isAvailable(v, priceBy.get(key), underContract) || isPaused(priceBy.get(key)) || reserved.has(key)) continue
     const slug = slugOf(v, taken)
     taken.add(slug)
     out.push(toPublicTruck(v, priceBy.get(key), promoCopy(promoBy.get(key)), slug, false))

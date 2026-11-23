@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest) {
     const exists = name ? await db.collection("sales_people").findOne({ name: { $regex: `^${esc}$`, $options: "i" } }) : null
     if (name && !exists) {
       await db.collection("sales_people").insertOne({
-        name, email: String(cur.email ?? "").trim().toLowerCase(), phone: String(cur.phone ?? ""), lineId: String(cur.lineId ?? ""),
+        name, nickname: String(cur.nickname ?? ""), email: String(cur.email ?? "").trim().toLowerCase(), phone: String(cur.phone ?? ""), lineId: String(cur.lineId ?? ""),
         center: String(cur.center ?? ""), brokerApplicationId: id, source: "broker",
         bankName: String(cur.bankName ?? ""), bankAccountNo: String(cur.bankAccountNo ?? ""), bankAccountName: String(cur.bankAccountName ?? ""),
         createdAt: now, createdBy: admin.email,
@@ -77,6 +77,7 @@ export async function PATCH(req: NextRequest) {
           ...(!String(exists.email ?? "").trim() && cur.email ? { email: String(cur.email).trim().toLowerCase() } : {}),
           ...(!String(exists.phone ?? "").trim() && cur.phone ? { phone: String(cur.phone) } : {}),
           ...(!String(exists.lineId ?? "").trim() && cur.lineId ? { lineId: String(cur.lineId) } : {}),
+          ...(!String(exists.nickname ?? "").trim() && cur.nickname ? { nickname: String(cur.nickname) } : {}),
           ...(!String(exists.bankAccountNo ?? "").trim() && cur.bankAccountNo
             ? { bankName: String(cur.bankName ?? ""), bankAccountNo: String(cur.bankAccountNo), bankAccountName: String(cur.bankAccountName ?? "") } : {}),
         },

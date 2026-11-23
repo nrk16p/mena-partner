@@ -13,6 +13,7 @@ interface Application {
   _id: string
   firstName: string
   lastName: string
+  nickname?: string
   nationalId: string
   address: string
   phone: string
@@ -156,7 +157,7 @@ export default function BrokerApplicationsPage() {
               <li key={a._id}>
                 <button type="button" onClick={() => setOpenId(open ? "" : a._id)} aria-expanded={open}
                   className="w-full px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                  <span className="font-semibold min-w-[160px]">{a.firstName} {a.lastName}</span>
+                  <span className="font-semibold min-w-[160px]">{a.firstName} {a.lastName}{a.nickname ? <span className="font-normal text-zinc-500"> ({a.nickname})</span> : null}</span>
                   <span className="text-sm text-zinc-500 tabular-nums">{a.phone}</span>
                   <span className="text-sm text-zinc-500">{centerLabel(a.center, a.centerOther)}</span>
                   {a.duplicateOf && <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300">เลขบัตรนี้เคยสมัครแล้ว</span>}

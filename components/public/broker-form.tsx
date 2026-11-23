@@ -6,7 +6,7 @@ import { telHref } from "./thai-text"
 
 /** ช่องที่ server บอกว่าผิด → id ของช่องในฟอร์ม (ไว้เลื่อน+โฟกัสไปที่ช่องนั้น) */
 const FIELD_ID: Record<string, string> = {
-  firstName: "b-first", lastName: "b-last", nationalId: "b-nid", address: "b-addr", phone: "b-phone", email: "b-email",
+  firstName: "b-first", lastName: "b-last", nickname: "b-nick", nationalId: "b-nid", address: "b-addr", phone: "b-phone", email: "b-email",
   bankName: "b-bank", bankAccountNo: "b-accno", bankAccountName: "b-accname", centerOther: "b-center-other",
   confirmTrue: "b-confirm", consentPdpa: "b-pdpa",
 }
@@ -45,7 +45,7 @@ export function BrokerForm({ phone }: { phone?: string }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        firstName: first, lastName: last, nationalId: nid,
+        firstName: first, lastName: last, nickname: fd.get("nickname") || "", nationalId: nid,
         address: fd.get("address"), phone: fd.get("phone"), email: fd.get("email") || "", lineId: fd.get("lineId") || "",
         position: fd.get("position") || "", company: fd.get("company") || "",
         bankAccountNo: fd.get("bankAccountNo"), bankName: bank === "อื่น ๆ" ? fd.get("bankOther") : bank,
@@ -103,6 +103,12 @@ export function BrokerForm({ phone }: { phone?: string }) {
           <div>
             <label htmlFor="b-last" className={label}>นามสกุล{req}</label>
             <input id="b-last" required autoComplete="family-name" value={last} onChange={(e) => setLast(e.target.value)} className={field} />
+          </div>
+          <div>
+            <label htmlFor="b-nick" className={label}>ชื่อเล่น{req}</label>
+            <input id="b-nick" name="nickname" required autoComplete="nickname" maxLength={40} {...errProps("nickname")}
+              onChange={() => setErr("nickname", "")} className={`${field} ${bad("nickname")}`} />
+            {errText("nickname")}
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="b-nid" className={label}>เลขบัตรประชาชน 13 หลัก{req}</label>

@@ -178,3 +178,8 @@ export function sortDeals<T extends ListDeal>(rows: T[], now: Date = new Date())
     return (daysIn(b.stageEnteredAt, now) ?? 0) - (daysIn(a.stageEnteredAt, now) ?? 0)
   })
 }
+
+/** เรียงตามเลขใบเสนอราคา ใบใหม่อยู่บน (QT-YYMM-nnn · numeric กันเลขเกิน 999 เรียงผิด) — ผู้ใช้สั่ง 2026-11-23 */
+export function sortByQuotationNo<T extends { quotationNo?: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => (b.quotationNo ?? "").localeCompare(a.quotationNo ?? "", "en", { numeric: true }))
+}

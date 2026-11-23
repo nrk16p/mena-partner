@@ -383,7 +383,7 @@ export default function DriverDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) { setError("เกิดข้อผิดพลาดในการบันทึก"); return }
+      if (!res.ok) { const j = await res.json().catch(() => ({})); setError((j as { error?: string }).error ?? "เกิดข้อผิดพลาดในการบันทึก"); return }
       setDriver(await res.json())
       setEditing(false)
       setForm(null)

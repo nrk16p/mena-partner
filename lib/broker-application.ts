@@ -60,6 +60,7 @@ export const emailError = (v: string) =>
 const schema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
+  nickname: z.string().trim().min(1).max(40),
   nationalId: z.string().trim().max(30),
   address: z.string().trim().min(1).max(500),
   phone: z.string().trim().max(30),
@@ -80,6 +81,7 @@ const schema = z.object({
 export interface BrokerApplicationInput {
   firstName: string
   lastName: string
+  nickname: string
   nationalId: string
   address: string
   phone: string
@@ -106,7 +108,7 @@ export function parseBrokerApplication(body: unknown):
   if (!parsed.success) {
     const field = String(parsed.error.issues[0]?.path[0] ?? "")
     const name: Record<string, string> = {
-      firstName: "ชื่อ", lastName: "นามสกุล", address: "ที่อยู่", email: "อีเมล", bankName: "ธนาคาร",
+      firstName: "ชื่อ", lastName: "นามสกุล", nickname: "ชื่อเล่น", address: "ที่อยู่", email: "อีเมล", bankName: "ธนาคาร",
       bankAccountName: "ชื่อบัญชี", center: "ศูนย์ที่สังกัด",
     }
     return { ok: false, error: name[field] ? `กรุณากรอก${name[field]}` : "ข้อมูลไม่ครบ ลองเช็กอีกรอบ", field }
@@ -127,7 +129,7 @@ export function parseBrokerApplication(body: unknown):
   return {
     ok: true,
     data: {
-      firstName: v.firstName, lastName: v.lastName, nationalId, address: v.address,
+      firstName: v.firstName, lastName: v.lastName, nickname: v.nickname, nationalId, address: v.address,
       phone, email, lineId: v.lineId, position: v.position, company: v.company,
       bankAccountNo, bankName: v.bankName, bankAccountName: v.bankAccountName,
       center: v.center, centerOther: v.center === "other" ? v.centerOther : "",

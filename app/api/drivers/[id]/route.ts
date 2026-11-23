@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongo"
 import { diffFields, logActivity } from "@/lib/activity-log"
+import { findDuplicateDriver, duplicateDriverMessage } from "@/lib/driver-unique"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "drivers"
@@ -123,6 +124,13 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const client = await clientPromise
   const col = client.db(DB).collection(COLL)
   const before = await col.findOne({ _id: new ObjectId(id) })
+  // เช็กเฉพาะตอนเปลี่ยนชื่อจริง — ฟอร์มส่งชื่อมาทุกครั้ง คนที่ซ้ำอยู่แล้วแต่เดิมจะได้ยังแก้ช่องอื่นได้
+  const nm = (v: unknown) => String(v ?? "").trim().replace(/\s+/g, " ").toLowerCase()
+  const newFirst = String($set.firstName ?? before?.firstName ?? ""), newLast = String($set.lastName ?? before?.lastName ?? "")
+  if (before && (nm(newFirst) !== nm(before.firstName) || nm(newLast) !== nm(before.lastName))) {
+    const dup = await findDuplicateDriver(col, newFirst, newLast, { _id: { $ne: before._id } })
+    if (dup) return NextResponse.json({ error: duplicateDriverMessage(dup) }, { status: 409 })
+  }
   const result = await col.findOneAndUpdate(
     { _id: new ObjectId(id) },
     { $set },

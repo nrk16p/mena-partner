@@ -10,7 +10,7 @@ function withCheck(d12: string) {
 const ID = withCheck("110170023070")
 
 const good = {
-  firstName: "สมชาย", lastName: "ใจดี", nationalId: ID, address: "99 หมู่ 1 ต.หน้าพระลาน อ.เฉลิมพระเกียรติ จ.สระบุรี",
+  firstName: "สมชาย", lastName: "ใจดี", nickname: "ชาย", nationalId: ID, address: "99 หมู่ 1 ต.หน้าพระลาน อ.เฉลิมพระเกียรติ จ.สระบุรี",
   phone: "081-234-5678", email: "Somchai@Gmail.com", lineId: "somchai", position: "", company: "",
   bankAccountNo: "123-4-56789-0", bankName: "กสิกรไทย", bankAccountName: "สมชาย ใจดี",
   center: "ssb", centerOther: "", consentPdpa: true, confirmTrue: true,

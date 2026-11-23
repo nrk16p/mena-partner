@@ -32,6 +32,8 @@ const fmtDate = (iso: string) => {
 }
 const today = () => new Date().toISOString().slice(0, 10)
 const pickKey = (s: CommissionSale, t: 1 | 2) => `${s.quotationId}:${t}`
+/** ตัวเลือก "ทุกคน" ในช่องเลือกพนักงานขาย — ดูและเลือกงวดของทุกคนพร้อมกัน (ผู้ใช้สั่ง 2026-11-23) */
+const ALL = "__all__"
 
 export default function CommissionPage() {
   const [d, setD] = useState<Resp | null>(null)
@@ -60,8 +62,26 @@ export default function CommissionPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(false) }, [])
 
-  const shown = d?.canSeeAll ? (d.all.find((r) => r.key === pick) ?? d.me ?? d.all[0] ?? null) : d?.me ?? null
-  const isMe = !!shown && !!d?.me && shown.key === d.me.key
+  const isAll = !!d?.canSeeAll && pick === ALL
+  // โหมดทุกคน = รวมของทุกคนเป็นก้อนเดียว ใช้หน้าเดิมได้ทั้งหน้า · ownerOf บอกว่าแต่ละคันเป็นของใคร (ใช้ตอนบันทึกทำจ่ายแยกคน)
+  const allSummary = useMemo<Summary | null>(() => {
+    if (!isAll || !d) return null
+    const sum = (f: (r: Summary) => number) => d.all.reduce((a, r) => a + f(r), 0)
+    return {
+      key: ALL, name: "ทุกคน", email: "", unassigned: false,
+      count: sum((r) => r.count), total: sum((r) => r.total), paidTotal: sum((r) => r.paidTotal),
+      dueTotal: sum((r) => r.dueTotal), salesValue: sum((r) => r.salesValue),
+      currentRate: 0, next: null, sales: d.all.flatMap((r) => r.sales),
+    }
+  }, [isAll, d])
+  const ownerOf = useMemo(() => {
+    const m = new Map<string, Summary>()
+    for (const r of d?.all ?? []) for (const s of r.sales) m.set(s.quotationId, r)
+    return m
+  }, [d])
+  const shown = isAll ? allSummary
+    : d?.canSeeAll ? (d.all.find((r) => r.key === pick) ?? d.me ?? d.all[0] ?? null) : d?.me ?? null
+  const isMe = !isAll && !!shown && !!d?.me && shown.key === d.me.key
 
   // รอบที่มีในรายการของคนนี้ (เรียงใหม่→เก่า) + รอบปัจจุบัน
   const cycles = useMemo(() => {
@@ -76,7 +96,7 @@ export default function CommissionPage() {
     return list.filter((s) => s.payouts.some((p) => p.cycle === cycle))
   }, [shown, cycle])
 
-  const payments = useMemo(() => (d?.payments ?? []).filter((p) => !shown || p.salesKey === shown.key), [d, shown])
+  const payments = useMemo(() => (d?.payments ?? []).filter((p) => !shown || isAll || p.salesKey === shown.key), [d, shown, isAll])
 
   // งวดที่เลือกได้ = ยังไม่จ่าย (และตรงรอบที่กรอง ถ้ากรอง)
   const selectable = (p: Payout) => !p.paid && (!cycle || p.cycle === cycle)
@@ -98,27 +118,46 @@ export default function CommissionPage() {
   const effectivePayCycle = payCycle || cycle || cycleOf(today())
   const paidAt = cycleEnd(effectivePayCycle)   // วันที่จ่าย = สิ้นเดือนของรอบเสมอ
 
+  // งวดที่เลือก แยกตามเจ้าของ — API บันทึกใบทำจ่ายได้ทีละคน โหมดทุกคนจึงยิงทีละคน
+  const selectedByOwner = useMemo(() => {
+    const m = new Map<string, { owner: Summary; items: typeof selectedItems }>()
+    for (const x of selectedItems) {
+      const owner = isAll ? ownerOf.get(x.sale.quotationId) : shown
+      if (!owner) continue
+      const g = m.get(owner.key) ?? { owner, items: [] }
+      g.items.push(x); m.set(owner.key, g)
+    }
+    return [...m.values()]
+  }, [selectedItems, isAll, ownerOf, shown])
+
   async function savePayment() {
     if (!shown || !selectedItems.length) return
     setSaveErr("")
     const ok = await confirm({
-      title: `บันทึกทำจ่ายค่าคอม ${shown.name}`,
+      title: `บันทึกทำจ่ายค่าคอม ${selectedByOwner.length > 1 ? `${selectedByOwner.length} คน (แยกใบทำจ่ายรายคน)` : selectedByOwner[0]?.owner.name ?? shown.name}`,
       description: `${selectedItems.length} งวด รวม ${formatMoney(selTotal)} บาท · วันที่จ่าย ${fmtDate(paidAt)} · ${cycleLabel(effectivePayCycle)} — บันทึกแล้วงวดเหล่านี้จะถูกล็อกว่าจ่ายแล้ว`,
     })
     if (!ok) return
     setSaving(true)
+    const fails: string[] = []
+    let last: Payment | null = null
     try {
-      const res = await fetch("/api/quotations/commission/payments", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          salesKey: shown.key, paidAt, note, cycle: effectivePayCycle,
-          items: selectedItems.map((x) => ({ quotationId: x.sale.quotationId, tranche: x.payout.tranche })),
-        }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) { setSaveErr(j.error ?? "บันทึกไม่สำเร็จ"); return }
-      setLastPayment(j.payment)
-      setSel(new Set()); setNote("")
+      for (const g of selectedByOwner) {
+        const res = await fetch("/api/quotations/commission/payments", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            salesKey: g.owner.key, paidAt, note, cycle: effectivePayCycle,
+            items: g.items.map((x) => ({ quotationId: x.sale.quotationId, tranche: x.payout.tranche })),
+          }),
+        })
+        const j = await res.json().catch(() => ({}))
+        if (!res.ok) fails.push(`${g.owner.name}: ${j.error ?? "บันทึกไม่สำเร็จ"}`)
+        else last = j.payment
+      }
+      // หลายคน = ไม่โชว์แถบใบเดียว ดาวน์โหลดรายคนได้จากตารางประวัติทำจ่ายด้านล่าง
+      setLastPayment(selectedByOwner.length === 1 ? last : null)
+      if (fails.length) setSaveErr(fails.join(" · "))
+      else { setSel(new Set()); setNote("") }
       await load()
     } finally { setSaving(false) }
   }
@@ -190,7 +229,9 @@ export default function CommissionPage() {
             <div className="text-sm text-zinc-500 dark:text-zinc-400">
               <p>{isMe ? "ของฉัน · " : ""}<span className="font-semibold text-zinc-800 dark:text-zinc-100">{shown.name}</span></p>
               {/* บัญชีรับเงิน — ขึ้นใน Excel/PDF ใบทำจ่าย กรอกได้ตรงนี้เลยไม่ต้องไปหน้าทีมขาย */}
-              {bankEdit ? (
+              {isAll ? (
+                <p className="text-[13px] mt-0.5">{d?.all.length ?? 0} คน · เลือกงวดของหลายคนได้ บันทึกแล้วแยกใบทำจ่ายรายคน · บัญชีรับเงินดู/แก้ได้ตอนเลือกทีละคน</p>
+              ) : bankEdit ? (
                 <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                   <input value={bankEdit.bankName} onChange={(e) => setBankEdit({ ...bankEdit, bankName: e.target.value })} placeholder="ธนาคาร" className="h-8 w-[120px] text-[13px] border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900" />
                   <input value={bankEdit.bankAccountNo} onChange={(e) => setBankEdit({ ...bankEdit, bankAccountNo: e.target.value })} placeholder="เลขบัญชี" inputMode="numeric" className="h-8 w-[140px] text-[13px] border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900 tabular-nums" />
@@ -218,6 +259,7 @@ export default function CommissionPage() {
               {d?.canSeeAll && d.all.length > 1 && (
                 <select value={pick} onChange={(e) => { setPick(e.target.value); setSel(new Set()); setBankEdit(null) }} aria-label="เลือกพนักงานขาย"
                   className="h-9 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 bg-white dark:bg-zinc-900">
+                  <option value={ALL}>ทุกคน ({d.all.reduce((a, r) => a + r.count, 0)} คัน)</option>
                   {d.all.map((r) => <option key={r.key} value={r.key}>{r.name} ({r.count} คัน)</option>)}
                 </select>
               )}
@@ -233,8 +275,12 @@ export default function CommissionPage() {
             <Stat icon={<Trophy className="w-4 h-4" />} label="ขายแล้ว" value={`${shown.count} คัน`} sub={`มูลค่า ${formatMoney(shown.salesValue)}`} />
             <Stat icon={<Coins className="w-4 h-4" />} label="ค่าคอมสะสม" value={formatMoney(shown.total)} sub={`จ่ายแล้ว ${formatMoney(shown.paidTotal)} · คงเหลือ ${formatMoney(shown.total - shown.paidTotal)}`} accent />
             <Stat icon={<Wallet className="w-4 h-4" />} label="ถึงกำหนดจ่าย" value={formatMoney(shown.dueTotal)} sub="บาท (ถึงรอบปัจจุบัน ยังไม่จ่าย)" warn={shown.dueTotal > 0} />
-            <Stat icon={<TrendingUp className="w-4 h-4" />} label="อัตราคันถัดไป" value={formatMoney(shown.currentRate)}
-              sub={shown.next ? `อีก ${shown.next.carsToNext} คัน ขึ้นเป็น ${formatMoney(shown.next.nextRate)}` : "ได้อัตราสูงสุดแล้ว"} />
+            {isAll ? (
+              <Stat icon={<TrendingUp className="w-4 h-4" />} label="พนักงานขาย" value={`${d?.all.length ?? 0} คน`} sub="อัตราคันถัดไปดูได้ตอนเลือกทีละคน" />
+            ) : (
+              <Stat icon={<TrendingUp className="w-4 h-4" />} label="อัตราคันถัดไป" value={formatMoney(shown.currentRate)}
+                sub={shown.next ? `อีก ${shown.next.carsToNext} คัน ขึ้นเป็น ${formatMoney(shown.next.nextRate)}` : "ได้อัตราสูงสุดแล้ว"} />
+            )}
           </div>
 
           {shown.unassigned && (
@@ -258,6 +304,7 @@ export default function CommissionPage() {
               <table className="w-full text-sm min-w-[960px]">
                 <thead className="text-[11px] uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-50/60 dark:bg-zinc-900/40">
                   <tr>
+                    {isAll && <th className="text-left px-4 py-2 font-semibold">พนักงานขาย</th>}
                     <th className="text-left px-4 py-2 font-semibold">คันที่</th>
                     <th className="text-left px-3 py-2 font-semibold">วันเริ่มต้นสัญญา</th>
                     <th className="text-left px-3 py-2 font-semibold">ใบเสนอราคา</th>
@@ -271,10 +318,11 @@ export default function CommissionPage() {
                 </thead>
                 <tbody>
                   {rows.length === 0 && (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-400">{cycle ? "ไม่มีงวดในรอบนี้" : "ยังไม่มีรายการปิดการขาย"}</td></tr>
+                    <tr><td colSpan={isAll ? 10 : 9} className="px-4 py-8 text-center text-zinc-400">{cycle ? "ไม่มีงวดในรอบนี้" : "ยังไม่มีรายการปิดการขาย"}</td></tr>
                   )}
                   {rows.map((s) => (
                     <tr key={`${s.quotationNo}-${s.nth}`} className="border-t border-zinc-100 dark:border-zinc-800/70 align-top">
+                      {isAll && <td className="px-4 py-2 font-medium whitespace-nowrap">{ownerOf.get(s.quotationId)?.name ?? "—"}</td>}
                       <td className="px-4 py-2 font-semibold tabular-nums">{s.nth}</td>
                       <td className="px-3 py-2 text-zinc-600 dark:text-zinc-300">
                         {canPay && editingStart === s.quotationId ? (
@@ -340,7 +388,7 @@ export default function CommissionPage() {
                   <tbody>
                     {payments.map((p) => (
                       <tr key={p._id} className="border-t border-zinc-100 dark:border-zinc-800/70">
-                        <td className="px-4 py-2 font-medium">{p.cycleLabel}</td>
+                        <td className="px-4 py-2 font-medium">{p.cycleLabel}{isAll && <span className="block text-xs font-normal text-zinc-500">{p.salesName}</span>}</td>
                         <td className="px-3 py-2 tabular-nums text-zinc-500 dark:text-zinc-400">{fmtDate(p.paidAt)}</td>
                         <td className="px-3 py-2 text-zinc-500 dark:text-zinc-400">
                           {p.items.length} งวด · {p.items.map((i) => `${i.quotationNo}/${i.tranche}`).join(", ")}
@@ -431,7 +479,7 @@ export default function CommissionPage() {
         <div className="fixed bottom-0 inset-x-0 z-40 border-t border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3 flex-wrap">
             <p className="text-sm">
-              <span className="font-semibold">{shown.name}</span> · เลือก {selectedItems.length} งวด · รวม <span className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatMoney(selTotal)}</span> บาท
+              <span className="font-semibold">{selectedByOwner.length > 1 ? `${selectedByOwner.length} คน` : selectedByOwner[0]?.owner.name ?? shown.name}</span> · เลือก {selectedItems.length} งวด · รวม <span className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatMoney(selTotal)}</span> บาท
             </p>
             <label className="flex items-center gap-1.5 text-[13px] text-zinc-500">เดือนที่จ่าย
               <select value={effectivePayCycle} onChange={(e) => setPayCycle(e.target.value)} aria-label="เดือนที่จ่าย"

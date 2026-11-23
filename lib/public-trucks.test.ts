@@ -152,3 +152,18 @@ describe("isPaused — พักการขาย ไม่ขึ้น /trucks
     expect(isPaused(undefined)).toBe(false)
   })
 })
+
+describe("reservedPlates (รถติดจองไม่ขึ้น /trucks)", () => {
+  it("จองขึ้นไป + พักจากขั้นจอง + ใบเก่า booked นับ · ขั้นก่อนจอง/ปิดไม่สำเร็จไม่นับ", async () => {
+    const { reservedPlates } = await import("@/lib/public-trucks")
+    const s = reservedPlates([
+      { licensePlate: "สบ.71-0001", stage: "RESERVED" },
+      { licensePlate: "สบ.71-0002", stage: "ON_HOLD", stageBeforeHold: "TRAINING" },
+      { licensePlate: "สบ.71-0003", status: "booked" },
+      { licensePlate: "สบ.71-0004", stage: "VIEWING_SCHEDULED" },
+      { licensePlate: "สบ.71-0005", stage: "CLOSED_LOST" },
+      { licensePlate: "สบ.71-0006", stage: "ON_HOLD", stageBeforeHold: "QUOTED" },
+    ])
+    expect([...s].sort()).toEqual(["71-0001", "71-0002", "71-0003"])
+  })
+})

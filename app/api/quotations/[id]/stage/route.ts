@@ -7,6 +7,7 @@ import { moveStage, holdDeal, resumeDeal, closeLost, attachFile, saveFields, get
 import { checkAdvance, screeningChecklist, type DealFields } from "@/lib/deal-stage"
 import { listLossReasons, reasonsForStage } from "@/lib/loss-reason"
 import { QUOTE_COLL } from "@/lib/quotation"
+import { revalidatePublicTrucks } from "@/lib/revalidate-public"
 
 const DB = process.env.MONGO_DB ?? "mena_partner"
 
@@ -112,6 +113,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     { _id: new ObjectId(id) },
     { $set: { updatedBy: { email: session.user.email, name: (session.user.name ?? "").trim() || session.user.email.split("@")[0], at: new Date().toISOString() } } },
   )
+  // ขยับขั้น/พัก/ปิดดีล = รถติดจองเปลี่ยน → หน้า /trucks ต้องอัปเดต (รถติดจองไม่โชว์)
+  if (["advance", "move", "skip", "hold", "resume", "close"].includes(b.action)) revalidatePublicTrucks()
   const deal = await getDeal(db, id)
   return NextResponse.json({ ok: true, deal: { ...deal, _id: String(deal?._id) } })
 }

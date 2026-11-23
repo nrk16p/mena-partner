@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, PauseCircle, PlayCircle, XCircle, Upload, Check, SkipForward } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { ArrowLeft, ArrowRight, PauseCircle, PlayCircle, XCircle, Upload, Check, SkipForward } from "lucide-react"
 import { prompt } from "@/components/ui/confirm"
 import { PHASES, STAGES, STAGE_LABEL, STATUS_LABEL, PHASE_COLOR, type Stage } from "@/lib/deal-stage"
 
@@ -252,6 +253,11 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
   const canAdvance = info.advance.ok && !onHold && !closed
   const nextLabel = info.advance.to ? STAGE_LABEL[info.advance.to] : ""
   const finished = active === "COMPLETED_90D"
+  // ย้อนกลับขั้นก่อนหน้า — server ให้ถอยขั้นได้เฉพาะแอดมิน และต้องมีเหตุผล
+  const { data: session } = useSession()
+  const isAdmin = ["admin", "superadmin"].includes((session?.user as { role?: string } | undefined)?.role ?? "")
+  const prevStage = STAGES[STAGES.indexOf(active as Stage) - 1] as Stage | undefined
+  const canGoBack = isAdmin && !onHold && !closed && !!prevStage
 
   const input = "h-[38px] w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm"
 
@@ -487,6 +493,22 @@ export function DealNextStep({ deal, info, busy, err, act, attach }: {
                     </button>
                   )}
                 </>
+              )}
+              {canGoBack && (
+                <button disabled={busy}
+                  onClick={async () => {
+                    const note = await prompt({
+                      title: `ย้อนกลับเป็น "${STAGE_LABEL[prevStage!]}"`,
+                      description: `ดีลจะถอยจาก "${STAGE_LABEL[active as Stage]}" กลับไปขั้นก่อนหน้า ใส่เหตุผลไว้ให้ทีมรู้`,
+                      placeholder: "เช่น กดขยับผิด / ลูกค้าขอเลื่อนดูรถ",
+                    })
+                    if (note === null) return
+                    if (!note.trim()) { alert("ต้องใส่เหตุผลก่อนย้อนสถานะ"); return }
+                    await act({ action: "move", to: prevStage, note: note.trim() })
+                  }}
+                  className="h-[38px] inline-flex items-center gap-1.5 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 text-[13px] font-semibold bg-white dark:bg-zinc-900 disabled:opacity-50">
+                  <ArrowLeft className="w-[15px] h-[15px]" /> ย้อนสถานะ
+                </button>
               )}
               {/* ดีลที่เดินครบ 90 วันแล้วถือว่าจบ — ไม่ควรกดพัก/ปิดว่าไม่สำเร็จได้อีก */}
               {!finished && (

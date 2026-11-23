@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import * as XLSX from "xlsx"
 import clientPromise from "@/lib/mongo"
+import { ageFrom, fullNameNoPrefix } from "@/lib/driver-export"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "drivers"
@@ -8,9 +9,9 @@ const COLL = "drivers"
 // Column order for the exported sheet
 const HEADERS: { key: string; label: string }[] = [
   { key: "staffCode",    label: "รหัสพนักงาน" },
-  { key: "firstName",   label: "ชื่อ" },
-  { key: "lastName",    label: "นามสกุล" },
+  { key: "fullName",    label: "ชื่อ-นามสกุล" },        // คอลัมน์เดียว ไม่มีคำนำหน้า · import แยกกลับให้
   { key: "birthDate",   label: "วันเกิด (YYYY-MM-DD)" },
+  { key: "age",         label: "อายุ (ปี)" },
   { key: "nationalId",  label: "เลขบัตรประชาชน" },
   { key: "phone",       label: "เบอร์โทรศัพท์" },
   { key: "fleet",       label: "Fleet" },
@@ -36,6 +37,8 @@ export async function GET() {
         HEADERS.find((h) => h.key === key)!.label,
         key === "isDriver" || key === "isTruckOwner"
           ? d[key] ? "TRUE" : "FALSE"
+          : key === "fullName" ? fullNameNoPrefix(d.firstName, d.lastName)
+          : key === "age" ? ageFrom(d.birthDate)
           : (d[key] ?? ""),
       ])
     )
@@ -47,7 +50,7 @@ export async function GET() {
 
   // Column widths
   ws["!cols"] = HEADERS.map((h) =>
-    h.key === "address" ? { wch: 40 } : { wch: Math.max(h.label.length + 4, 18) }
+    h.key === "address" ? { wch: 40 } : h.key === "fullName" ? { wch: 28 } : h.key === "age" ? { wch: 10 } : { wch: Math.max(h.label.length + 4, 18) }
   )
 
   const wb = XLSX.utils.book_new()

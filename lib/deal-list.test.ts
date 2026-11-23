@@ -106,3 +106,11 @@ describe("การเรียง", () => {
     expect(daysIn(ago(12), NOW)).toBe(12)
   })
 })
+
+describe("sortByQuotationNo", () => {
+  it("ใบใหม่อยู่บน เลขเกิน 999 ไม่เรียงผิด", async () => {
+    const { sortByQuotationNo } = await import("@/lib/deal-list")
+    const rows = [{ quotationNo: "QT-2610-002" }, { quotationNo: "QT-2611-1000" }, { quotationNo: "QT-2611-999" }, { quotationNo: "QT-2611-010" }]
+    expect(sortByQuotationNo(rows).map((r) => r.quotationNo)).toEqual(["QT-2611-1000", "QT-2611-999", "QT-2611-010", "QT-2610-002"])
+  })
+})

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import clientPromise from "@/lib/mongo"
 import { computeInstallmentStates, type DriverListStatus } from "@/lib/driver-state"
+import { findDuplicateDriver, duplicateDriverMessage } from "@/lib/driver-unique"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "drivers"
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
 
   const now = new Date()
   const client = await clientPromise
+  const dup = await findDuplicateDriver(client.db(DB).collection(COLL), body.firstName, body.lastName)
+  if (dup) return NextResponse.json({ error: duplicateDriverMessage(dup) }, { status: 409 })
   const result = await client.db(DB).collection(COLL).insertOne({
     prefix:       body.prefix?.trim() || "นาย",
     firstName:    body.firstName.trim(),

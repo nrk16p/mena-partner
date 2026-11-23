@@ -13,7 +13,7 @@ import { STATUS_LABEL, phaseOf, type Stage } from "@/lib/deal-stage"
 import {
   PHASE_BUCKETS, STAGE_BUCKETS, SIDE_BUCKETS, BADGE_CLASS, DOT_COLOR, FOLLOW_CLASS,
   badgeKind, bucketOf, bucketStats, daysIn, filterDeals, followTone, kpis, stageOfDeal,
-  progressSegments, sortDeals, stuckClass, type Quick,
+  progressSegments, sortByQuotationNo, stuckClass, type Quick,
 } from "@/lib/deal-list"
 import { dealExportRows, dealExportFilename } from "@/lib/deal-export"
 
@@ -89,7 +89,7 @@ function QuotationsInner() {
   const base = useMemo(() => filterDeals(rows, { mine, me }), [rows, mine, me])
   const stats = useMemo(() => bucketStats(base), [base])
   const k = useMemo(() => kpis(rows), [rows])
-  const shown = useMemo(() => sortDeals(filterDeals(base, { bucket, quick })), [base, bucket, quick])
+  const shown = useMemo(() => sortByQuotationNo(filterDeals(base, { bucket, quick })), [base, bucket, quick])
 
   const pg = usePagination(shown, 50, [qSent, bucket, quick, mine, view])
   // Excel = รายการตามตัวกรองที่เห็นอยู่ (ไม่ใช่แค่หน้าปัจจุบัน) — โหลด xlsx ตอนกดเท่านั้น

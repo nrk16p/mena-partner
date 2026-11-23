@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
 import clientPromise from "@/lib/mongo"
+import { findDuplicateDriver } from "@/lib/driver-unique"
+import { splitFullName } from "@/lib/driver-export"
 
 const DB   = process.env.MONGO_DB ?? "mena_partner"
 const COLL = "drivers"
@@ -32,16 +34,23 @@ export async function POST(req: NextRequest) {
   const now    = new Date()
   let upserted = 0
   let skipped  = 0
+  const duplicates: string[] = []
 
   const client = await clientPromise
   const coll   = client.db(DB).collection(COLL)
 
   for (const row of rows) {
-    const firstName = parseStr(row["ชื่อ"])
-    const lastName  = parseStr(row["นามสกุล"])
+    // ไฟล์ export ใหม่รวมชื่อ-นามสกุลไว้คอลัมน์เดียว · ไฟล์เก่ายังมีคอลัมน์ ชื่อ/นามสกุล แยก
+    const split     = splitFullName(parseStr(row["ชื่อ-นามสกุล"]))
+    const firstName = parseStr(row["ชื่อ"]) || split.firstName
+    const lastName  = parseStr(row["นามสกุล"]) || split.lastName
     if (!firstName || !lastName) { skipped++; continue }
 
     const staffCode = parseStr(row["รหัสพนักงาน"])
+    // ชื่อซ้ำกับคนอื่นในระบบ (ไม่ใช่แถวรหัสเดียวกันที่กำลังอัปเดต) → ข้าม
+    if (await findDuplicateDriver(coll, firstName, lastName, staffCode ? { staffCode: { $ne: staffCode } } : {})) {
+      skipped++; duplicates.push(`${firstName} ${lastName}`); continue
+    }
 
     const doc = {
       firstName,
@@ -76,5 +85,5 @@ export async function POST(req: NextRequest) {
     upserted++
   }
 
-  return NextResponse.json({ ok: true, upserted, skipped })
+  return NextResponse.json({ ok: true, upserted, skipped, duplicates })
 }

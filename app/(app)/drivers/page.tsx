@@ -464,7 +464,7 @@ function SlidePanel({ driver, prefill, onClose, onSaved }: SlidePanelProps) {
 function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [file, setFile]       = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [result, setResult]   = useState<{ upserted: number; skipped: number } | null>(null)
+  const [result, setResult]   = useState<{ upserted: number; skipped: number; duplicates?: string[] } | null>(null)
   const [error, setError]     = useState("")
 
   async function handleImport() {
@@ -476,7 +476,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       const res = await fetch("/api/drivers/import", { method: "POST", body: fd })
       const j   = await res.json()
       if (!res.ok) { setError(j.error ?? "เกิดข้อผิดพลาด"); return }
-      setResult({ upserted: j.upserted, skipped: j.skipped })
+      setResult({ upserted: j.upserted, skipped: j.skipped, duplicates: j.duplicates ?? [] })
       onDone()
     } finally { setLoading(false) }
   }
@@ -516,7 +516,8 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
           {result && (
             <div className="text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-lg">
               นำเข้าสำเร็จ {result.upserted} แถว
-              {result.skipped > 0 && ` · ข้าม ${result.skipped} แถว (ไม่มีชื่อ)`}
+              {result.skipped > 0 && ` · ข้าม ${result.skipped} แถว (ไม่มีชื่อ หรือชื่อซ้ำ)`}
+              {!!result.duplicates?.length && <span className="block text-xs">ชื่อซ้ำในระบบ: {result.duplicates.join(", ")}</span>}
             </div>
           )}
           {error && (
